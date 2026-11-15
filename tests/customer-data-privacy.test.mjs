@@ -123,7 +123,7 @@ test("one-shot SHA256 and older-runtime fallback preserve exact text and binary 
 
 test("digest cache eviction and oversized windows preserve detection", () => {
   const blocked = new Set([sha256("synthetic blocked fixture")]);
-  const manyLines = Array.from({length: 33000}, (_, index) => `syntheticvalue${index}`).join("\n");
+  const manyLines = Array.from({length: 66000}, (_, index) => `syntheticvalue${index}`).join("\n");
   assert.deepEqual(customerDataFindings(manyLines, "fixture.md", blocked), []);
   const wideLines = Array.from({length: 600}, (_, index) => `synthetic${index}${"x".repeat(1100)}`).join("\n");
   assert.deepEqual(customerDataFindings(wideLines, "fixture.md", blocked), []);

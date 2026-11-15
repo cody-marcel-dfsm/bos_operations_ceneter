@@ -34,7 +34,7 @@ function descriptor(origin="https://service.example.invalid"){
         closed({type:{const:"ack"},operation:{const:"comments.create"},feedback_id:str,status:{const:"committed"}}),
         closed({type:{const:"gap"},feedback_id:str,cursor:str,recovery_operation:{const:"feedback.get"}}),
         closed({type:{const:"reconnect"},cursor:str}),closed({type:{const:"pong"}})]},
-      limits:{max_frame_bytes:16384,page_size:50,max_delivery_bytes:1048576,max_connection_seconds:1,max_commands:120}}
+      limits:{max_frame_bytes:16384,page_size:50,max_delivery_bytes:1048576,max_connection_seconds:30,max_commands:120}}
   };
 }
 const journal=(cursor,events=[{event_id:id(1)}])=>({type:"journal",feedback_id:item,cursor,comments:events,history:[],earlier_history:false});

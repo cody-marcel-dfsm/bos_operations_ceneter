@@ -35,10 +35,26 @@ function digestMatcher(blockedDigests) {
   const identity = JSON.stringify([...blockedDigests].sort());
   let matcher = digestWindowCaches.get(blockedDigests);
   if (!matcher || matcher.identity !== identity) {
-    matcher = {identity, digests: new Set(blockedDigests), windows: new Map(), characters: 0};
+    matcher = {identity, digests: new Set(blockedDigests), windows: new Map(), characters: 0, phrases: new Map(), phraseCharacters: 0};
     digestWindowCaches.set(blockedDigests, matcher);
   }
   return matcher;
+}
+
+function blockedPhrase(phrase, matcher) {
+  const retained = matcher.phrases.get(phrase);
+  if (retained !== undefined) return retained;
+  const found = matcher.digests.has(sha256(phrase));
+  if (phrase.length <= maxDigestWindowCharacters) {
+    // Reset the bounded generation in one operation. Per-entry FIFO deletion
+    // caused repeated Map tombstone walks in the cold scan; every miss still
+    // computes the exact original digest and membership result.
+    if (matcher.phrases.size >= 65536 || matcher.phraseCharacters + phrase.length > maxDigestCacheCharacters) {
+      matcher.phrases.clear(); matcher.phraseCharacters = 0;
+    }
+    matcher.phrases.set(phrase, found); matcher.phraseCharacters += phrase.length;
+  }
+  return found;
 }
 
 function blockedWordWindow(words, matcher) {
@@ -51,7 +67,7 @@ function blockedWordWindow(words, matcher) {
     for (let size = 1; size <= 8 && index + size <= words.length; size += 1) {
       // Identical normalized windows without allocating an array per digest.
       phrase = size === 1 ? words[index] : phrase + " " + words[index + size - 1];
-      if (matcher.digests.has(sha256(phrase))) {
+      if (blockedPhrase(phrase, matcher)) {
         found = true;
         break;
       }
@@ -534,7 +550,7 @@ async function scanPrivacyCandidates(candidates, {describeOnly = false, assessTr
   const policy = await privacyPolicyIdentity([{path: new URL(import.meta.url).pathname,
     body: await readFile(new URL(import.meta.url))},
     ...await Promise.all(["./lib/privacy-scan-pool.mjs", "./lib/privacy-scan-worker.mjs"].map(async name => {const path = new URL(name, import.meta.url).pathname; return {path, body: await readFile(path)};})), ...rules], {
-      functions: [customerDataFindings, isExactPublicLegalNotice, normalizeSensitiveText, hasBlockedDigest, blockedWordWindow, digestMatcher,
+      functions: [customerDataFindings, isExactPublicLegalNotice, normalizeSensitiveText, hasBlockedDigest, blockedPhrase, blockedWordWindow, digestMatcher,
         allowedSyntheticDomain, allowedFictionalPhone, sha256, scanPrivacyCandidates,
         isCpuProfileTextArtifact, cpuProfilePrivacyText, isProposedTextArtifact, isOperationalTextArtifact,
         verifiedNativeProbeMetadataText, verifiedSyntheticSourceFixtureText, ownNativeProbeIdentity,

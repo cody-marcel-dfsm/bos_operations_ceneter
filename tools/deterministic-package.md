@@ -181,3 +181,10 @@ CPU worker bound is eight on this ten-CPU/64-GiB validation host, retaining two
 concurrent input reads, eight-MiB per-worker input bounds, and independent
 384-MiB old/32-MiB young generation limits. No old-policy result is adopted
 for this changed policy; full cold timing and the original breach are retained.
+
+A second bounded exact-phrase boolean memo retains at most 65,536 entries and
+four MiB of phrase characters per worker. Whole-generation reset avoids costly
+per-entry deletion churn; misses always compute the original SHA-256 membership.
+Matcher identity changes discard every cached result. Eviction/oversized-word,
+mutated-rule and complete original one-to-eight-word equivalence tests remain
+required, alongside the fresh full-policy cold category.
