@@ -449,3 +449,11 @@ It no longer estimates concurrency from an artificial sleep versus total setup
 wall time, which failed under contention despite verified three-way execution.
 Bounded public failure locators allow512 ASCII characters for full unittest IDs;
 unrecognized/oversized names and all failure bodies remain private.
+
+The integrated companion retains64 random filename bits using a16-hex basename
+and the portable103-byte Unix pathname bound. Removing redundant socket-name
+decoration lets the standard GitHub checkout use its existing private IPC root.
+Same-directory readback accepts both the new exact name and the old exact
+`s-<16hex>.sock` pattern. Ownership, mode, inode, fixed bindings and operations
+remain mandatory. Complete host/onboarding/socket/installer checks plus actual
+102-byte IPC, overbound rejection and legacy readback remain fixed acceptance.

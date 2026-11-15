@@ -13,8 +13,8 @@ const maximumReply = 5 * 1024 * 1024;
 // can never supply a network request, authority selector, prompt or executable.
 export async function createCompanionBridge({root, host}) {
   await privateDirectory(root);
-  const socketPath = join(root, `s-${randomBytes(8).toString("hex")}.sock`), controlPath = join(root, "control.json");
-  if (Buffer.byteLength(socketPath) > 100 || !validBinding(host.binding)) fail();
+  const socketPath = join(root, randomBytes(8).toString("hex")), controlPath = join(root, "control.json");
+  if (Buffer.byteLength(socketPath) > 103 || !validBinding(host.binding)) fail();
   let active = true, reading = false;
   const sockets = new Set();
   const serve = async request => {
@@ -90,7 +90,7 @@ export async function createCompanionBridge({root, host}) {
 export async function readCompanionControl(path) {
   const value = JSON.parse((await protectedRead(path)).bytes.toString("utf8"));
   if (!exact(value, ["version", "socketPath", "binding"]) || value.version !== 1 || !validBinding(value.binding) ||
-      dirname(value.socketPath) !== dirname(path) || !/^s-[a-f0-9]{16}\.sock$/u.test(value.socketPath.split("/").at(-1))) fail();
+      dirname(value.socketPath) !== dirname(path) || !/^(?:[a-f0-9]{16}|s-[a-f0-9]{16}\.sock)$/u.test(value.socketPath.split("/").at(-1))) fail();
   await privateDirectory(dirname(path));
   const info = await lstat(value.socketPath);
   if (!info.isSocket() || info.isSymbolicLink() || info.uid !== process.getuid() || (info.mode & 0o777) !== 0o600) fail();
