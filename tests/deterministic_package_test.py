@@ -496,6 +496,53 @@ class PackageGateTests(unittest.TestCase):
         with self.assertRaises(Exception):
             d.scope(self.root, foreign, source)
 
+    def unpublished_shared_fork(self,path='source/platform/bos-mcp-client/references/identity-context.md',revert=False):
+        published=self.git('rev-parse','HEAD')
+        (self.root/'AGENTS.md').write_text('shared unpublished work');self.commit();shared=self.git('rev-parse','HEAD')
+        self.git('branch','peer',shared)
+        (self.root/'AGENTS.md').write_text('first unpublished line');self.commit();first=self.git('rev-parse','HEAD')
+        self.git('checkout','-q','peer');target=self.root/path;target.parent.mkdir(parents=True,exist_ok=True)
+        target.write_text('second unpublished line');self.commit()
+        if revert:target.unlink();self.commit()
+        second=self.git('rev-parse','HEAD');self.git('checkout','-q','main');self.git('merge','--no-ff','-qm','private source sync','peer')
+        return published,shared,first,second,self.git('rev-parse','HEAD')
+
+    def test_private_sync_with_unique_unpublished_shared_fork_checks_both_lines(self):
+        published,shared,first,second,source=self.unpublished_shared_fork()
+        self.assertNotEqual(shared,published);self.assertEqual(self.git('merge-base','--all',first,second),shared)
+        self.assertIn('source/platform/bos-mcp-client/references/identity-context.md',d.scope(self.root,published,source))
+
+    def test_private_sync_cannot_hide_reverted_unmapped_side_bytes_or_merge_resolution(self):
+        published,_,_,_,source=self.unpublished_shared_fork('runtime.js',revert=True)
+        with self.assertRaisesRegex(ValueError,'Unsupported|Deletion'):d.scope(self.root,published,source)
+        # A separate merge-only unknown path is rejected with the same valid topology.
+        fixture=PackageGateTests();fixture.setUp()
+        try:
+            published,_,_,_,source=fixture.unpublished_shared_fork()
+            target=fixture.root/'runtime.js';target.write_text('unmapped resolution');fixture.git('add','runtime.js')
+            resolution=fixture.git('commit-tree',fixture.git('write-tree'),'-p',source+'^1','-p',source+'^2','-m','unmapped private sync resolution')
+            with self.assertRaisesRegex(ValueError,'Unsupported'):d.scope(fixture.root,published,resolution)
+        finally:fixture.doCleanups()
+
+    def test_ambiguous_shared_unpublished_merge_bases_still_reject(self):
+        published=self.git('rev-parse','HEAD');(self.root/'AGENTS.md').write_text('first line');self.commit();first=self.git('rev-parse','HEAD')
+        self.git('checkout','-qb','peer',published);target=self.root/'source/platform/bos-mcp-client/references/identity-context.md'
+        target.parent.mkdir(parents=True,exist_ok=True);target.write_text('second line');self.commit();second=self.git('rev-parse','HEAD')
+        a=self.git('commit-tree',first+'^{tree}','-p',first,'-p',second,'-m','first crisscross')
+        b=self.git('commit-tree',second+'^{tree}','-p',second,'-p',first,'-m','second crisscross')
+        self.assertEqual(set(self.git('merge-base','--all',a,b).splitlines()),{first,second})
+        source=self.git('commit-tree',first+'^{tree}','-p',a,'-p',b,'-m','ambiguous private sync')
+        with self.assertRaisesRegex(ValueError,'exactly one'):d.scope(self.root,published,source)
+
+    def test_private_sync_never_converts_an_ancestry_execution_error_to_authority(self):
+        published,_,first,second,source=self.unpublished_shared_fork();execute=d.subprocess.run
+        def unavailable(command,*args,**kwargs):
+            if command[:5]==['git','--no-replace-objects','merge-base','--is-ancestor',published] and command[-1] in (first,second):
+                return subprocess.CompletedProcess(command,128,b'',b'Synthetic Git observation unavailable')
+            return execute(command,*args,**kwargs)
+        with patch.object(d.subprocess,'run',side_effect=unavailable):
+            with self.assertRaises(subprocess.CalledProcessError):d.scope(self.root,published,source)
+
     def test_original_history_rejects_replace_refs_and_grafts(self):
         source = self.git('rev-parse', 'HEAD')
         self.git('replace', source, self.base)

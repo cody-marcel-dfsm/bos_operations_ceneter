@@ -507,3 +507,18 @@ existing controller/lifecycle/spec suites described in `validation-contract.md`.
 The legacy socket test holds its own bounded completion handle while the actual
 advertised deadline closes an in-memory channel. Production timer behavior and
 all current/legacy descriptor and native-host checks remain unchanged.
+
+Amendment `/13` admits a normal private source sync whose two unpublished parents
+have one complete merge base descended from the exact publication base. The
+first parent remains the explicit resolution baseline; every unpublished edge,
+merge input, resolution and reverted blob keeps its original scope/privacy/
+credential checks. Ambiguous common bases, unrelated history, two trusted
+published parents, octopus, shallow, replaced and grafted histories still reject.
+An ancestry command error supplies no authority. The named controller/history
+regressions cover this topology and hidden side/resolution content.
+
+The existing feedback skill/reference paths clarify conditional item streams,
+bounded Claude Code Monitor watches, absent Codex idle wake and current-task API
+coordination. Ordinary skill-version propagation and the fixed five-host build/
+archive parity checks remain mandatory. Source generation grants no installed
+host, persistent monitor, publication or deployment readiness.

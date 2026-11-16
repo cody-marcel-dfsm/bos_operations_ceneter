@@ -33,7 +33,7 @@ except ImportError:
     import oracle_spec_seal as spec_seal
 
 KIND = 'boc-deterministic-package/1'
-PROFILE = 'feedback-discovery-and-release-tool/12'
+PROFILE = 'feedback-discovery-and-release-tool/13'
 _OUTPUT_LOCK = threading.Lock()
 WS_LOCK_RECORD = {
     'version': '8.23.0', 'resolved': 'https://registry.npmjs.org/ws/-/ws-8.23.0.tgz',
@@ -389,20 +389,26 @@ def commits_and_paths(root, base, source):
                 # on its first parent and a side branch from older published main.
                 # Every side commit remains in rev-list below; this selects only
                 # the baseline for classifying the merge resolution itself.
-                descendants = [parent for parent in parents if subprocess.run(
-                    ['git', '--no-replace-objects', 'merge-base', '--is-ancestor', base, parent],
-                    cwd=root, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False).returncode == 0]
+                descendants=[]
+                for parent in parents:
+                    observed=subprocess.run(['git','--no-replace-objects','merge-base','--is-ancestor',base,parent],
+                                            cwd=root,stdout=subprocess.PIPE,stderr=subprocess.PIPE,check=False)
+                    if observed.returncode not in (0,1):observed.check_returncode()
+                    if observed.returncode==0:descendants.append(parent)
                 fork = subprocess.run(['git', '--no-replace-objects', 'merge-base', base, parents[1]],
                                       cwd=root, capture_output=True, text=True)
                 if descendants == [parents[0]] and fork.returncode == 0 and fork.stdout.strip():
                     trusted = [parents[0]]
                 elif descendants == parents:
-                    # /10: two independently unpublished lines may fork exactly
-                    # at the current publication base. First-parent resolution
-                    # is explicit; every side edge remains inspected below.
+                    # /13: private source sync may fork after the published base.
+                    # Require one complete shared ancestor anchored to that exact
+                    # base. Every edge and first-parent resolution is still checked.
                     common = native.git(root, 'merge-base', '--all', *parents).splitlines()
-                    if common == [base]:
-                        trusted = [parents[0]]
+                    if len(common)==1:
+                        anchored=subprocess.run(['git','--no-replace-objects','merge-base','--is-ancestor',base,common[0]],
+                                                cwd=root,stdout=subprocess.PIPE,stderr=subprocess.PIPE,check=False)
+                        if anchored.returncode not in (0,1):anchored.check_returncode()
+                        if anchored.returncode==0:trusted=[parents[0]]
             if len(trusted) != 1:
                 raise ValueError('Merge needs exactly one publication-base ancestor parent or bounded published-fork integration')
             # Check the integrated result against its trusted published parent.

@@ -200,8 +200,11 @@ IDs return the same denial.
 Create and resolve events retain notification intent for a configured authorized
 team recipient. Notices contain the feedback ID and event only; the recipient
 signs in to read the report. A receipt does not prove notification delivery.
-There is no feedback push subscription. Polling supports v1 tracking when
-requested. Issues, discussion and media remain private;
+The native read/comment tools alone create no push subscription. Item-scoped
+streaming requires the currently advertised discussion descriptor and an admitted
+authenticated host, as described in [item-discussion.md](item-discussion.md).
+An unsupported host retains ordinary tracking; poll only for the requested
+interval and duration. Issues, discussion and media remain private;
 only separately authorized code patches may become public.
 
 ## Add evidence to an existing discussion

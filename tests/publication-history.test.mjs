@@ -10,6 +10,15 @@ async function fixture(t){await mkdir(scratch,{recursive:true});const root=await
  const commit=async(path,text)=>{await mkdir(join(root,path,".."),{recursive:true});await writeFile(join(root,path),text);git(root,"add","-A");git(root,"commit","-qm","Synthetic history content");return git(root,"rev-parse","HEAD");};
  const base=await commit("README.md","Published synthetic baseline\n");return{root,base,commit,probe:()=>publicationHistory({root,base,source:git(root,"rev-parse","HEAD")})};}
 test("complete unpublished history passes with immutable input/policy inventory",async t=>{const f=await fixture(t);await f.commit("README.md","Permitted synthetic guidance\n");const report=await f.probe();assert.equal(report.status,"PASS");assert.equal(report.pairs,1);assert.match(report.inventory_sha256,/^[a-f0-9]{64}$/u);assert.equal(report.source,git(f.root,"rev-parse","HEAD"));});
+test("private sync with an unpublished common fork still rejects reverted secret bytes on a mapped path",async t=>{
+ const f=await fixture(t),path="tests/feedback-evidence-guidance.test.mjs";
+ const shared=await f.commit(path,"Permitted shared conformance\n");git(f.root,"branch","peer",shared);
+ await f.commit("AGENTS.md","Permitted first line\n");git(f.root,"checkout","-q","peer");
+ await f.commit(path,JSON.stringify({["access"+"_token"]:"synthetic-reverted-credential"}));
+ await f.commit(path,"Permitted shared conformance\n");git(f.root,"checkout","-q","main");git(f.root,"merge","--no-ff","-qm","Private source sync","peer");
+ assert.equal(git(f.root,"merge-base","HEAD^1","HEAD^2"),shared);assert.notEqual(shared,f.base);
+ const report=await f.probe();assert.equal(report.status,"REJECT");assert(report.findings.some(row=>row.classification==="credential_content"));
+});
 test("secret and customer content later reverted on an unpublished side branch remain rejected without exposing content",async t=>{
  for(const kind of["secret","customer"])await t.test(kind,async t=>{const f=await fixture(t);await f.commit("AGENTS.md","Local permitted change\n");git(f.root,"checkout","-qb","side",f.base);
   const sensitive=kind==="secret"?JSON.stringify({["access"+"_token"]:"synthetic-sensitive-value"}):"Synthetic person "+"name"+"@"+["outside","net"].join(".");

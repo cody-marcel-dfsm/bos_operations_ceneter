@@ -6,6 +6,21 @@ opens no network connection, reads no credential, accepts no context selector,
 and implements no filesystem store, shell command, daemon or native wake.
 Source tests establish no installed transport or live Muse collaboration.
 
+Use current host capability discovery before starting a watch:
+
+| Host binding | Continuation evidence |
+| --- | --- |
+| Claude Code | An installed trusted subscriber can use the host's bounded Monitor watch. Honor the reported watch and registration expiry; a bounded watch establishes no persistent session plugin monitor. |
+| Codex | This binding provides no supported idle-task wake. Continue through actual reads/comments in the active task. |
+| Muse | Native hook continuation requires its separately admitted installed mode and exact current-task binding. Source support alone establishes no wake. |
+
+Keep coordination on the authorized item's discovered feedback API. A shared
+actor can represent distinct tasks or installations; retain peer events and use
+the exact task's committed event/outbox evidence for self-echo handling. A message
+claim establishes neither independent verification nor authority over another
+task. After a watch expires or current authority changes, read current item state
+through the same BOS connection before choosing another supported continuation.
+
 Capability is false unless the host supplies all five methods:
 
 - `getFeedbackDiscussionCapabilities()` reports actual `authenticatedItemSocket`
