@@ -77,8 +77,9 @@ def selection_schema():
 
 DELTA_KIND = 'boc.proposal-delta/1'
 _CURRENT_ORIGIN = object()
+_CURRENT_PRIOR_PROOF = object()
 
-def delta_context(root, source, tree, *, origin_main=_CURRENT_ORIGIN):
+def delta_context(root, source, tree, *, origin_main=_CURRENT_ORIGIN, prior_proposal_sha256=_CURRENT_PRIOR_PROOF):
     """Capture producer-owned exact membership; neither a model nor a caller supplies scope."""
     if not all(re.fullmatch('[a-f0-9]{40}', x or '') for x in (source, tree)):
         raise ValueError('Delta requires immutable source/tree identities')
@@ -93,6 +94,16 @@ def delta_context(root, source, tree, *, origin_main=_CURRENT_ORIGIN):
     if digest(catalog) != prior['catalog_sha256']:
         raise ValueError('Delta catalog changed')
     git(root, 'merge-base', '--is-ancestor', prior['base_commit'], source)
+    folder=Path(git(root,'rev-parse','--absolute-git-dir'))/'oracle/proposals'
+    if prior_proposal_sha256 is _CURRENT_PRIOR_PROOF:
+        prior_proposal_sha256=None
+        for path in sorted(folder.glob('*.json')) if folder.is_dir() else []:
+            if not path.is_symlink() and path.is_file() and native_proposal_record(root,path,prior,source):
+                prior_proposal_sha256=sha256(path.read_bytes());break
+    elif prior_proposal_sha256 is not None:
+        if not re.fullmatch('[a-f0-9]{64}',prior_proposal_sha256):raise ValueError('Exact prior native proposal required')
+        path=folder/(prior_proposal_sha256+'.json')
+        if path.is_symlink() or not native_proposal_record(root,path,prior,source):raise ValueError('Prior native proposal custody changed')
     if origin_main is _CURRENT_ORIGIN:
         observed=subprocess.run(['git','--no-replace-objects','rev-parse','--verify','refs/remotes/origin/main^{commit}'],cwd=root,capture_output=True,text=True)
         origin_main=observed.stdout.strip() if observed.returncode==0 else None
@@ -105,7 +116,7 @@ def delta_context(root, source, tree, *, origin_main=_CURRENT_ORIGIN):
         raise ValueError('Delta requires finite exact paths')
     tracked = git(root, 'ls-tree', '-r', '--name-only', '-z', tree).split('\0')
     tests = sorted(p for p in tracked if p.startswith('tests/') and safe_path(p) and not any(c in p for c in '*?[]\r\n'))
-    binding = {'prior_contract_sha256':prior['contract_sha256'], 'source_commit':source,
+    binding = {'prior_contract_sha256':prior['contract_sha256'], 'prior_proposal_sha256':prior_proposal_sha256, 'source_commit':source,
                'source_tree':tree, 'origin_main':origin_main, 'inventory_sha256':digest(paths), 'test_inventory_sha256':digest(tests)}
     return {'binding':binding, 'prior':prior, 'paths':paths, 'test_paths':tests}
 
@@ -133,7 +144,7 @@ def materialize_delta(root, context, delta):
     keys={'kind','binding','reason','design','acceptance_additions','category_additions','coverage_additions'}
     if not isinstance(delta,dict) or set(delta)!=keys or delta['kind']!=DELTA_KIND or delta['binding']!=context['binding']:
         raise ValueError('Delta binding or fields changed')
-    fresh=delta_context(root,context['binding']['source_commit'],context['binding']['source_tree'],origin_main=context['binding']['origin_main'])
+    fresh=delta_context(root,context['binding']['source_commit'],context['binding']['source_tree'],origin_main=context['binding']['origin_main'],prior_proposal_sha256=context['binding']['prior_proposal_sha256'])
     if fresh!=context: raise ValueError('Delta source/prior/inventory changed')
     prior=context['prior']['selection']; value=copy.deepcopy(prior)
     value.update(revision_of=context['prior']['contract_sha256'], reason=delta['reason'], design=delta['design'])
@@ -177,6 +188,29 @@ def materialize_delta(root, context, delta):
            'selection_sha256':digest(value),'scope_sha256':digest(value['scope_paths']),
            'retained_acceptance_sha256':digest(prior['acceptance']), 'retained_coverage_sha256':digest(projected)}
     return value,audit
+
+def reconstruct_delta_record(root,audit,delta):
+    """Read both closed producer shapes without changing an older raw response/audit."""
+    binding=audit['binding'];base_keys={'prior_contract_sha256','source_commit','source_tree','origin_main','inventory_sha256','test_inventory_sha256'}
+    legacy=set(binding)==base_keys
+    if not legacy and set(binding)!=base_keys|{'prior_proposal_sha256'}:raise ValueError('Unknown delta binding shape')
+    options={'origin_main':binding['origin_main']}
+    if not legacy:options['prior_proposal_sha256']=binding['prior_proposal_sha256']
+    context=delta_context(root,binding['source_commit'],binding['source_tree'],**options)
+    if context['binding']['prior_proposal_sha256'] is None:raise ValueError('Verified native prior required for delta consumption')
+    if legacy:
+        # The earlier producer bound the exact prior contract. Establish its
+        # actual native archive now; normalize only an in-memory verification
+        # copy and compare against the unchanged original audit and bytes.
+        reduced={k:v for k,v in context['binding'].items() if k!='prior_proposal_sha256'}
+        if reduced!=binding or delta.get('binding')!=binding:raise ValueError('Legacy delta binding changed')
+        normalized=dict(delta,binding=context['binding'])
+        selection,expected=materialize_delta(root,context,normalized)
+        expected.update(binding=binding,raw_delta_sha256=digest(delta))
+    else:
+        selection,expected=materialize_delta(root,context,delta)
+    if expected!=audit:raise ValueError('Delta normalization audit changed')
+    return selection,context
 
 def validate_selection(selection,catalog):
     catalog_check(catalog)
@@ -386,9 +420,22 @@ def native_proposal_record(root,path,contract,head):
     body={k:x for k,x in record.items() if k!='proposal_review_id'}
     review=record.get('review') if isinstance(record.get('review'),dict) else {}
     proposal=record.get('proposal')
+    if record.get('validation_contract')!=contract:return False
+    if not (record.get('proposal_review_id')==native._sha(native._canonical(body))
+            and record.get('schema_version')==native.SCHEMA_VERSION and record.get('issuer')==native.ISSUER
+            and record.get('kind')=='proposal-review' and record.get('review_scope')=='CONCEPTUAL_PROPOSAL'
+            and review.get('verdict')=='APPROVED' and review.get('review_status')=='COMPLETE' and review.get('findings')==[]
+            and isinstance(proposal,str) and record.get('proposal_sha256')==hashlib.sha256(proposal.encode()).hexdigest()
+            and record.get('proposal_sha256')==contract['stamp']['proposal_sha256']
+            and record.get('base_commit')==contract['base_commit']
+            and subprocess.run(['git','merge-base','--is-ancestor',contract['base_commit'],head],cwd=root,capture_output=True).returncode==0):return False
     if record.get('proposal_materialization') is not None:
         try:
             audit=record['proposal_materialization']; raw_review=record['raw_review']
+            if audit['binding']['source_commit']!=record['base_commit']:return False
+            prior=blob(root,audit['binding']['source_tree'],SELECTION)
+            if (prior['contract_sha256']!=audit['binding']['prior_contract_sha256']
+                    or len(prior['selection']['acceptance'])>=len(contract['selection']['acceptance'])):return False
             response=record['raw_response']
             if set(response)!={'path','sha256','engine_path','engine_sha256'}:return False
             for path_key,hash_key in (('path','sha256'),('engine_path','engine_sha256')):
@@ -398,20 +445,12 @@ def native_proposal_record(root,path,contract,head):
                 if native._sha(raw)!=response[hash_key] or json.loads(raw)!=raw_review:return False
             if (raw_review.get('verdict')!='APPROVED' or raw_review.get('review_status')!='COMPLETE'
                     or raw_review.get('findings')!=[]): return False
-            context=delta_context(root,audit['binding']['source_commit'],audit['binding']['source_tree'],origin_main=audit['binding']['origin_main'])
+            selection,context=reconstruct_delta_record(root,audit,raw_review['validation_selection'])
             if audit['binding']['origin_main'] is not None and contract['stamp']['origin_main']!=audit['binding']['origin_main']:return False
-            selection,expected=materialize_delta(root,context,raw_review['validation_selection'])
-            if audit!=expected or selection!=contract['selection'] or selection!=review.get('validation_selection'):
+            if selection!=contract['selection'] or selection!=review.get('validation_selection'):
                 return False
         except (ValueError,KeyError,TypeError,OSError,subprocess.SubprocessError,native.OracleApprovalError): return False
-    return (record.get('proposal_review_id')==native._sha(native._canonical(body))
-            and record.get('schema_version')==native.SCHEMA_VERSION and record.get('issuer')==native.ISSUER
-            and record.get('kind')=='proposal-review' and record.get('review_scope')=='CONCEPTUAL_PROPOSAL'
-            and review.get('verdict')=='APPROVED' and review.get('review_status')=='COMPLETE' and review.get('findings')==[]
-            and isinstance(proposal,str) and record.get('proposal_sha256')==hashlib.sha256(proposal.encode()).hexdigest()
-            and record.get('proposal_sha256')==contract['stamp']['proposal_sha256']
-            and record.get('validation_contract')==contract and record.get('base_commit')==contract['base_commit']
-            and subprocess.run(['git','merge-base','--is-ancestor',contract['base_commit'],head],cwd=root,capture_output=True).returncode==0)
+    return True
 
 def native_origin(root,head='HEAD'):
     """Local admission: the committed spec must equal a genuine APPROVED native proposal archive's contract."""

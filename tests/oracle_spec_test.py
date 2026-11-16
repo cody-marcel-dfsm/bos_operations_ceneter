@@ -675,7 +675,11 @@ class VaultIndexInterpreter(unittest.TestCase):
 
 class NativeDelta(Fixture):
     def prepared_delta(self):
-        prior=self.sealed(scope_paths=['source.mjs','README.md','tests/spec.test.mjs',v.SELECTION,v.CATALOG])
+        selection=self.selection(scope_paths=['source.mjs','README.md','tests/spec.test.mjs',v.SELECTION,v.CATALOG])
+        reviewer=lambda *args:dict(APPROVED,review_status='COMPLETE',validation_selection=selection)
+        with patch.object(oracle,'_review_settings_binding',return_value={'model':'synthetic','reasoning_effort':None}),patch.object(oracle,'_fresh_origin',return_value=ORIGIN):
+            oracle.review_proposal(self.root,PROPOSAL,[],None,reviewer)
+        prior=json.loads((self.root/v.SELECTION).read_text())
         self.commit('intact exact prior')
         (self.root/'source.mjs').write_text('export default false;\n')
         (self.root/'tests/extra.test.mjs').write_text('synthetic selected extra test\n')
@@ -687,6 +691,15 @@ class NativeDelta(Fixture):
                'coverage_additions':[{'module':'tests/spec.test.mjs','covers':[0],'purpose':None},
                                      {'module':'tests/extra.test.mjs','covers':[0],'purpose':'Proves the additional condition'}]}
         return prior,context,delta
+
+    def test_sanity_seal_without_native_prior_never_dispatches_an_additive_approval(self):
+        self.sealed(scope_paths=['source.mjs',v.SELECTION,v.CATALOG,'tests/spec.test.mjs']);self.commit()
+        from unittest.mock import Mock
+        reviewer=Mock()
+        with patch.object(oracle,'_review_settings_binding',return_value={'model':'synthetic','reasoning_effort':None}),patch.object(oracle,'_fresh_origin',return_value=ORIGIN):
+            with self.assertRaisesRegex(oracle.OracleApprovalError,'verified native prior'):
+                oracle.review_proposal(self.root,PROPOSAL,[],None,reviewer,delta=True)
+        reviewer.assert_not_called()
 
     def test_native_dispatch_uses_closed_delta_schema_and_full_mode_pins_the_exact_revision(self):
         prior,context,delta=self.prepared_delta()
@@ -726,6 +739,20 @@ class NativeDelta(Fixture):
         schema=v.delta_schema(context)
         self.assertEqual(schema['properties']['binding']['const'],context['binding'])
         self.assertFalse(schema['additionalProperties'])
+
+    def test_older_closed_binding_reconstructs_only_with_the_actual_verified_native_prior(self):
+        _,context,delta=self.prepared_delta();selected,audit=v.materialize_delta(self.root,context,delta)
+        old_binding={k:value for k,value in context['binding'].items() if k!='prior_proposal_sha256'}
+        old_delta=dict(delta,binding=old_binding);old_audit=dict(audit,binding=old_binding,raw_delta_sha256=v.digest(old_delta))
+        before=copy.deepcopy((old_audit,old_delta));actual,recovered=v.reconstruct_delta_record(self.root,old_audit,old_delta)
+        self.assertEqual(actual,selected);self.assertEqual((old_audit,old_delta),before)
+        self.assertEqual(recovered['binding']['prior_proposal_sha256'],context['binding']['prior_proposal_sha256'])
+        for changes in ({'extra':'unapproved'},{'prior_contract_sha256':'0'*64},{'inventory_sha256':'0'*64}):
+            bad=dict(old_binding,**changes)
+            with self.assertRaises((ValueError,subprocess.SubprocessError)):
+                v.reconstruct_delta_record(self.root,dict(old_audit,binding=bad),dict(old_delta,binding=bad))
+        archive=self.root/'.git/oracle/proposals'/(context['binding']['prior_proposal_sha256']+'.json');archive.unlink()
+        with self.assertRaisesRegex(ValueError,'Verified native prior'):v.reconstruct_delta_record(self.root,old_audit,old_delta)
 
     def test_wrong_missing_replayed_hashes_and_unknown_fields_fail_without_writing_a_spec(self):
         prior,context,delta=self.prepared_delta();original=(self.root/v.SELECTION).read_bytes()

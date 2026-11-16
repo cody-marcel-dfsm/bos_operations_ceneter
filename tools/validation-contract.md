@@ -91,6 +91,12 @@ Unknown paths, missing/wrong hashes, replay, source movement, removal and change
 old mapping purposes reject. No glob or supplied whitelist expands that scope.
 Added tests and fixtures must exist in the captured source tree. Initial designs
 with future planned files retain the full proposal mode.
+The parent also binds a matching canonical APPROVED/COMPLETE native prior
+proposal archive. A sanity seal alone cannot start this mode. For an earlier
+closed response that bound only the exact prior contract, consumption establishes
+its actual native prior archive independently and reconstructs the same original
+selection/audit. Old raw responses, seals and receipts remain unchanged; absent
+or altered prior proof rejects. New responses carry the archive hash explicitly.
 
 The raw independent response and normalization/input hashes remain in native
 custody. Only a genuine APPROVED/COMPLETE response reaches the existing seal;

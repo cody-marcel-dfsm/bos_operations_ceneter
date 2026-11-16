@@ -4,12 +4,12 @@
   "stamp": {
     "engine": "codex",
     "model": "gpt-6.1-sol",
-    "oracle_sha256": "fec99d008cff059d93908d90e00bf9ff6e8525f39be67b25a4709481efb52994",
+    "oracle_sha256": "a87ca68cc7c8d865bf577acd16154dbdd22cae21226886ba544e9f55d2532866",
     "host": "Codys-MacBook-Pro.local",
-    "time": "2026-11-16T04:06:20Z",
+    "time": "2026-11-16T04:52:35Z",
     "origin_main": "b16128819f56e81b2cb794c07506da056d073535",
-    "request_sha256": "b96f3af07b1628c9be64563002272ed57b33b845be606e74b3adb45ffe1b0fbb",
-    "proposal_sha256": "d58e4ffcacace665ce36a2fdda4f5b8e6759f07f6fe2b0feea6388e1817bf730"
+    "request_sha256": "2906987795c976c284754e70e676d339d8fa7190d0912f198759b65d3c5ac3d1",
+    "proposal_sha256": "0d56d9758723dfe1beba89066bab5432d72e077cce7ea78455e2d5c0c4ffd8ad"
   },
   "selection": {
     "acceptance": [
@@ -58,7 +58,10 @@
       "Keep API-key onboarding metadata-only and require a trusted existing linked OAuth capability for account execution; enforce exact current-subject confirmation, connection generation, scope, stale-state and uncertain-result recovery without another login.",
       "Classify only the exact bare delimiter occurrence in each enumerated immutable historical negative fixture after verifying path, Git blob, raw digest, size, offset and context; preserve full original-byte privacy and remaining credential checks, reject altered or copied inputs and real key material, and retain original failure evidence.",
       "Preserve complete privacy coverage, generated-consumer and skill-dependency parity, existing authentication and context contracts, shared behavioral safeguards, graphical presentation models, onboarding composition and published-only runtime export with exact dependency, file and mode integrity.",
-      "Preserve automatic compact graph completion after lookup clarification, every selected-route intermediate node and edge, ranking provenance and shortest structural fallback; require plain labels with diagram-native emphasis, native inline renderer priority, proven Mermaid rendering, precise partial evidence and the focused student exception, while rejecting crowded defaults, invented topology, internal identifiers, unsolicited off-route explanations, ASCII completion and unrendered code."
+      "Preserve automatic compact graph completion after lookup clarification, every selected-route intermediate node and edge, ranking provenance and shortest structural fallback; require plain labels with diagram-native emphasis, native inline renderer priority, proven Mermaid rendering, precise partial evidence and the focused student exception, while rejecting crowded defaults, invented topology, internal identifiers, unsolicited off-route explanations, ASCII completion and unrendered code.",
+      "Closed additive proposal responses bind the exact prior contract, source commit and tree, fetched baseline and finite path/test inventories. Parent materialization preserves all prior criteria, categories, fixtures and mapping purposes, retains raw independent response bytes and normalization hashes, reconstructs the same selection during consumption, and rejects replay, tampering, source movement, unknown paths and incomplete or rejected decisions before sealing.",
+      "Registered reviewer execution continuously drains both streams within a combined eight-MiB bound and a 180-second deadline, exposes body-free live timing and byte counts, preserves bounded original output and incomplete checkpoints on failure, and cleans up only its registered process group without resetting the original request clock.",
+      "Independent whole test classes execute through at most four isolated workers with unchanged within-class test semantics. Discovery covers the complete declared test-ID union exactly once, verifies actual executed counts and zero skips, binds committed test bytes and exact raw outcomes, rejects unsafe module-lifetime partitioning, and preserves default helper behavior, output bounds and cancellation cleanup."
     ],
     "acceptance_tests": [
       {
@@ -74,7 +77,9 @@
           8,
           12,
           21,
-          27
+          27,
+          46,
+          48
         ],
         "module": "tests/oracle-implementation-spec.test.mjs",
         "purpose": "Verify sealed spec production, privacy, engine invocation, external input custody, native migration, publication-range scope, configured interpreter preservation, CI admission and historical provenance refusal."
@@ -125,7 +130,8 @@
           14,
           20,
           26,
-          35
+          35,
+          47
         ],
         "module": "tests/oracle-lifecycle.test.mjs",
         "purpose": "Verify process identity, launcher isolation, attached-observer failure propagation, checkpoint preservation and deterministic completion rechecking before orphan recovery."
@@ -389,7 +395,8 @@
       {
         "covers": [
           38,
-          44
+          44,
+          48
         ],
         "module": "tests/isolated-test-cohort.test.mjs",
         "purpose": "Verify complete nonduplicated native test membership, bounded isolated execution, retained outputs and failure propagation."
@@ -494,9 +501,9 @@
       }
     ],
     "change_class": "feature",
-    "design": "Vault/tmp/feedback-development/aio-integration/integration-design.md",
-    "reason": "Revise the current feature contract while retaining all original criteria, modules, fixtures and scope paths. Cover the finite integrated inventory, exact native-profile admission, subscriber and host interactions, historical classification negatives, privacy, generated parity and recurring graph delivery. Preserve every fixed native lane check, immutable historical result, original 300-second delivery clock and spending control. Execute every selected category completely on matching current inputs and runtime; source verification remains deterministic and native acceptance remains separately evidenced.",
-    "revision_of": "93ef075c078ae141c01ad1d3caf55ec4c2db7a91802b7d14cf63ef9540937228",
+    "design": "Vault/tmp/feedback-development/aio-integration/process-delta-design.md",
+    "reason": "Add bounded independent proposal output, deterministic preservation of the existing sealed selection, and complete isolated class execution while retaining all existing verification and publication gates.",
+    "revision_of": "cf8c98a7bfbbe743d479d897105d1be382cd91883dd73eed8effe894ec98a71c",
     "scope_paths": [
       ".agents/skills/operations-center-implementation/SKILL.md",
       ".agents/skills/oracle/review-output.schema.json",
@@ -1110,8 +1117,8 @@
       "tools/vault_index.py"
     ]
   },
-  "base_commit": "9f0f7a6203d73d5c2c5c289f0cf80d5872dfc873",
-  "base_tree": "efaafeb7960379168ad33cf6974f7d5aa583f977",
+  "base_commit": "8bdc73b893e011736737c760b52383d04e5ea039",
+  "base_tree": "284dee647742be5fe8ec0e4cff4c43d416753d05",
   "catalog_sha256": "9a96f1cd2a973457f9da681dddcc5161aa8ffda188b092d849e5bc83999391c8",
   "runtime": {
     "node": "v22.11.0",
@@ -1121,8 +1128,8 @@
     "architecture": "arm64",
     "options_sha256": "ebc442c160f8629073a82976daadaba1d95a60a38d768c81c8eb06598aedcac5"
   },
-  "proposal_sha256": "d58e4ffcacace665ce36a2fdda4f5b8e6759f07f6fe2b0feea6388e1817bf730",
-  "review_sha256": "92136f857ce65545bf327a2442f20ff0697ce71ffd8d5bf0f79af244b5dee8d6",
+  "proposal_sha256": "0d56d9758723dfe1beba89066bab5432d72e077cce7ea78455e2d5c0c4ffd8ad",
+  "review_sha256": "10543c56175a5d4d2052f96281be5cbd3af34091e73302867373eb269bd29850",
   "commands": [
     {
       "category": "sanity",
@@ -1273,16 +1280,19 @@
     "maximum_reasoning_effort": "medium"
   },
   "design_binding": {
-    "design": "Vault/tmp/feedback-development/aio-integration/integration-design.md",
-    "design_sha256": "af16a6c2160fe7e2e16751285c5a046888686d0127158e3ee97e552666a56282",
-    "plan": "Vault/tmp/feedback-development/aio-integration/integration-design.test-plan.json",
-    "plan_sha256": "2dc58d3b883c31219a06adaf8a77b6aa1996eb5df1924897583aa7ddc0df3a94",
+    "design": "Vault/tmp/feedback-development/aio-integration/process-delta-design.md",
+    "design_sha256": "306f2f38911753191bde9fe93c11678be0b6e327dba441c59cfbfeaa02551c8e",
+    "plan": "Vault/tmp/feedback-development/aio-integration/process-delta-design.test-plan.json",
+    "plan_sha256": "79798b5e69c57633fe475fe027af01c03d68457fda53acf64fa75fcc3a2dcd0d",
     "tests": [
       "tests/deterministic-lanes.test.mjs",
       "tests/feedback-event-subscriber.test.mjs",
+      "tests/isolated-test-cohort.test.mjs",
+      "tests/oracle-implementation-spec.test.mjs",
+      "tests/oracle-lifecycle.test.mjs",
       "tests/publication-history.test.mjs"
     ]
   },
-  "contract_sha256": "cf8c98a7bfbbe743d479d897105d1be382cd91883dd73eed8effe894ec98a71c",
-  "seal": "31d02da7385b8499eae2783695e1f31381b63af340aaad01fec7f9626203d418"
+  "contract_sha256": "95fae69282db5ec5373c46c74f589fd329e01a8af4a7204952cac2c0d5da3eb9",
+  "seal": "f28d8e433e5d35ad23399e3e9a18964d6b47de6691ec5eed3a533ed4057d2e46"
 }

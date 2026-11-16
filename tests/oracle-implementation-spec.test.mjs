@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {execFileSync} from 'node:child_process';
 import {createHash} from 'node:crypto';
-import {mkdtempSync,mkdirSync,rmSync} from 'node:fs';
+import {mkdtempSync,mkdirSync,rmSync,readFileSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
 import {join} from 'node:path';
 import {isolatedTestCohort} from './helpers/isolated-test-cohort.mjs';
@@ -28,7 +28,11 @@ for node in tree.body:
 assert sorted(all_ids)==sorted(declared) and len(all_ids)==len(set(all_ids)) and all_ids
 print(json.dumps({'source_sha256':hashlib.sha256(raw).hexdigest(),'rows':rows,'ids':sorted(all_ids)}))
 `],{cwd:root,encoding:'utf8',stdio:'pipe'}));
-const captured=()=>createHash('sha256').update(execFileSync('git',['show','HEAD:tests/oracle_spec_test.py'],{cwd:root})).digest('hex');
+const captured=()=>{
+ const actual=createHash('sha256').update(readFileSync(new URL('../tests/oracle_spec_test.py',import.meta.url))).digest('hex');
+ const committed=createHash('sha256').update(execFileSync('git',['show','HEAD:tests/oracle_spec_test.py'],{cwd:root})).digest('hex');
+ assert.equal(actual,committed);return actual;
+};
 // A candidate with intervening edits gets no passing source proof.
 assert.equal(captured(),inventory.source_sha256);
 test('sealed spec discovery includes every declared test exactly once',()=>{
