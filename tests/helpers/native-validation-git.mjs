@@ -61,7 +61,7 @@ export function nativeGitEligible(platform, path, fact) {
 
 export function assertNativeGitEquivalent(shim, direct) {
   if (!shim || !direct || typeof shim.version !== "string" ||
-    !/^git version [^\r\n\0]+$/u.test(shim.version) || shim.version !== direct.version ||
+    !/^git version [\x20-\x7e]+$/u.test(shim.version) || shim.version.length > 4096 || shim.version !== direct.version ||
     typeof shim.exec_path !== "string" || !isAbsolute(shim.exec_path) ||
     /[\r\n\0]/u.test(shim.exec_path) || shim.exec_path !== direct.exec_path)
     throw new Error("Native Git version and exec-path equivalence required");

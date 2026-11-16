@@ -200,6 +200,8 @@ test("native Git decision preserves Linux, custom wrappers and malformed or mism
     { ...valid, exec_path: "/other/git-core" }, { ...valid, version: "git version synthetic\nextra" }])
     assert.throws(() => assertNativeGitEquivalent(valid, invalid), /equivalence/);
   assert.throws(() => assertNativeGitEquivalent({ ...valid, exec_path: "relative" }, valid), /equivalence/);
+  for (const version of ["git version \t", "git version \u001b", "git version " + "x".repeat(4096)])
+    assert.throws(() => assertNativeGitEquivalent({ ...valid, version }, { ...valid, version }), /equivalence/);
 });
 
 test("real native Git resource preserves original Python, Node and every existing environment value", async () => {
@@ -236,12 +238,16 @@ test("real custom Git wrapper stays selected and executable tampering rejects ve
   try {
     const bin = join(directory, "bin"); await mkdir(bin);
     const wrapper = join(bin, "git"); await writeFile(wrapper, "#!/bin/sh\nprintf custom-wrapper\n", { mode: 0o755 });
+    const nodeWrapper = join(bin, "node"); await writeFile(nodeWrapper, "#!/bin/sh\nprintf custom-node-wrapper\n", { mode: 0o755 });
     const environment = { ...process.env, PATH: bin + ":" + process.env.PATH };
     resource = await prepareNativeValidationGit({ parentDirectory: directory, environment });
     assert.equal(resource.provenance.mode, "original"); assert.deepEqual(resource.environment, environment);
     assert.equal(resource.provenance.original_tools.git.path, wrapper);
+    assert.equal(resource.provenance.original_tools.node.path, nodeWrapper);
+    assert.equal(resource.node, process.execPath);
     assert.equal("utility" in resource.provenance, false);
     assert.equal(execFileSync("git", ["--version"], { env: resource.environment, encoding: "utf8" }), "custom-wrapper");
+    assert.equal(execFileSync("node", ["--version"], { env: resource.environment, encoding: "utf8" }), "custom-node-wrapper");
     await resource.verify(); await writeFile(wrapper, "#!/bin/sh\nprintf changed-wrapper\n");
     await assert.rejects(resource.verify(), /Original tool executable changed/);
     await resource.dispose(); assert.deepEqual(await readdir(directory), ["bin"]);
