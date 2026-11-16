@@ -357,6 +357,16 @@ def packet(context, plan, cohort, parent_context, digest, prepared_source=None, 
                         ('reusable_validations', 'current_validations')],
                     'criterion_navigation': criterion_navigation,
                     'retained_proof_references': retained['retained_proof_references']}
+    if len(_serialized(retained)) > RETAINED_NAVIGATION_MAX_BYTES:
+        # Path-specific reasons can exceed navigation limits on a generated
+        # package delta. Preserve every exact original record locator; full
+        # status, reasons and dependencies remain mandatory in the sealed parent.
+        retained['criterion_navigation'] = {
+            **{key: criterion_navigation[key] for key in
+               ('original', 'pair_columns', 'eligibility', 'requires_independent_current_applicability')},
+            'criterion_pairs': sorted(pair for group in criterion_navigation['groups']
+                                      for pair in group['criterion_pairs']),
+            'facts_via_original_records': True}
     value.update(retained)
     if prepared_source is not None:
         value['prepared_source'] = {key: item for key, item in prepared_source.items() if key != 'required_paths'}

@@ -2,8 +2,8 @@
 name: local-school-market-research
 description: Research local education markets around schools, districts, colleges, and universities for program launches, feeder programs, partnerships, outreach campaigns, and contact-list building. Use when Codex is asked to understand a local market for middle school, high school, college, university, CTE, STEM, robotics, computer science, AI, engineering, workforce, dual-enrollment, enrichment, club, camp, or pathway programs; compare institutions; identify likely partners; build target contact lists; or summarize local school/program demand and outreach opportunities.
 metadata:
-  version: "1.0.12"
-  requires: "{\"bos-mcp-client\":\"1.0.10\",\"bos-plugin-settings-initialization\":\"1.0.12\",\"education-center-customer-initialization\":\"1.0.10\",\"marketing-analysis\":\"1.0.10\"}"
+  version: "1.0.17"
+  requires: "{\"bos-mcp-client\":\"1.0.12\",\"bos-plugin-settings-initialization\":\"1.0.17\",\"education-center-customer-initialization\":\"1.0.12\",\"marketing-analysis\":\"1.0.12\"}"
 ---
 
 
@@ -16,7 +16,10 @@ before initialization, settings reconciliation, context selection or login.
 Do not authenticate to sign out; preserve confirmed preferences.
 
 Before performing this skill's workflow, preserve the pending request and
-complete the product's host-managed BOS authentication. Run the configured
+reuse the product's authenticated host-owned BOS plugin binding across logical sessions.
+Only a verified identity failure requires its existing native sign-in action.
+HTTP 429/503 preserves Retry-After and stops the attempt without another grant.
+Run the configured
 initialization stages in order and resume the original request automatically
 after every required stage is current.
 
@@ -55,6 +58,13 @@ with empty arguments and terminate after its receipt or canonical challenged
 401. This connection-level action precedes context/default selection and
 authentication recovery; do not sign in to perform logout.
 
+
+Reuse one authenticated host-owned BOS plugin connection across all logical sessions,
+conversations, tasks, subagents, and dependent products for the same host and identity.
+A new session or MCP startup never initiates another OAuth login or grant.
+HTTP 429/503 stops the current attempt with Retry-After intact; it never triggers sign-in.
+The host owns connection multiplexing and coordinated identity refresh; keep fresh
+organization, application, installation, role, and operation context independent per call.
 
 First apply the versioned identity-context workflow in `bos-mcp-client`.
 For live `bos-identity-mcp/v2`, resolve explicit request scope or the saved

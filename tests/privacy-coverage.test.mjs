@@ -1,16 +1,20 @@
 import assert from "node:assert/strict";
-import {copyFile, mkdir, mkdtemp, readdir, readFile, rm, symlink, writeFile} from "node:fs/promises";
-import {execFile} from "node:child_process";
+import {copyFile, mkdir, mkdtemp, readdir, readFile, rm, rename, symlink, writeFile} from "node:fs/promises";
+import {execFile,spawn} from "node:child_process";
 import {promisify} from "node:util";
-import {createHmac} from "node:crypto";
-import {tmpdir} from "node:os";
+import {createHash, createHmac} from "node:crypto";
+import {EventEmitter,once} from "node:events";
 import {join} from "node:path";
 import test from "node:test";
-import {privacyFileCoverage, privacyPolicyIdentity, privacyPolicyDigest, privacyCoveragePartition, privacyTransitionProof} from "../scripts/lib/privacy-coverage.mjs";
+import {privacyTimingDisplay, privacyFileCoverage, privacyPolicyIdentity, privacyPolicyDigest, privacyCoveragePartition, privacyTransitionProof} from "../scripts/lib/privacy-coverage.mjs";
+import {createPrivacyScanPool} from "../scripts/lib/privacy-scan-pool.mjs";
+import {customerDataFindings, privacyPolicyPreview, scanPrivacyFile, root as projectRoot} from "../scripts/check-customer-data.mjs";
+import {createDeterministicZip} from "../scripts/lib/deterministic-zip.mjs";
 const exec = promisify(execFile);
 
 async function fixture(t) {
-  const root = await mkdtemp(join(tmpdir(), "boc-privacy-coverage-"));
+  await mkdir(join(projectRoot,"Vault/tmp"),{recursive:true});
+  const root = await mkdtemp(join(projectRoot,"Vault/tmp/pc-"));
   t.after(() => rm(root, {recursive: true, force: true}));
   const directory = join(root, ".git", "oracle", "privacy-coverage");
   const paths = [join(root, "a.txt"), join(root, "b.txt"), join(root, "c.txt")];
@@ -74,7 +78,9 @@ test("unchanged failed file observations remain failed and completed files survi
     if (path === f.paths[1]) throw new Error("synthetic scanner interruption");
     return f.scan(path, body);
   }}), /scanner interruption/u);
-  const resumed = await f.run({policy}); assert.equal(resumed.report.reused, 1); assert.equal(resumed.report.scanned, 2);
+  // Both independently completed files retain signed checkpoints; the thrown
+  // scanner failure alone is retried and must still become an explicit finding.
+  const resumed = await f.run({policy}); assert.equal(resumed.report.reused, 2); assert.equal(resumed.report.scanned, 1);
   assert.equal(resumed.report.outcome, "FAILED");
 });
 
@@ -89,7 +95,7 @@ test("corrupt cached passes cannot conceal an original failure and linked metada
   const result = await f.run(); assert.equal(result.report.invalidated, 1); assert.equal(result.report.scanned, 1);
   assert.equal(result.report.outcome, "FAILED");
   await rm(join(f.directory, "by-input"), {recursive: true});
-  const outside = await mkdtemp(join(tmpdir(), "boc-privacy-outside-"));
+  const outside = await mkdtemp(join(projectRoot,"Vault/tmp/po-"));
   t.after(() => rm(outside, {recursive: true, force: true}));
   await symlink(outside, join(f.directory, "by-input"));
   await assert.rejects(f.run(), /owned private directory/u); assert.deepEqual(await readdir(outside), []);
@@ -141,6 +147,7 @@ test("fresh ZIP inspection rejects unsafe content despite inherited UNZIPOPT and
   const f = await fixture(t);
   for (const directory of ["scripts/lib", "privacy"]) await mkdir(join(f.root, directory), {recursive: true});
   for (const name of ["scripts/check-customer-data.mjs", "scripts/lib/privacy-coverage.mjs",
+    "scripts/lib/privacy-scan-pool.mjs", "scripts/lib/privacy-scan-worker.mjs",
     "privacy/customer-identifiers.sha256", "privacy/approved-binary-assets.sha256",
     "privacy/owned-github-pr-identities.json", "privacy/owned-native-probe-identities.json"])
     await copyFile(new URL("../" + name, import.meta.url), join(f.root, name));
@@ -165,23 +172,47 @@ test("fresh ZIP inspection rejects unsafe content despite inherited UNZIPOPT and
 
 test("production privacy CLI preserves full source/Vault membership and consumes prior exact-file results", async t => {
   const f = await fixture(t);
-  for (const directory of ["scripts/lib", "privacy", "Vault/tmp"]) await mkdir(join(f.root, directory), {recursive: true});
+  for (const directory of ["scripts/lib", "privacy", "source", "Vault/tmp"]) await mkdir(join(f.root, directory), {recursive: true});
   for (const name of ["scripts/check-customer-data.mjs", "scripts/lib/privacy-coverage.mjs",
+    "scripts/lib/privacy-scan-pool.mjs", "scripts/lib/privacy-scan-worker.mjs",
     "privacy/customer-identifiers.sha256", "privacy/approved-binary-assets.sha256",
     "privacy/owned-github-pr-identities.json", "privacy/owned-native-probe-identities.json"])
     await copyFile(new URL("../" + name, import.meta.url), join(f.root, name));
+  for(let index=0;index<40;index++)await writeFile(join(f.root,"source",`synthetic-${index}.txt`),"synthetic worker input");
   for (const args of [["init", "-q"], ["config", "user.name", "Synthetic Privacy"],
-    ["config", "user.email", "fixture@example.invalid"], ["add", "scripts", "privacy"], ["commit", "-qm", "baseline"]])
+    ["config", "user.email", "fixture@example.invalid"], ["add", "scripts", "privacy", "source"], ["commit", "-qm", "baseline"]])
     await exec("git", args, {cwd: f.root});
   const entry = "const m=await import('./scripts/check-customer-data.mjs');const findings=await m.privacyFailures();console.log(JSON.stringify({findings,report:m.lastPrivacyCoverage}));";
   const invoke = async () => JSON.parse((await exec(process.execPath, ["--input-type=module", "-e", entry], {cwd: f.root})).stdout);
   const cold = await invoke(); assert.deepEqual(cold.findings, []); assert.ok(cold.report.scanned >= 9);
+  assert.equal(cold.report.concurrency,8);assert.equal(cold.report.bridged,0);
   const warm = await invoke(); assert.equal(warm.report.scanned, 0); assert.equal(warm.report.reused, cold.report.scanned);
   const artifact = join(f.root, "Vault/tmp/new.log"); await writeFile(artifact, "synthetic private validation artifact");
   const added = await invoke(); assert.equal(added.report.scanned, 1); assert.equal(added.report.files.length, cold.report.files.length + 1);
   await rm(artifact); const removed = await invoke();
   assert.equal(removed.report.scanned, 0); assert.equal(removed.report.files.length, cold.report.files.length);
   assert.notEqual(removed.report.membership_sha256, added.report.membership_sha256);
+  const large=join(f.root,"Vault/tmp/large.txt"),address=["someone","production-domain.invalidated"].join("@");
+  await writeFile(large,"x".repeat(8*1024*1024)+"\n"+address);
+  const fullFallback=await invoke();assert(fullFallback.findings.some(row=>row.includes("large.txt: non-synthetic email")));
+  assert(fullFallback.report.scanned_bytes>8*1024*1024);assert.equal(fullFallback.report.scanned,1);
+  await rm(large);assert.equal((await invoke()).report.outcome,"PASSED");
+  const token="a".repeat(64),child=spawn(process.execPath,["--input-type=module","-e",entry],{cwd:f.root,
+    env:{...process.env,BOC_PRIVACY_READY_FD:"3",BOC_PRIVACY_READY_TOKEN:token},stdio:["ignore","pipe","pipe","pipe"]});
+  let output="",errors="";child.stdout.on("data",chunk=>output+=chunk);child.stderr.on("data",chunk=>errors+=chunk);
+  const finished=once(child,"close");
+  const ready=await new Promise((resolve,reject)=>{let bytes="";child.stdio[3].on("data",chunk=>{bytes+=chunk;
+    if(bytes.length>1024)reject(Error("oversized readiness"));else if(bytes.includes("\n"))resolve(JSON.parse(bytes));});child.on("error",reject);});
+  assert.equal(ready.kind,"boc-privacy-snapshot-ready-v1");assert.equal(ready.token,token);
+  assert.match(ready.source,/^[0-9a-f]{40}$/u);assert.match(ready.policy_sha256,/^[0-9a-f]{64}$/u);
+  // Unique test fixtures created after this barrier cannot disappear from the
+  // already captured membership. A following scan still discovers every file.
+  const later=join(f.root,"Vault/tmp/post-snapshot.txt");await writeFile(later,address);
+  assert.equal((await finished)[0],0,errors);const captured=JSON.parse(output);
+  assert.equal(captured.report.files.length,ready.files);assert.deepEqual(captured.findings,[]);
+  assert((await invoke()).findings.some(row=>row.includes("post-snapshot.txt: non-synthetic email")));
+  await rm(later);
+
 });
 
 test("reviewed archive-only transition retains exact original non-archive passes and executes archive members", async t => {
@@ -240,4 +271,188 @@ test("forged/stale transition facts, changed original proof and original failure
     if (variant === "failure") assert.equal(result.report.outcome, "FAILED");
     else assert.ok(result.report.invalidated > 0);
   }
+});
+
+test("bounded independent file observations preserve sorted merge, exact snapshots and atomic reuse", async t => {
+  const f=await fixture(t);let active=0,peak=0;
+  const result=await f.run({concurrency:4,candidates:[...f.paths].reverse(),scan:async(path,body)=>{
+    active++;peak=Math.max(peak,active);const snapshot=body.toString("utf8");
+    await new Promise(resolve=>setTimeout(resolve,path.endsWith("a.txt")?30:5));
+    active--;assert.equal(snapshot,"synthetic safe bytes");return path.endsWith("b.txt")?["synthetic recorded failure"]:[];
+  }});
+  assert(peak>1&&peak<=4);assert.deepEqual(result.report.files.map(row=>row.path),["a.txt","b.txt","c.txt"]);
+  assert(result.report.max_input_reads<=2);
+  assert.deepEqual(result.findings,["synthetic recorded failure"]);assert.equal(result.report.bytes,3*Buffer.byteLength("synthetic safe bytes"));
+  assert.equal(result.report.scanned,3);assert.equal(result.report.bridged,0);
+  const warm=await f.run({concurrency:4});assert.equal(warm.report.reused,3);assert.equal(warm.report.scanned,0);assert.equal(warm.report.outcome,"FAILED");
+  await assert.rejects(f.run({concurrency:9}),/Bounded/);
+});
+
+test("canonical FIFO persists later observations while the first input remains blocked",async t=>{
+  const f=await fixture(t),last=join(f.root,"z.txt"),paths=[...f.paths,last];
+  for(const [index,path]of paths.entries())await writeFile(path,"x".repeat([256,64,64,1][index]));
+  let release;const held=new Promise(resolve=>release=resolve);t.after(()=>release());const started=[];
+  const resultPromise=f.run({candidates:[...paths].reverse(),concurrency:2,contextFor:async path=>({item:path.slice(-5)}),scan:async(path,body)=>{
+    started.push(path);if(path===paths[0]){await writeFile(path,"later source mutation");await held;}
+    return path===paths[1]?["synthetic exact finding"]:[];
+  }});
+  // Atomic publication exposes only canonical final record names. Keep an
+  // explicitly incomplete writer temporary present to exercise that boundary.
+  await mkdir(join(f.directory,"records"),{recursive:true});
+  await writeFile(join(f.directory,"records",".publish-held-fixture"),"{");
+  let records=[];
+  for(let attempt=0;attempt<200;attempt++){
+    try{records=await Promise.all((await readdir(join(f.directory,"records"))).filter(name=>/^[a-f0-9]{64}-[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}\.json$/u.test(name)).map(async name=>JSON.parse(await readFile(join(f.directory,"records",name)))));}catch(error){if(error.code!=="ENOENT")throw error;}
+    if(records.length===3)break;await new Promise(resolve=>setTimeout(resolve,5));
+  }
+  assert.deepEqual([...started.slice(0,2)].sort(),[paths[0],paths[1]].sort());
+  assert(started.indexOf(paths[1])<started.indexOf(paths[2]));assert.equal(records.length,3);assert(records.every(row=>row.input.path!=="a.txt"));
+  release();const result=await resultPromise;
+  assert.deepEqual(result.report.files.map(row=>row.path),["a.txt","b.txt","c.txt","z.txt"]);
+  assert.equal(result.report.files[0].sha256,createHash("sha256").update("x".repeat(256)).digest("hex"));
+  assert.deepEqual(result.findings,["synthetic exact finding"]);assert(result.report.max_input_reads<=2);
+});
+
+test("canonical FIFO input and scan errors reject in canonical order without a partial pass",async t=>{
+  const f=await fixture(t);
+  await assert.rejects(f.run({candidates:[join(f.root,"missing-z.txt"),join(f.root,"missing-a.txt")],concurrency:2}),error=>{
+    assert(error instanceof AggregateError);assert.equal(error.errors.length,2);
+    assert(error.errors[0].message.endsWith("missing-a.txt"));assert(error.errors[1].message.endsWith("missing-z.txt"));return true;
+  });
+  const attempted=[];
+  await assert.rejects(f.run({concurrency:2,scan:async path=>{attempted.push(path);await new Promise(resolve=>setTimeout(resolve,path.endsWith("a.txt")?30:1));throw Error(path.slice(-5));}}),error=>{
+    assert.deepEqual(error.errors.map(row=>row.message),["a.txt","b.txt","c.txt"]);return true;
+  });
+  assert.equal(attempted.length,3);assert.equal((await readdir(join(f.directory,"runs"))).length,0);
+});
+
+test("canonical FIFO retains exact findings and input identities against the retired size dispatcher",async t=>{
+  const f=await fixture(t),paths=Array.from({length:6},(_,n)=>join(f.root,n===5?"z.txt":String.fromCharCode(97+n)+".txt"));
+  for(const [index,path]of paths.entries())await writeFile(path,"x".repeat(index===5?8:1));
+  const source=await readFile(new URL("../scripts/lib/privacy-coverage.mjs",import.meta.url),"utf8");
+  const referenceSource=source.replace("  let position = 0, reading = 0",`  const referenceDispatch=(await Promise.all(paths.map(async(path,ordinal)=>({ordinal,size:(await lstat(path)).size})))).sort((a,b)=>b.size-a.size||a.ordinal-b.ordinal);
+  let position = 0, reading = 0`).replace("const ordinal = position++;","const {ordinal} = referenceDispatch[position++];");
+  assert.notEqual(referenceSource,source);const reference=await import("data:text/javascript;base64,"+Buffer.from(referenceSource).toString("base64"));
+  const scan=async(path,body)=>{await new Promise(resolve=>setTimeout(resolve,body.length*20));return path.endsWith("b.txt")?["synthetic retained failure"]:[];};
+  const contextFor=async path=>({snapshot:path.slice(-5)}),policy={rules:"exact-dispatch-equivalence"};
+  const before=await reference.privacyFileCoverage({root:f.root,directory:join(f.root,".git/oracle/reference"),candidates:paths,policy,contextFor,scan,concurrency:2});
+  const after=await f.run({candidates:[...paths].reverse(),policy,contextFor,scan,concurrency:2});
+  assert.deepEqual(after.findings,before.findings);
+  const observations=result=>result.report.files.map(({path,sha256,mode,outcome})=>({path,sha256,mode,outcome}));assert.deepEqual(observations(after),observations(before));
+  const inputs=async directory=>(await Promise.all((await readdir(join(directory,"records"))).map(async name=>JSON.parse(await readFile(join(directory,"records",name))).input)))
+    .map(({path,sha256,mode,policy_sha256,context_sha256})=>({path,sha256,mode,policy_sha256,context_sha256})).sort((a,b)=>a.path.localeCompare(b.path));
+  assert.deepEqual(await inputs(f.directory),await inputs(join(f.root,".git/oracle/reference")));assert(after.report.max_input_reads<=2);assert.equal(after.report.scanned,6);assert.equal(after.report.bridged,0);
+});
+
+test("owned duration display rounds precision without changing evidence, integers, strings or other numeric data",()=>{
+  const phone=Number(["270","555","1234"].join("")),decimal="123."+phone;
+  const raw={milliseconds:Number("16280."+["1799","9700004"].join("")),slowest_ms:12.345678,ms:1.234567,body:decimal,hash:"a".repeat(64),count:phone,other:Number(decimal)};
+  const copy=structuredClone(raw),display=privacyTimingDisplay(raw);
+  assert.deepEqual(raw,copy);assert.equal(display.milliseconds,16280.18);assert.equal(display.slowest_ms,12.346);assert.equal(display.ms,1.235);
+  for(const key of ["body","hash","count","other"])assert.equal(display[key],raw[key]);
+  const opaqueBody={milliseconds:Number(decimal)};assert.equal(privacyTimingDisplay({body:opaqueBody}).body,opaqueBody);
+  assert(customerDataFindings(JSON.stringify({ms:phone}),"synthetic.json",new Set()).some(row=>row.includes("phone")));
+  assert(customerDataFindings(JSON.stringify({body:display.body}),"synthetic.json",new Set()).some(row=>row.includes("phone")));
+});
+
+test("privacy policy binds the explicit native I/O thread configuration",async()=>{
+  const original=process.env.UV_THREADPOOL_SIZE;
+  try{process.env.UV_THREADPOOL_SIZE="4";const before=await privacyPolicyIdentity([]);
+    process.env.UV_THREADPOOL_SIZE="8";const after=await privacyPolicyIdentity([]);
+    assert.notEqual(privacyPolicyDigest(before),privacyPolicyDigest(after));
+    assert.notEqual(before.environment.UV_THREADPOOL_SIZE,after.environment.UV_THREADPOOL_SIZE);
+  }finally{if(original===undefined)delete process.env.UV_THREADPOOL_SIZE;else process.env.UV_THREADPOOL_SIZE=original;}
+});
+
+test("bounded parent persistence applies backpressure and drains every write before a command result",async t=>{
+  const f=await fixture(t),paths=Array.from({length:10},(_,n)=>join(f.root,n+".txt"));
+  for(const path of paths)await writeFile(path,"synthetic safe input");
+  let release;globalThis.__privacyWriteGate=new Promise(resolve=>release=resolve);let scans=0;
+  const source=await readFile(new URL("../scripts/lib/privacy-coverage.mjs",import.meta.url),"utf8");
+  const heldSource=source.replace("await handle.sync();","if(path.includes('/records/')||path.includes('/by-input/'))await globalThis.__privacyWriteGate; await handle.sync();");
+  assert.notEqual(source,heldSource);const module=await import("data:text/javascript;base64,"+Buffer.from(heldSource).toString("base64"));
+  let finished=false;const pending=module.privacyFileCoverage({root:f.root,directory:f.directory,candidates:paths,policy:{rules:"synthetic-bounded-queue"},concurrency:2,
+    scan:async()=>{scans++;return[];}}).then(value=>{finished=true;return value;});
+  try{
+    for(let n=0;n<200&&scans<4;n++)await new Promise(resolve=>setTimeout(resolve,5));
+    await new Promise(resolve=>setTimeout(resolve,20));assert.equal(scans,4);assert.equal(finished,false);
+    assert.equal((await readdir(join(f.directory,"runs"))).length,0);
+  }finally{release();}
+  const result=await pending;delete globalThis.__privacyWriteGate;
+  assert.equal(result.report.scanned,10);assert.equal(result.report.max_active_persistence,2);assert.equal(result.report.max_awaiting_persistence,2);
+  assert(result.report.max_input_reads<=2);assert.equal(result.report.phases.persistence.calls,10);
+  assert.equal((await readdir(join(f.directory,"records"))).length,10);
+  assert.equal((await f.run({candidates:paths,policy:{rules:"synthetic-bounded-queue"}})).report.reused,10);
+});
+
+test("queued pointer custody failure retains immutable records and never emits a partial pass",async t=>{
+  const f=await fixture(t),outside=join(f.root,"outside");await mkdir(outside);let poison;
+  await assert.rejects(f.run({concurrency:2,scan:async()=>{
+    poison??=(async()=>{await rename(join(f.directory,"by-input"),join(f.directory,"original-input"));await symlink(outside,join(f.directory,"by-input"));})();
+    await poison;return[];
+  }}),/owned private directory/u);
+  assert.deepEqual(await readdir(outside),[]);assert.equal((await readdir(join(f.directory,"runs"))).length,0);
+  const originals=await Promise.all((await readdir(join(f.directory,"records"))).map(async name=>({name,bytes:await readFile(join(f.directory,"records",name))})));
+  assert.equal(originals.length,3);await rm(join(f.directory,"by-input"));await rename(join(f.directory,"original-input"),join(f.directory,"by-input"));
+  const repaired=await f.run({concurrency:2});assert.equal(repaired.report.scanned,3);assert.equal(repaired.report.outcome,"PASSED");
+  for(const row of originals)assert.deepEqual(await readFile(join(f.directory,"records",row.name)),row.bytes);
+});
+
+test("queued parent records retain large findings and exact coupled input/context semantics",async t=>{
+  const f=await fixture(t),source=await readFile(new URL("../scripts/lib/privacy-coverage.mjs",import.meta.url),"utf8");
+  const referenceSource=source.replace("await persist(ordinal,path,async()=>{","await (async()=>{").replace("},Buffer.byteLength(raw)>64*1024);","})();");
+  assert.notEqual(referenceSource,source);const reference=await import("data:text/javascript;base64,"+Buffer.from(referenceSource).toString("base64"));
+  const finding="synthetic finding "+"x".repeat(70000),scan=async path=>path.endsWith("b.txt")?[finding]:[],contextFor=async path=>({exact:path.slice(-5)}),policy={rules:"exact-coupled-equivalence"};
+  const prior=await reference.privacyFileCoverage({root:f.root,directory:join(f.root,".git/oracle/prior"),candidates:f.paths,policy,scan,contextFor,concurrency:2});
+  const result=await f.run({policy,scan,contextFor,concurrency:2});assert.deepEqual(result.findings,prior.findings);
+  assert.deepEqual(result.report.files.map(({path,sha256,mode,outcome})=>({path,sha256,mode,outcome})),prior.report.files.map(({path,sha256,mode,outcome})=>({path,sha256,mode,outcome})));
+  const inputs=async directory=>(await Promise.all((await readdir(join(directory,"records"))).map(async name=>JSON.parse(await readFile(join(directory,"records",name))).input)))
+    .map(({path,sha256,mode,policy_sha256,context_sha256})=>({path,sha256,mode,policy_sha256,context_sha256})).sort((a,b)=>a.path.localeCompare(b.path));
+  assert.deepEqual(await inputs(f.directory),await inputs(join(f.root,".git/oracle/prior")));
+  assert.equal(result.report.outcome,"FAILED");assert(result.report.max_active_persistence<=2);assert(result.report.max_awaiting_persistence<=2);
+});
+
+async function workerConfiguration(){
+  const ruleHashes={},bodies=[];
+  for(const name of ["privacy/customer-identifiers.sha256","privacy/approved-binary-assets.sha256","privacy/owned-github-pr-identities.json"]){
+    const path=join(projectRoot,name),body=await readFile(path);ruleHashes[path]=createHash("sha256").update(body).digest("hex");bodies.push(body);
+  }
+  const policy=await privacyPolicyPreview();
+  return{policySha256:policy.policy_sha256,ruleHashes,config:{blockedDigests:new Set(bodies[0].toString().split(/\s+/).filter(Boolean)),
+    approvedBinaryDigests:new Set(bodies[1].toString().split(/\s+/).filter(Boolean)),githubIdentities:JSON.parse(bodies[2]),
+    archiveExecutable:(await privacyPolicyIdentity([])).executables[1].path}};
+}
+
+test("real bounded worker scans equal direct policy for Unicode, escaped JSON, binary and archives",async t=>{
+  const options=await workerConfiguration(),pool=await createPrivacyScanPool({...options,count:8});t.after(()=>pool.close());
+  const address=["someone","production-domain.invalidated"].join("@");
+  const values=[{name:"safe.md",body:Buffer.from("synthetic Unicode \u03bb")},
+    {name:"escaped.json",body:Buffer.from(JSON.stringify({value:address}))},
+    {name:"opaque.bin",body:Buffer.from([0,255,1])},
+    {name:"archive.zip",body:createDeterministicZip([{path:"safe.txt",content:Buffer.from("synthetic safe bytes"),mode:0o644}])}];
+  const inputs=[...values,...values];
+  const results=await Promise.all(inputs.map(value=>pool.run(join(projectRoot,"Vault/tmp",value.name),value.body,{})));
+  for(let index=0;index<inputs.length;index++)assert.deepEqual(results[index],await scanPrivacyFile(join(projectRoot,"Vault/tmp",inputs[index].name),inputs[index].body,{},options.config));
+  assert(results[1].some(row=>row.includes("non-synthetic email")));assert(results[2].some(row=>row.includes("unreviewed binary")));
+  await assert.rejects(pool.run("too-large.bin",Buffer.alloc(8*1024*1024+1),{}),/bound/);
+});
+
+test("worker source/rule mismatch and tampered input/context reply fail before observation signing",async t=>{
+  const options=await workerConfiguration();
+  await assert.rejects(createPrivacyScanPool({...options,policySha256:"0".repeat(64),count:1}),/identity|policy|failed/iu);
+  const ruleHashes={...options.ruleHashes};ruleHashes[Object.keys(ruleHashes)[0]]="0".repeat(64);
+  await assert.rejects(createPrivacyScanPool({...options,ruleHashes,count:1}),/identity|policy|failed/iu);
+  for(const altered of ["path","body","context"]){
+    class TamperedWorker extends EventEmitter{
+      constructor(_url,options){super();assert.deepEqual(options.execArgv,[]);assert.equal(options.resourceLimits.maxOldGenerationSizeMb,384);this.policy=options.workerData.policySha256;queueMicrotask(()=>this.emit("message",{type:"ready",policySha256:this.policy}));}
+      postMessage(request){const hash=value=>createHash("sha256").update(value).digest("hex");
+        queueMicrotask(()=>this.emit("message",{type:"result",id:request.id,policySha256:this.policy,
+          pathSha256:altered==="path"?"0".repeat(64):hash(request.path),sha256:altered==="body"?"0".repeat(64):hash(Buffer.from(request.body)),
+          contextSha256:altered==="context"?"0".repeat(64):hash(JSON.stringify(request.context)),findings:[]}));}
+      async terminate(){return 0;}
+    }
+    const pool=await createPrivacyScanPool({...options,count:1,WorkerClass:TamperedWorker});
+    try{await assert.rejects(pool.run("sample.txt",Buffer.from("synthetic bytes"),{}),/identity mismatch/);}finally{await pool.close();}
+  }
+  await assert.rejects(createPrivacyScanPool({...options,count:9}),/Bounded/);
 });

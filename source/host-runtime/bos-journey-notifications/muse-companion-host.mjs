@@ -13,8 +13,8 @@ const maximumReply = 5 * 1024 * 1024;
 // can never supply a network request, authority selector, prompt or executable.
 export async function createCompanionBridge({root, host}) {
   await privateDirectory(root);
-  const socketPath = join(root, `s-${randomBytes(8).toString("hex")}.sock`), controlPath = join(root, "control.json");
-  if (Buffer.byteLength(socketPath) > 100 || !validBinding(host.binding)) fail();
+  const socketPath = join(root, randomBytes(8).toString("hex")), controlPath = join(root, "control.json");
+  if (Buffer.byteLength(socketPath) > 103 || !validBinding(host.binding)) fail();
   let active = true, reading = false;
   const sockets = new Set();
   const serve = async request => {
@@ -33,6 +33,19 @@ export async function createCompanionBridge({root, host}) {
     }
     if (exact(request, ["operation", "binding", "ticket", "accepted"]) && request.operation === "ack" &&
         request.accepted === true && opaque(request.ticket)) return {acknowledged: await host.acknowledge(request.ticket)};
+    if (exact(request, ["operation", "binding", "comment"]) && request.operation === "comment" &&
+        typeof host.submitComment === "function" && request.comment && typeof request.comment === "object" &&
+        !Array.isArray(request.comment) && typeof request.comment.body === "string" && request.comment.body.length>=1 && request.comment.body.length<=4000 &&
+        (exact(request.comment,["body"]) || exact(request.comment,["body","parent_comment_id"]))) {
+      return host.submitComment(request.comment);
+    }
+    if(host.mode==="onboarding") {
+      if(exact(request,["operation","binding"])&&request.operation==="onboarding-discover")return host.discover();
+      if(exact(request,["operation","binding","payload"])&&request.operation==="onboarding-read")return host.readOwn(request.payload);
+      if(exact(request,["operation","binding","action_ref"])&&request.operation==="onboarding-present")return host.presentOwn(request.action_ref);
+      if(exact(request,["operation","binding","payload","confirmation"])&&request.operation==="onboarding-action")return host.actOwn(request.payload,request.confirmation);
+      if(exact(request,["operation","binding","action_ref"])&&request.operation==="onboarding-state")return host.stateOwn(request.action_ref);
+    }
     fail();
   };
   const server = createServer(socket => {
@@ -44,7 +57,7 @@ export async function createCompanionBridge({root, host}) {
     socket.on("data", chunk => {
       if (used) return socket.destroy();
       try { text += decoder.decode(chunk, {stream: true}); } catch { return socket.destroy(); }
-      if (Buffer.byteLength(text) > 4096) return socket.destroy();
+      if (Buffer.byteLength(text) > 20000) return socket.destroy();
       if (!text.endsWith("\n")) return;
       used = true;
       void (async () => {
@@ -77,7 +90,7 @@ export async function createCompanionBridge({root, host}) {
 export async function readCompanionControl(path) {
   const value = JSON.parse((await protectedRead(path)).bytes.toString("utf8"));
   if (!exact(value, ["version", "socketPath", "binding"]) || value.version !== 1 || !validBinding(value.binding) ||
-      dirname(value.socketPath) !== dirname(path) || !/^s-[a-f0-9]{16}\.sock$/u.test(value.socketPath.split("/").at(-1))) fail();
+      dirname(value.socketPath) !== dirname(path) || !/^(?:[a-f0-9]{16}|s-[a-f0-9]{16}\.sock)$/u.test(value.socketPath.split("/").at(-1))) fail();
   await privateDirectory(dirname(path));
   const info = await lstat(value.socketPath);
   if (!info.isSocket() || info.isSymbolicLink() || info.uid !== process.getuid() || (info.mode & 0o777) !== 0o600) fail();

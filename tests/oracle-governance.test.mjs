@@ -175,6 +175,7 @@ test("Oracle receipt rejects stale state, forged trailers, and unstamped commits
   writeFileSync(join(workspace, ".agents", "skills", "oracle", "SKILL.md"), "oracle\n");
   writeFileSync(join(workspace, ".gitignore"), "__pycache__/\n*.pyc\n");
   copyOracleModules(workspace);
+  writeFileSync(join(workspace, "package.json"), JSON.stringify({version: "0.0.0", scripts: {}}));
   writeFileSync(join(workspace, "candidate.txt"), "initial\n");
   git("add", ".");
   git("commit", "-qm", "initial");

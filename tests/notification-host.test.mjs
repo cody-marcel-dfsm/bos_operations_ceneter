@@ -203,3 +203,35 @@ test("malformed ready actions never create an arbitrary authenticated request", 
   await assert.rejects(f.host.run(), NotificationHostError); assert.equal(requests, 1);
   await assert.rejects(f.host.readPending(), NotificationHostError);
 });
+
+test("portable companion socket accepts a 102-byte path with full entropy and protected IPC", async t => {
+  const f = await fixture(t); await f.start();
+  const padding = 85 - Buffer.byteLength(f.root) - 1;
+  assert.ok(padding > 0);
+  const root = join(f.root, "x".repeat(padding)); await fsPromises.mkdir(root, {mode: 0o700});
+  const bridge = await createCompanionBridge({root, host: f.host}); t.after(() => bridge.close());
+  const control = await readCompanionControl(bridge.controlPath);
+  assert.equal(Buffer.byteLength(control.socketPath), 102);
+  assert.match(control.socketPath.split("/").at(-1), /^[a-f0-9]{16}$/u);
+  assert.equal((await callCompanion(bridge.controlPath, "poll")).pending, true);
+  await assert.rejects(callCompanion(bridge.controlPath, "poll", {binding: {...control.binding, taskRef: "foreign"}}), NotificationHostError);
+});
+
+test("companion socket rejects paths beyond the portable byte limit before publishing control", async t => {
+  const f = await fixture(t);
+  const root = join(f.root, "x".repeat(87 - Buffer.byteLength(f.root) - 1));
+  await fsPromises.mkdir(root, {mode: 0o700});
+  await assert.rejects(createCompanionBridge({root, host: f.host}), NotificationHostError);
+  await assert.rejects(readFile(join(root, "control.json")), {code: "ENOENT"});
+});
+
+test("legacy companion socket names retain protected readback compatibility", async t => {
+  const f = await fixture(t); await f.start();
+  const bridge = await createCompanionBridge({root: f.root, host: f.host}); t.after(() => bridge.close());
+  const control = await readCompanionControl(bridge.controlPath);
+  const legacy = join(f.root, "s-0123456789abcdef.sock");
+  await rename(control.socketPath, legacy);
+  await atomicPrivateJson(bridge.controlPath, {...control, socketPath: legacy});
+  assert.equal((await readCompanionControl(bridge.controlPath)).socketPath, legacy);
+  assert.equal((await callCompanion(bridge.controlPath, "poll")).pending, true);
+});

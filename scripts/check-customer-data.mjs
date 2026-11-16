@@ -1,12 +1,14 @@
 #!/usr/bin/env node
 
+import {writeSync} from "node:fs";
 import {execFile} from "node:child_process";
 import {createHash} from "node:crypto";
-import {mkdtemp, readFile, readdir, rm, stat, writeFile} from "node:fs/promises";
+import * as nodeCrypto from "node:crypto";
+import {mkdir, mkdtemp, readFile, readdir, rm, stat, writeFile} from "node:fs/promises";
 import {extname, join, relative, resolve} from "node:path";
-import {tmpdir} from "node:os";
 import {promisify} from "node:util";
-import {privacyFileCoverage, privacyPolicyIdentity, privacyPolicyDigest, privacyCoveragePartition, privacyTransitionProof} from "./lib/privacy-coverage.mjs";
+import {createPrivacyScanPool} from "./lib/privacy-scan-pool.mjs";
+import {privacyTimingDisplay, privacyFileCoverage, privacyPolicyIdentity, privacyPolicyDigest, privacyCoveragePartition, privacyTransitionProof} from "./lib/privacy-coverage.mjs";
 
 const execFileAsync = promisify(execFile);
 export const root = resolve(new URL("../", import.meta.url).pathname);
@@ -34,10 +36,26 @@ function digestMatcher(blockedDigests) {
   const identity = JSON.stringify([...blockedDigests].sort());
   let matcher = digestWindowCaches.get(blockedDigests);
   if (!matcher || matcher.identity !== identity) {
-    matcher = {identity, digests: new Set(blockedDigests), windows: new Map(), characters: 0};
+    matcher = {identity, digests: new Set(blockedDigests), windows: new Map(), characters: 0, phrases: new Map(), phraseCharacters: 0};
     digestWindowCaches.set(blockedDigests, matcher);
   }
   return matcher;
+}
+
+function blockedPhrase(phrase, matcher) {
+  const retained = matcher.phrases.get(phrase);
+  if (retained !== undefined) return retained;
+  const found = matcher.digests.has(sha256(phrase));
+  if (phrase.length <= maxDigestWindowCharacters) {
+    // Reset the bounded generation in one operation. Per-entry FIFO deletion
+    // caused repeated Map tombstone walks in the cold scan; every miss still
+    // computes the exact original digest and membership result.
+    if (matcher.phrases.size >= 65536 || matcher.phraseCharacters + phrase.length > maxDigestCacheCharacters) {
+      matcher.phrases.clear(); matcher.phraseCharacters = 0;
+    }
+    matcher.phrases.set(phrase, found); matcher.phraseCharacters += phrase.length;
+  }
+  return found;
 }
 
 function blockedWordWindow(words, matcher) {
@@ -45,19 +63,22 @@ function blockedWordWindow(words, matcher) {
   const cached = matcher.windows.get(key);
   if (cached !== undefined) return cached;
   let found = false;
-  for (let size = 1; size <= 8 && !found; size += 1) {
-    for (let index = 0; index + size <= words.length; index += 1) {
-      if (matcher.digests.has(sha256(words.slice(index, index + size).join(" ")))) {
+  for (let index = 0; index < words.length && !found; index += 1) {
+    let phrase = "";
+    for (let size = 1; size <= 8 && index + size <= words.length; size += 1) {
+      // Identical normalized windows without allocating an array per digest.
+      phrase = size === 1 ? words[index] : phrase + " " + words[index + size - 1];
+      if (blockedPhrase(phrase, matcher)) {
         found = true;
         break;
       }
     }
   }
   if (key.length <= maxDigestWindowCharacters) {
-    while (matcher.windows.size >= maxDigestCacheEntries || matcher.characters + key.length > maxDigestCacheCharacters) {
-      const oldest = matcher.windows.keys().next().value;
-      matcher.characters -= oldest.length;
-      matcher.windows.delete(oldest);
+    if (matcher.windows.size >= maxDigestCacheEntries || matcher.characters + key.length > maxDigestCacheCharacters) {
+      // Whole-generation reset preserves the same exact-result/character bounds
+      // while avoiding repeated oldest-key iterator/tombstone work.
+      matcher.windows.clear(); matcher.characters = 0;
     }
     matcher.windows.set(key, found);
     matcher.characters += key.length;
@@ -72,11 +93,15 @@ function hasBlockedDigest(text, path, blockedDigests) {
   for (const line of `${path} ${text}`.split("\n")) {
     const words = normalizeSensitiveText(line).split(" ").filter(Boolean);
     if (!words.length) continue;
-    const window = previous.concat(words);
-    if (blockedWordWindow(window, matcher)) return true;
-    // Every one-to-eight-word phrase crossing any number of short/empty lines
-    // is included in the next exact window. The path/body boundary is identical.
-    previous = window.slice(-7);
+    // Bounded overlapping chunks make long repeated log/source lines eligible
+    // for the existing exact-result memo, whose character/memory limits remain
+    // unchanged. Seven trailing words preserve every one-to-eight-word phrase
+    // across chunks, short/empty lines and the path/body boundary.
+    for (let offset = 0; offset < words.length; offset += 128) {
+      const window = previous.concat(words.slice(offset, offset + 128));
+      if (blockedWordWindow(window, matcher)) return true;
+      previous = window.slice(-7);
+    }
   }
   return false;
 }
@@ -204,7 +229,8 @@ export function normalizeSensitiveText(value) {
 }
 
 export function sha256(value) {
-  return createHash("sha256").update(value).digest("hex");
+  return typeof nodeCrypto.hash === "function" ? nodeCrypto.hash("sha256", value, "hex") :
+    createHash("sha256").update(value).digest("hex");
 }
 
 export function isWatcherProcessMetadata(path, body) {
@@ -227,8 +253,9 @@ function allowedFictionalPhone(exchange, subscriber) {
 
 export function customerDataFindings(text, path, blockedDigests) {
   const findings = [];
+  const publicNotice = isExactPublicLegalNotice(text, path);
   for (const match of text.matchAll(emailPattern)) {
-    if (!allowedSyntheticDomain(match[1])) {
+    if (!publicNotice && !allowedSyntheticDomain(match[1])) {
       findings.push(`${path}: non-synthetic email address`);
     }
   }
@@ -241,6 +268,15 @@ export function customerDataFindings(text, path, blockedDigests) {
   }
   if (hasBlockedDigest(text, path, blockedDigests)) findings.push(`${path}: prohibited customer identifier digest`);
   return [...new Set(findings)];
+}
+
+// Public third-party copyright attribution is classified only at this exact
+// source path and immutable byte identity. Customer digest/phone checks above
+// still apply, and every changed byte or copied path retains normal email checks.
+// Provenance: https://github.com/websockets/ws/blob/8.23.0/LICENSE
+export function isExactPublicLegalNotice(text, path) {
+  return path === "source/host-runtime/bos-journey-notifications/vendor/WS-LICENSE.txt" &&
+    sha256(text) === "2b29dcfe0d6471f7e8c92c5fb38c9f93edee10330937055440192f1832b1ecef";
 }
 
 // Exact provider identity verified through the existing native GitHub client.
@@ -417,7 +453,9 @@ async function scanZip(path, bytes, blockedDigests, approvedBinaryDigests, execu
   const findings = [];
   const readerEnvironment = {...process.env};
   for (const name of ["UNZIP", "UNZIPOPT", "ZIPINFO", "ZIPINFOOPT"]) delete readerEnvironment[name];
-  const directory = await mkdtemp(join(tmpdir(), "boc-privacy-archive-"));
+  const scratch = join(root, "Vault", "tmp", "privacy-archives");
+  await mkdir(scratch, {recursive: true, mode: 0o700});
+  const directory = await mkdtemp(join(scratch, "archive-"));
   const snapshot = join(directory, "snapshot.zip");
   try {
   await writeFile(snapshot, bytes, {flag: "wx", mode: 0o600});
@@ -478,29 +516,8 @@ export async function privacyTransitionAssessment(previousPolicy) {
   return scanPrivacyCandidates(await privacyCandidates(), {assessTransitionFrom: previousPolicy});
 }
 
-async function scanPrivacyCandidates(candidates, {describeOnly = false, assessTransitionFrom = null} = {}) {
-  const names = [digestPath, approvedBinaryPath, join(root, "privacy", "owned-github-pr-identities.json"),
-    join(root, "privacy", "owned-native-probe-identities.json")];
-  const rules = await Promise.all(names.map(async path => ({path, body: await readFile(path)})));
-  const blockedDigests = new Set(rules[0].body.toString("utf8").split(/\s+/u).filter(Boolean));
-  const approvedBinaryDigests = new Set(rules[1].body.toString("utf8").split(/\s+/u).filter(Boolean));
-  const githubIdentities = JSON.parse(rules[2].body), nativeProbeIdentities = JSON.parse(rules[3].body);
-  const policy = await privacyPolicyIdentity([{path: new URL(import.meta.url).pathname,
-    body: await readFile(new URL(import.meta.url))}, ...rules], {
-      functions: [customerDataFindings, normalizeSensitiveText, hasBlockedDigest, blockedWordWindow, digestMatcher,
-        allowedSyntheticDomain, allowedFictionalPhone, sha256, scanPrivacyCandidates,
-        isCpuProfileTextArtifact, cpuProfilePrivacyText, isProposedTextArtifact, isOperationalTextArtifact,
-        verifiedNativeProbeMetadataText, verifiedSyntheticSourceFixtureText, ownNativeProbeIdentity,
-        ownSourceFixtureIdentity, isWatcherProcessMetadata, operationalPrivacyText, verifiedGithubMetadataText,
-        scanZip].map(value => value.toString()),
-      textExtensions: [...textExtensions], operationalTextExtensions: [...operationalTextExtensions],
-      patterns: [emailPattern, formattedNanpPattern, compactNanpPattern, terminalSgrPattern].map(String)
-    });
-  const source = await execFileAsync("git", ["rev-parse", "HEAD", "HEAD^{tree}"], {cwd: root,
-    env: {...process.env, GIT_OPTIONAL_LOCKS: "0"}});
-  const [commit, tree] = source.stdout.trim().split("\n");
-  const scan = async (path, body, context) => {
-    if (path.endsWith(".zip")) return scanZip(path, body, blockedDigests, approvedBinaryDigests, policy.executables[1].path);
+export async function scanPrivacyFile(path, body, context, {blockedDigests, approvedBinaryDigests, githubIdentities, archiveExecutable}) {
+    if (path.endsWith(".zip")) return scanZip(path, body, blockedDigests, approvedBinaryDigests, archiveExecutable);
     const label = relative(root, path);
     if (operationalTextExtensions.has(extname(path).toLowerCase())) {
       if (!isOperationalTextArtifact(path, body))
@@ -522,8 +539,31 @@ async function scanPrivacyCandidates(candidates, {describeOnly = false, assessTr
     const nativeText = verifiedNativeProbeMetadataText(body.toString("utf8"), context.nativeProbe);
     const sourceText = verifiedSyntheticSourceFixtureText(nativeText, context.sourceFixture);
     return customerDataFindings(verifiedGithubMetadataText(sourceText, githubIdentities), label, blockedDigests);
-  };
-  policy.context.scan = scan.toString();
+}
+
+async function scanPrivacyCandidates(candidates, {describeOnly = false, assessTransitionFrom = null} = {}) {
+  const names = [digestPath, approvedBinaryPath, join(root, "privacy", "owned-github-pr-identities.json"),
+    join(root, "privacy", "owned-native-probe-identities.json")];
+  const rules = await Promise.all(names.map(async path => ({path, body: await readFile(path)})));
+  const blockedDigests = new Set(rules[0].body.toString("utf8").split(/\s+/u).filter(Boolean));
+  const approvedBinaryDigests = new Set(rules[1].body.toString("utf8").split(/\s+/u).filter(Boolean));
+  const githubIdentities = JSON.parse(rules[2].body), nativeProbeIdentities = JSON.parse(rules[3].body);
+  const policy = await privacyPolicyIdentity([{path: new URL(import.meta.url).pathname,
+    body: await readFile(new URL(import.meta.url))},
+    ...await Promise.all(["./lib/privacy-scan-pool.mjs", "./lib/privacy-scan-worker.mjs"].map(async name => {const path = new URL(name, import.meta.url).pathname; return {path, body: await readFile(path)};})), ...rules], {
+      functions: [customerDataFindings, isExactPublicLegalNotice, normalizeSensitiveText, hasBlockedDigest, blockedPhrase, blockedWordWindow, digestMatcher,
+        allowedSyntheticDomain, allowedFictionalPhone, sha256, scanPrivacyCandidates,
+        isCpuProfileTextArtifact, cpuProfilePrivacyText, isProposedTextArtifact, isOperationalTextArtifact,
+        verifiedNativeProbeMetadataText, verifiedSyntheticSourceFixtureText, ownNativeProbeIdentity,
+        ownSourceFixtureIdentity, isWatcherProcessMetadata, operationalPrivacyText, verifiedGithubMetadataText,
+        scanZip, scanPrivacyFile].map(value => value.toString()),
+      textExtensions: [...textExtensions], operationalTextExtensions: [...operationalTextExtensions],
+      patterns: [emailPattern, formattedNanpPattern, compactNanpPattern, terminalSgrPattern].map(String)
+    });
+  const source = await execFileAsync("git", ["rev-parse", "HEAD", "HEAD^{tree}"], {cwd: root,
+    env: {...process.env, GIT_OPTIONAL_LOCKS: "0"}});
+  const [commit, tree] = source.stdout.trim().split("\n");
+  policy.context.scan = scanPrivacyFile.toString();
   if (describeOnly) return {kind: "boc-privacy-policy-description-v1", policy_sha256: privacyPolicyDigest(policy)};
   const directory = join(root, ".git", "oracle", "privacy-coverage");
   const currentCandidates = [...candidates].filter(path => !path.includes(`${join(root, "Vault", "index")}/`));
@@ -532,9 +572,21 @@ async function scanPrivacyCandidates(candidates, {describeOnly = false, assessTr
   const partition = assessTransitionFrom ? await privacyCoveragePartition({root, directory, candidates: currentCandidates,
     policy, contextFor, previousPolicy: assessTransitionFrom}) : null;
   const selected = partition ? partition.files.filter(row => !row.original).map(row => join(root, row.path)) : currentCandidates;
-  const result = await privacyFileCoverage({root, directory, candidates: selected, policy,
-    source: {commit, tree, command: [process.execPath, ...process.execArgv, ...process.argv.slice(1)]}, scan,
-    contextFor});
+  if (process.env.BOC_PRIVACY_READY_FD !== undefined) {
+    const fd = Number(process.env.BOC_PRIVACY_READY_FD), token = process.env.BOC_PRIVACY_READY_TOKEN;
+    if (!Number.isSafeInteger(fd) || fd < 3 || !/^[0-9a-f]{64}$/u.test(token ?? "")) throw Error("Invalid private privacy snapshot channel");
+    writeSync(fd, JSON.stringify({kind:"boc-privacy-snapshot-ready-v1",token,source:commit,tree,
+      files:new Set(selected).size,policy_sha256:privacyPolicyDigest(policy)})+"\n");
+  }
+  const pool = selected.length >= 32 ? await createPrivacyScanPool({policySha256: privacyPolicyDigest(policy), ruleHashes: policy.sources, count: 8}) : null;
+  let result;
+  try {
+    const config = {blockedDigests, approvedBinaryDigests, githubIdentities, archiveExecutable: policy.executables[1].path};
+    const scan = (path, body, context) => pool && body.length <= 8 * 1024 * 1024 ? pool.run(path, body, context) : scanPrivacyFile(path, body, context, config);
+    result = await privacyFileCoverage({root, directory, candidates: selected, policy,
+      source: {commit, tree, command: [process.execPath, ...process.execArgv, ...process.argv.slice(1)]}, scan,
+      contextFor, concurrency: pool ? 8 : 1});
+  } finally {await pool?.close();}
   lastPrivacyCoverage = result.report;
   if (partition) {
     if (result.report.files.some(row => partition.files.find(item => item.path === row.path)?.sha256 !== row.sha256))
@@ -549,7 +601,9 @@ if (process.argv[1] === new URL(import.meta.url).pathname) {
   console.log(JSON.stringify({privacy_coverage: {
     source_commit: lastPrivacyCoverage.source.commit, source_tree: lastPrivacyCoverage.source.tree,
     files: lastPrivacyCoverage.files.length, reused: lastPrivacyCoverage.reused,
-    scanned: lastPrivacyCoverage.scanned, invalidated: lastPrivacyCoverage.invalidated, bridged: lastPrivacyCoverage.bridged,
+    scanned: lastPrivacyCoverage.scanned, bytes: lastPrivacyCoverage.bytes, scanned_bytes: lastPrivacyCoverage.scanned_bytes, concurrency: lastPrivacyCoverage.concurrency, max_input_reads: lastPrivacyCoverage.max_input_reads, invalidated: lastPrivacyCoverage.invalidated, bridged: lastPrivacyCoverage.bridged,
+    max_active_persistence:lastPrivacyCoverage.max_active_persistence,max_awaiting_persistence:lastPrivacyCoverage.max_awaiting_persistence,
+    compact_persistence_bytes:lastPrivacyCoverage.compact_persistence_bytes,io_threads:lastPrivacyCoverage.io_threads,phases:privacyTimingDisplay(lastPrivacyCoverage.phases),
     policy_sha256: lastPrivacyCoverage.policy_sha256, membership_sha256: lastPrivacyCoverage.membership_sha256
   }}));
   if (failures.length) {

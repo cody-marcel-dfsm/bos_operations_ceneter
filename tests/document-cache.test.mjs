@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { access, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
+import { access, lstat, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -41,7 +41,8 @@ const baseRequest = {
 };
 
 async function temporaryCache(context) {
-  const path = await mkdtemp(join(tmpdir(), "bos-document-cache-test-"));
+  const scratch=new URL("../Vault/tmp/",import.meta.url).pathname;await mkdir(scratch,{recursive:true});
+  const path = await mkdtemp(join(scratch, "dc-"));
   context.after(() => rm(path, { recursive: true, force: true }));
   return path;
 }
@@ -612,4 +613,18 @@ test("a competing writer that sees the mutation lock always reads its complete o
   assert.ok(Date.parse(lock.expires_at) > 0);
   assert.deepEqual(entriesWhileHeld, ["mutation.lock"]); // The private staging file is gone.
   assert.deepEqual(await readdir(root), []); // Release removes the lock.
+});
+
+test("failed initial mutation publication cleans its private temporary and never runs the operation",async context=>{
+  const cacheRoot=await temporaryCache(context),path=join(cacheRoot,"authority-mutation.lock.json"),real=await import("node:fs/promises");let ran=false;
+  const lockFileSystem={chmod:real.chmod,rm:real.rm,writeFile:real.writeFile,open:real.open,
+    link:async(from,to)=>{if(to===path)throw Object.assign(Error("synthetic denied publication"),{code:"EACCES"});return real.link(from,to);}};
+  await assert.rejects(withAuthorityMutationLock(path,async()=>{ran=true;},{lockFileSystem}),{code:"EACCES"});
+  assert.equal(ran,false);assert.deepEqual(await readdir(cacheRoot),[]);
+});
+
+test("corrupt existing mutation locks remain fail closed and unchanged",async context=>{
+  const cacheRoot=await temporaryCache(context),path=join(cacheRoot,"authority-mutation.lock.json");await writeFile(path,"not-json",{mode:0o600});let ran=false;
+  await assert.rejects(withAuthorityMutationLock(path,async()=>{ran=true;}),SyntaxError);
+  assert.equal(ran,false);assert.equal(await readFile(path,"utf8"),"not-json");
 });

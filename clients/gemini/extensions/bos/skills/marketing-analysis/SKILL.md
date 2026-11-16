@@ -2,8 +2,8 @@
 name: marketing-analysis
 description: Organize, audit, and analyze tenant-scoped marketing campaigns across SendGrid, email, Calendar, GA4, Google Ads, attribution, contact hygiene, suppressions, and campaign artifacts.
 metadata:
-  version: "1.0.10"
-  requires: "{\"bos-mcp-client\":\"1.0.10\",\"email-account-routing\":\"1.0.10\"}"
+  version: "1.0.12"
+  requires: "{\"bos-mcp-client\":\"1.0.12\",\"email-account-routing\":\"1.0.12\"}"
 ---
 
 
@@ -15,6 +15,13 @@ with empty arguments and terminate after its receipt or canonical challenged
 401. This connection-level action precedes context/default selection and
 authentication recovery; do not sign in to perform logout.
 
+
+Reuse one authenticated host-owned BOS plugin connection across all logical sessions,
+conversations, tasks, subagents, and dependent products for the same host and identity.
+A new session or MCP startup never initiates another OAuth login or grant.
+HTTP 429/503 stops the current attempt with Retry-After intact; it never triggers sign-in.
+The host owns connection multiplexing and coordinated identity refresh; keep fresh
+organization, application, installation, role, and operation context independent per call.
 
 First apply the versioned identity-context workflow in `bos-mcp-client`.
 For live `bos-identity-mcp/v2`, resolve explicit request scope or the saved

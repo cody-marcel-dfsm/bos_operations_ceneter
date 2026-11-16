@@ -17,6 +17,13 @@ reported stage only when later evidence contradicts it.
 
 ## Classification rules
 
+- Reuse the same host-owned BOS plugin connection across all logical sessions.
+  Starting a task or initializing an MCP session reuses its current credential;
+  only a verified identity failure enters **Sign in**. Each operation retains a
+  fresh independently authorized context.
+- HTTP 429/503: preserve `Retry-After` and stop the current attempt. Startup
+  failure or transport closure alone stays at **Discover** and uses bounded host
+  recovery on the existing binding; it never starts another login or grant.
 - `skill missing`, plugin absent, extension absent: **Install**.
 - Skill exists but current conversation cannot invoke it: **Load**.
 - Product skills load but the BOS connection is absent: **Register BOS**.

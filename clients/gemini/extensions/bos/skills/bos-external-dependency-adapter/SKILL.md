@@ -2,8 +2,8 @@
 name: bos-external-dependency-adapter
 description: Provide the installed BOS product's authenticated dependency seam to external BOS-family plugins without giving those plugins tokens, context handles, authority selectors, or a second connection.
 metadata:
-  version: "1.0.10"
-  requires: "{\"bos-mcp-client\":\"1.0.10\"}"
+  version: "1.0.12"
+  requires: "{\"bos-mcp-client\":\"1.0.12\"}"
 ---
 
 
@@ -15,6 +15,13 @@ with empty arguments and terminate after its receipt or canonical challenged
 401. This connection-level action precedes context/default selection and
 authentication recovery; do not sign in to perform logout.
 
+
+Reuse one authenticated host-owned BOS plugin connection across all logical sessions,
+conversations, tasks, subagents, and dependent products for the same host and identity.
+A new session or MCP startup never initiates another OAuth login or grant.
+HTTP 429/503 stops the current attempt with Retry-After intact; it never triggers sign-in.
+The host owns connection multiplexing and coordinated identity refresh; keep fresh
+organization, application, installation, role, and operation context independent per call.
 
 First apply the versioned identity-context workflow in `bos-mcp-client`.
 For live `bos-identity-mcp/v2`, resolve explicit request scope or the saved
@@ -92,6 +99,12 @@ a user-issued identity API key held privately by the host. Delegation returns
 readiness for that supported method. The existing BOS context-selection workflow
 resolves explicit requests or confirmed defaults without another BOS login/key.
 Keep credentials and opaque handles inside the BOS/host boundary.
+Reuse that host-owned plugin binding across all logical sessions. The host owns
+physical connection multiplexing and coordinated identity refresh; each adapter
+operation still obtains its own fresh context. HTTP 429/503 stops the current
+attempt with retry information preserved and never invokes authentication recovery.
+Caller-supplied correlation is diagnostic; it cannot prove shared identity or
+original transaction ownership for a recovery cache or coalescing registry.
 
 
 Use this BOS-owned adapter whenever a separately installed product delegates

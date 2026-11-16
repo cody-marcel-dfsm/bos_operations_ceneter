@@ -3,8 +3,8 @@
 name: bos-guided-support
 description: Guide non-expert BOS users through installation, onboarding, connection, OAuth, tool discovery, provider authorization, updates, version identification, and everyday "How do I do this with BOS?" questions. Use when a user is getting started, seems stuck or hesitant, reports a BOS/plugin/MCP error, asks what to click or do next, shares a screenshot, needs visual step-by-step help, or needs to verify that BOS works. Operate without MCP when necessary and use MCP as additional evidence when available.
 metadata:
-  version: "1.0.12"
-  requires: "{\"bos-mcp-client\":\"1.0.10\"}"
+  version: "1.0.14"
+  requires: "{\"bos-mcp-client\":\"1.0.12\"}"
 ---
 
 
@@ -16,6 +16,13 @@ with empty arguments and terminate after its receipt or canonical challenged
 401. This connection-level action precedes context/default selection and
 authentication recovery; do not sign in to perform logout.
 
+
+Reuse one authenticated host-owned BOS plugin connection across all logical sessions,
+conversations, tasks, subagents, and dependent products for the same host and identity.
+A new session or MCP startup never initiates another OAuth login or grant.
+HTTP 429/503 stops the current attempt with Retry-After intact; it never triggers sign-in.
+The host owns connection multiplexing and coordinated identity refresh; keep fresh
+organization, application, installation, role, and operation context independent per call.
 
 First apply the versioned identity-context workflow in `bos-mcp-client`.
 For live `bos-identity-mcp/v2`, resolve explicit request scope or the saved

@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
+import { execFileSync } from "node:child_process";
 import test from "node:test";
 
 import {
@@ -38,6 +39,14 @@ test("publication workflow audits release refs without importing retained pull-r
     "utf8",
   );
 
+  const packageGate = await readFile(
+    new URL("../tools/deterministic_package.py", import.meta.url),
+    "utf8",
+  );
+  const packageJson = JSON.parse(
+    await readFile(new URL("../package.json", import.meta.url), "utf8"),
+  );
+
   assert.doesNotMatch(workflow, /refs\/pull|publication-audit/);
   // Owner direction 2026-11-11: the sealed Oracle spec gate runs first, then the fixed
   // deterministic category (which includes check:publication) and the spec's own tests.
@@ -45,4 +54,7 @@ test("publication workflow audits release refs without importing retained pull-r
   const category = workflow.indexOf("python3 tools/deterministic_package.py ci");
   assert.ok(gate > 0, "workflow runs the sealed Oracle spec gate");
   assert.ok(category > gate, "the spec gate precedes the fixed deterministic category");
+  assert.match(packageGate, /\['npm', 'run', 'check:publication'\]/);
+  assert.equal(packageJson.scripts["release:check"], "python3 tools/deterministic_package.py validate");
+  assert.match(workflow, /python3 tools\/deterministic_package\.py ci --base/);
 });

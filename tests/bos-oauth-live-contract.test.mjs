@@ -661,53 +661,63 @@ test("BOS OAuth live contract accepts a Google account-selector redirect", async
   assert.deepEqual(result.violations, []);
 });
 
-test("BOS OAuth live contract follows the secure login handoff to Google", async () => {
+function automaticOAuthResponses() {
   const google = new URL(CANONICAL_IDENTITY_PROVIDER_AUTHORIZATION_ENDPOINT);
-  google.searchParams.set(
-    "prompt",
-    CANONICAL_OAUTH_TARGET.provider_account_selection_prompt
-  );
-  const responses = [
-    new Response(
-      '<main id="mcp-oauth-login"><a id="mcp-oauth-login-link" href="/api/v1/mcp/oauth/handoff/login?agent_auth_transaction=opaque">Open BOS sign in</a></main>',
-      {
-        status: 200,
-        headers: {
-          "content-type": "text/html; charset=utf-8",
-          "cache-control": "no-store",
-          pragma: "no-cache",
-          "referrer-policy": "no-referrer"
-        }
-      }
-    ),
-    new Response(
-      '<form method="get" action="/api/v1/mcp/oauth/handoff/google/start"><input type="hidden" name="agent_auth_transaction" value="opaque"><button>Continue with Google</button></form>',
-      {
-        status: 200,
-        headers: { "content-type": "text/html; charset=utf-8" }
-      }
-    ),
-    new Response(null, {
-      status: 302,
-      headers: { location: google.href }
-    })
+  google.searchParams.set("prompt", CANONICAL_OAUTH_TARGET.provider_account_selection_prompt);
+  return [
+    new Response(null, {status: 302, headers: {
+      location: "/api/v1/mcp/oauth/handoff/login?agent_auth_transaction=opaque"
+    }}),
+    new Response(null, {status: 303, headers: {
+      location: "/api/v1/mcp/oauth/handoff/google/start?agent_auth_transaction=opaque"
+    }}),
+    new Response(null, {status: 303, headers: {location: google.href}})
   ];
+}
+
+test("BOS OAuth live contract follows only automatic bound handoffs to Google", async () => {
+  const responses = automaticOAuthResponses();
   const calls = [];
   const result = await probeBosOAuthAuthorize({
     authorizeUrl: authorizeUrl(),
     fetchImpl: async (url, init) => {
-      calls.push({ url: String(url), init });
+      calls.push({url: String(url), init});
       return responses.shift();
     }
   });
-
   assert.equal(result.status, "passed");
-  assert.equal(result.http_status, 302);
+  assert.equal(result.http_status, 303);
   assert.equal(calls.length, 3);
   assert.match(calls[1].url, /\/api\/v1\/mcp\/oauth\/handoff\/login/);
   assert.match(calls[2].url, /\/api\/v1\/mcp\/oauth\/handoff\/google\/start/);
+  assert.ok(calls.every(({init}) => init.redirect === "manual"));
   assert.equal(calls[2].init.headers["sec-fetch-site"], "same-origin");
+  assert.equal(calls[2].init.headers["sec-fetch-mode"], "navigate");
 });
+
+for (const [label, hop, html] of [
+  ["BOS login launcher", 0, '<main id="mcp-oauth-login"><a id="mcp-oauth-login-link" href="/api/v1/mcp/oauth/handoff/login?agent_auth_transaction=opaque">Sign in</a></main>'],
+  ["Google continuation button", 1, '<a id="mcp-oauth-google-login-link" href="/api/v1/mcp/oauth/handoff/google/start?agent_auth_transaction=opaque">Continue with Google</a>'],
+  ["BOS organization and role selection", 2, '<form><select name="organization"></select><select name="role"></select><button>Continue</button></form>'],
+  ["BOS grant consent", 2, '<form><button>Approve access</button></form>']
+]) {
+  test(`BOS OAuth rejects a rendered ${label} without following its action`, async () => {
+    const responses = automaticOAuthResponses();
+    responses[hop] = new Response(html, {headers: {
+      "content-type": "text/html", "cache-control": "no-store",
+      pragma: "no-cache", "referrer-policy": "no-referrer"
+    }});
+    let calls = 0;
+    const result = await probeBosOAuthAuthorize({
+      authorizeUrl: authorizeUrl(),
+      fetchImpl: async () => {calls += 1; return responses.shift();}
+    });
+    assert.equal(result.status, "failed");
+    assert.equal(result.http_status, 200);
+    assert.deepEqual(result.violations.map(({code}) => code), ["oauth_authorize_human_handoff"]);
+    assert.equal(calls, hop + 1);
+  });
+}
 
 const embeddedCredentialsTarget = new URL(
   "/api/v1/mcp/oauth/handoff/google/start?agent_auth_transaction=opaque",
@@ -715,36 +725,59 @@ const embeddedCredentialsTarget = new URL(
 );
 embeddedCredentialsTarget.username = "synthetic-user";
 
-for (const [label, target, expected] of [
-  ["canonical link", "/api/v1/mcp/oauth/handoff/google/start?agent_auth_transaction=opaque", "passed"],
-  ["different transaction", "/api/v1/mcp/oauth/handoff/google/start?agent_auth_transaction=other", "failed"],
-  ["duplicate transaction", "/api/v1/mcp/oauth/handoff/google/start?agent_auth_transaction=opaque&amp;agent_auth_transaction=other", "failed"],
-  ["missing transaction", "/api/v1/mcp/oauth/handoff/google/start", "failed"],
-  ["foreign origin", "https://wrong.example/api/v1/mcp/oauth/handoff/google/start?agent_auth_transaction=opaque", "failed"],
-  ["wrong path", "/other?agent_auth_transaction=opaque", "failed"],
-  ["fragment", "/api/v1/mcp/oauth/handoff/google/start?agent_auth_transaction=opaque#fragment", "failed"],
-  ["embedded credentials", embeddedCredentialsTarget.href, "failed"]
+for (const [label, target] of [
+  ["different transaction", "/api/v1/mcp/oauth/handoff/google/start?agent_auth_transaction=other"],
+  ["duplicate transaction", "/api/v1/mcp/oauth/handoff/google/start?agent_auth_transaction=opaque&agent_auth_transaction=other"],
+  ["missing transaction", "/api/v1/mcp/oauth/handoff/google/start"],
+  ["empty transaction", "/api/v1/mcp/oauth/handoff/google/start?agent_auth_transaction="],
+  ["extra selector", "/api/v1/mcp/oauth/handoff/google/start?agent_auth_transaction=opaque&organization=synthetic"],
+  ["foreign origin", "https://wrong.example/api/v1/mcp/oauth/handoff/google/start?agent_auth_transaction=opaque"],
+  ["insecure target", "http://dfsm.ai/api/v1/mcp/oauth/handoff/google/start?agent_auth_transaction=opaque"],
+  ["wrong path", "/other?agent_auth_transaction=opaque"],
+  ["fragment", "/api/v1/mcp/oauth/handoff/google/start?agent_auth_transaction=opaque#fragment"],
+  ["embedded credentials", embeddedCredentialsTarget.href],
+  ["loop", "/api/v1/mcp/oauth/handoff/login?agent_auth_transaction=opaque"],
+  ["BOS consent target", "/api/v1/mcp/oauth/consent?agent_auth_transaction=opaque"]
 ]) {
-  test(`BOS OAuth live Google link: ${label}`, async () => {
-    const google = new URL(CANONICAL_IDENTITY_PROVIDER_AUTHORIZATION_ENDPOINT);
-    google.searchParams.set("prompt", "select_account");
-    const responses = [
-      new Response('<main id="mcp-oauth-login"><a id="mcp-oauth-login-link" href="/api/v1/mcp/oauth/handoff/login?agent_auth_transaction=opaque">Sign in</a></main>', {
-        headers: { "content-type": "text/html", "cache-control": "no-store", pragma: "no-cache", "referrer-policy": "no-referrer" }
-      }),
-      new Response(`<a href="${target}" id="mcp-oauth-google-login-link">Continue with Google</a>`),
-      new Response(null, { status: 302, headers: { location: google.href } })
-    ];
-    const calls = [];
+  test(`BOS OAuth automatic continuation rejects ${label}`, async () => {
+    const responses = automaticOAuthResponses();
+    responses[1] = new Response(null, {status: 303, headers: {location: target}});
+    let calls = 0;
     const result = await probeBosOAuthAuthorize({
       authorizeUrl: authorizeUrl(),
-      fetchImpl: async (url) => { calls.push(String(url)); return responses.shift(); }
+      fetchImpl: async () => {calls += 1; return responses.shift();}
     });
-    assert.equal(result.status, expected);
-    assert.equal(calls.length, expected === "passed" ? 3 : 2);
-    if (expected === "passed") {
-      assert.equal(new URL(calls[2]).searchParams.get("agent_auth_transaction"), "opaque");
-    }
+    assert.equal(result.status, "failed");
+    assert.deepEqual(result.violations.map(({code}) => code), ["oauth_authorize_redirect_chain"]);
+    assert.equal(calls, 2);
+  });
+}
+
+test("BOS OAuth automatic handoff is bounded and cannot add a fourth BOS hop", async () => {
+  const responses = automaticOAuthResponses();
+  responses[2] = new Response(null, {status: 303, headers: {
+    location: "/api/v1/mcp/oauth/handoff/login?agent_auth_transaction=opaque"
+  }});
+  let calls = 0;
+  const result = await probeBosOAuthAuthorize({
+    authorizeUrl: authorizeUrl(), fetchImpl: async () => {calls += 1; return responses.shift();}
+  });
+  assert.equal(result.status, "failed");
+  assert.equal(calls, 3);
+  assert.deepEqual(result.violations.map(({code}) => code), ["oauth_authorize_redirect_chain"]);
+});
+
+for (const status of [429, 503]) {
+  test(`BOS OAuth HTTP ${status} stops the automatic chain without retrying`, async () => {
+    let calls = 0;
+    const result = await probeBosOAuthAuthorize({
+      authorizeUrl: authorizeUrl(), fetchImpl: async () => {
+        calls += 1; return new Response(null, {status});
+      }
+    });
+    assert.equal(result.status, "failed");
+    assert.equal(result.http_status, status);
+    assert.equal(calls, 1);
   });
 }
 

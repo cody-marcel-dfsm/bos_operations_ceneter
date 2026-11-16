@@ -3009,6 +3009,8 @@ class ReviewSeries(unittest.TestCase):
                 path.write_text("changed controlling parent input")
                 return result
             self.submit(drift, error=o.OracleApprovalError)
+            # Declared parent authority is controlling criteria, never ordinary source movement.
+            self.assertNotIsInstance(self.last_error, o.OracleSourceMovementIncomplete)
             self.assertIn("inputs changed", str(self.last_error))
             path.write_bytes(original)
         self.submit()

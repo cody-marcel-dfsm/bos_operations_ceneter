@@ -2,8 +2,8 @@
 name: sendgrid-campaign-operations
 description: Build, approve, test, send, recover, monitor, and report permission-based Education Center SendGrid campaigns through the tenant-scoped BOS platform MCP. Use for customer-family audiences with documented marketing consent from Calimatic, Lead Director, Gmail, Calendar, camp, enrollment, inquiry, lead, or trial evidence; prioritized overlapping cohorts; governed recipient additions; suppression reconciliation; exact UTF-8 content review; manifest refresh and same-task continuation; deterministic test/list sends; delivery-event statistics; or structured missing-capability issues.
 metadata:
-  version: "1.0.12"
-  requires: "{\"bos-mcp-client\":\"1.0.10\",\"bos-plugin-settings-initialization\":\"1.0.12\",\"education-center-customer-initialization\":\"1.0.10\",\"education-center-service-routing\":\"1.0.12\"}"
+  version: "1.0.17"
+  requires: "{\"bos-mcp-client\":\"1.0.12\",\"bos-plugin-settings-initialization\":\"1.0.17\",\"education-center-customer-initialization\":\"1.0.12\",\"education-center-service-routing\":\"1.0.17\"}"
 ---
 
 
@@ -16,7 +16,10 @@ before initialization, settings reconciliation, context selection or login.
 Do not authenticate to sign out; preserve confirmed preferences.
 
 Before performing this skill's workflow, preserve the pending request and
-complete the product's host-managed BOS authentication. Run the configured
+reuse the product's authenticated host-owned BOS plugin binding across logical sessions.
+Only a verified identity failure requires its existing native sign-in action.
+HTTP 429/503 preserves Retry-After and stops the attempt without another grant.
+Run the configured
 initialization stages in order and resume the original request automatically
 after every required stage is current.
 
@@ -55,6 +58,13 @@ with empty arguments and terminate after its receipt or canonical challenged
 401. This connection-level action precedes context/default selection and
 authentication recovery; do not sign in to perform logout.
 
+
+Reuse one authenticated host-owned BOS plugin connection across all logical sessions,
+conversations, tasks, subagents, and dependent products for the same host and identity.
+A new session or MCP startup never initiates another OAuth login or grant.
+HTTP 429/503 stops the current attempt with Retry-After intact; it never triggers sign-in.
+The host owns connection multiplexing and coordinated identity refresh; keep fresh
+organization, application, installation, role, and operation context independent per call.
 
 First apply the versioned identity-context workflow in `bos-mcp-client`.
 For live `bos-identity-mcp/v2`, resolve explicit request scope or the saved

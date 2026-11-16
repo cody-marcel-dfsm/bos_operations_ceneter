@@ -819,163 +819,69 @@ export async function probeBosOAuthAuthorize({
   );
   if (violations.length) return result(violations);
 
-  let response;
-  try {
-    response = await request(authorizeUrl, {
-      redirect: "manual",
-      headers: { accept: "text/html" }
-    });
-  } catch (error) {
-    return result([finding(
-      "oauth_authorize_request",
-      `BOS authorization request failed: ${error.message}`
-    )]);
-  }
-
-  if ([302, 303, 307].includes(response.status)) {
-    const location = response.headers.get("location");
-    const redirectViolations = inspectGoogleAccountSelectorRedirect(location, oauthTarget);
-    return result(redirectViolations, response.status);
-  }
-
-  if (response.status !== 200) {
-    return result([finding(
-      "oauth_authorize_status",
-      `BOS authorization must return its secure login handoff; found HTTP ${response.status}.`
-    )], response.status);
-  }
-
-  const contentType = response.headers.get("content-type") ?? "";
-  const cacheControl = response.headers.get("cache-control") ?? "";
-  const pragma = response.headers.get("pragma") ?? "";
-  const referrerPolicy = response.headers.get("referrer-policy") ?? "";
-  if (!contentType.toLowerCase().includes("text/html") ||
-      !cacheControl.toLowerCase().includes("no-store") ||
-      pragma.toLowerCase() !== "no-cache" ||
-      referrerPolicy.toLowerCase() !== "no-referrer") {
-    return result([finding(
-      "oauth_authorize_handoff_headers",
-      "BOS authorization login handoff must be no-store HTML with no-referrer protection."
-    )], response.status);
-  }
-
-  const html = await response.text();
-  const loginLink = /id=["']mcp-oauth-login-link["'][^>]*href=["']([^"']+)["']/i.exec(
-    html
-  )?.[1];
-  if (!/id=["']mcp-oauth-login["']/i.test(html) || !loginLink) {
-    return result([finding(
-      "oauth_authorize_handoff",
-      "BOS authorization did not return the canonical login handoff surface."
-    )], response.status);
-  }
-
-  let loginUrl;
-  try {
-    loginUrl = new URL(loginLink.replaceAll("&amp;", "&"), oauthTarget.authorization_endpoint);
-  } catch {
-    return result([finding(
-      "oauth_authorize_handoff",
-      "BOS authorization returned an invalid login handoff target."
-    )], response.status);
-  }
   const authorizationOrigin = new URL(oauthTarget.authorization_endpoint).origin;
-  if (loginUrl.origin !== authorizationOrigin ||
-      loginUrl.pathname !== "/api/v1/mcp/oauth/handoff/login" ||
-      loginUrl.searchParams.getAll("agent_auth_transaction").length !== 1) {
-    return result([finding(
-      "oauth_authorize_handoff",
-      "BOS authorization returned an off-contract login handoff target."
-    )], response.status);
-  }
-
-  let loginResponse;
-  try {
-    loginResponse = await request(loginUrl.href, {
-      redirect: "manual",
-      headers: { accept: "text/html" }
-    });
-  } catch (error) {
-    return result([finding(
-      "oauth_login_handoff_request",
-      `BOS login handoff failed: ${error.message}`
-    )], response.status);
-  }
-  if (loginResponse.status !== 200) {
-    return result([finding(
-      "oauth_login_handoff_status",
-      `BOS login handoff must return its Google continuation page; found HTTP ${loginResponse.status}.`
-    )], loginResponse.status);
-  }
-  const loginHtml = await loginResponse.text();
-  // The server supports a native link and the original GET form. Both must
-  // preserve the same opaque transaction and stay on the BOS handoff endpoint.
-  const googleLinks = [...loginHtml.matchAll(/<a\b[^>]*>/gi)]
-    .filter(([tag]) => /\bid=["']mcp-oauth-google-login-link["']/i.test(tag));
-  const googleAction = /<form[^>]*action=["']([^"']+)["'][^>]*>/i.exec(loginHtml)?.[1];
-  const handoffValues = [...loginHtml.matchAll(
-    /<input[^>]*name=["']agent_auth_transaction["'][^>]*value=["']([^"']+)["'][^>]*>/gi
-  )];
-  const expectedHandoffValue = loginUrl.searchParams.get("agent_auth_transaction");
-  let providerStartUrl;
-  try {
-    if (googleLinks.length) {
-      if (googleLinks.length !== 1) throw new Error("Ambiguous continuation");
-      const href = /\bhref=["']([^"']+)["']/i.exec(googleLinks[0][0])?.[1];
-      if (!href) throw new Error("Missing continuation");
-      providerStartUrl = new URL(href.replaceAll("&amp;", "&"), authorizationOrigin);
-    } else {
-      if (!googleAction || handoffValues.length !== 1) throw new Error("Missing continuation");
-      providerStartUrl = new URL(googleAction.replaceAll("&amp;", "&"), authorizationOrigin);
-      // A pre-existing transaction would produce ambiguous GET form semantics.
-      if (providerStartUrl.searchParams.has("agent_auth_transaction")) throw new Error("Ambiguous transaction");
-      providerStartUrl.searchParams.set("agent_auth_transaction", handoffValues[0][1]);
+  let requestUrl = authorizeUrl;
+  let transaction = null;
+  const expectedHandoffs = [
+    "/api/v1/mcp/oauth/handoff/login",
+    "/api/v1/mcp/oauth/handoff/google/start"
+  ];
+  // The existing service routes may continue automatically. No BOS response
+  // may require a human launcher, consent, organization, role or grant click.
+  for (let hop = 0; hop <= expectedHandoffs.length; hop += 1) {
+    let response;
+    try {
+      response = await request(requestUrl, {
+        redirect: "manual",
+        headers: {
+          accept: "text/html",
+          ...(hop > 0 ? { "sec-fetch-site": "same-origin", "sec-fetch-mode": "navigate" } : {})
+        }
+      });
+    } catch (error) {
+      return result([finding(
+        "oauth_authorize_request",
+        `BOS authorization request failed: ${error.message}`
+      )]);
     }
-  } catch {
-    return result([finding(
-      "oauth_login_handoff",
-      "BOS login handoff returned an invalid Google continuation target."
-    )], loginResponse.status);
-  }
-  if (!expectedHandoffValue ||
-      providerStartUrl.searchParams.getAll("agent_auth_transaction").length !== 1 ||
-      providerStartUrl.searchParams.get("agent_auth_transaction") !== expectedHandoffValue ||
-      providerStartUrl.username || providerStartUrl.password || providerStartUrl.hash ||
-      providerStartUrl.origin !== authorizationOrigin ||
-      providerStartUrl.pathname !== "/api/v1/mcp/oauth/handoff/google/start") {
-    return result([finding(
-      "oauth_login_handoff",
-      "BOS login handoff returned an off-contract Google continuation target or transaction."
-    )], loginResponse.status);
+
+    if (![302, 303, 307].includes(response.status)) {
+      return result([finding(
+        response.status === 200 ? "oauth_authorize_human_handoff" : "oauth_authorize_status",
+        response.status === 200
+          ? "BOS authorization must continue automatically without a human login, consent or grant page."
+          : `BOS authorization must redirect automatically to Google; found HTTP ${response.status}.`
+      )], response.status);
+    }
+
+    let next;
+    try {
+      next = new URL(response.headers.get("location"), requestUrl);
+    } catch {
+      return result([finding(
+        "oauth_provider_redirect",
+        "BOS authorization returned an invalid redirect target."
+      )], response.status);
+    }
+    const provider = new URL(oauthTarget.identity_provider_authorization_endpoint);
+    if (next.origin === provider.origin && next.pathname === provider.pathname) {
+      return result(inspectGoogleAccountSelectorRedirect(next.href, oauthTarget), response.status);
+    }
+
+    const values = next.searchParams.getAll("agent_auth_transaction");
+    if (hop === expectedHandoffs.length || next.origin !== authorizationOrigin ||
+        next.pathname !== expectedHandoffs[hop] || next.username || next.password || next.hash ||
+        [...next.searchParams.keys()].some(key => key !== "agent_auth_transaction") ||
+        values.length !== 1 || !values[0] || (transaction !== null && values[0] !== transaction)) {
+      return result([finding(
+        "oauth_authorize_redirect_chain",
+        "BOS authorization must follow only the bounded same-origin automatic handoff with its unchanged transaction before Google."
+      )], response.status);
+    }
+    transaction = values[0];
+    requestUrl = next.href;
   }
 
-  let providerResponse;
-  try {
-    providerResponse = await request(providerStartUrl.href, {
-      redirect: "manual",
-      headers: {
-        accept: "text/html",
-        "sec-fetch-site": "same-origin",
-        "sec-fetch-mode": "navigate"
-      }
-    });
-  } catch (error) {
-    return result([finding(
-      "oauth_provider_request",
-      `BOS provider handoff failed: ${error.message}`
-    )], response.status);
-  }
-  if (![302, 303, 307].includes(providerResponse.status)) {
-    return result([finding(
-      "oauth_provider_status",
-      `BOS provider handoff must redirect to Google; found HTTP ${providerResponse.status}.`
-    )], providerResponse.status);
-  }
-  const redirectViolations = inspectGoogleAccountSelectorRedirect(
-    providerResponse.headers.get("location"),
-    oauthTarget
-  );
-  return result(redirectViolations, providerResponse.status);
 }
 
 function result(violations, httpStatus = null) {

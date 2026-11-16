@@ -83,8 +83,29 @@ export function createMarketplaceUpdate(releasedEntries, legacyName, options = {
 }
 
 const VERIFY_COMMIT = ["python3", "tools/oracle_approval.py", "verify-commit"];
+const VERIFY_PUBLISHED = ["python3", "tools/deterministic_package.py", "verify-published", "--source"];
 
-export function readPublishedProductEntries(revision, product = "bos", { repository = root, verifyCommand = VERIFY_COMMIT } = {}) {
+// A published commit is accepted with Oracle accepted-state trailers or, since
+// deterministic SSH promotion (2dbc43b4), with the exact-source deterministic CI
+// evidence that promotion itself requires.
+function verifyPublishedProvenance(revision, root, verifyCommand, publishedCommand) {
+  try {
+    execFileSync(verifyCommand[0], [...verifyCommand.slice(1), revision], { cwd: root, stdio: "pipe" });
+  } catch (oracleError) {
+    // An injected judge (a fixture repository) is the sole authority for its own provenance.
+    if (!publishedCommand) throw oracleError;
+    try {
+      execFileSync(publishedCommand[0], [...publishedCommand.slice(1), revision], { cwd: root, stdio: "pipe" });
+    } catch (deterministicError) {
+      throw new Error(`Published commit ${revision} has neither Oracle nor deterministic CI provenance`,
+        { cause: deterministicError });
+    }
+  }
+}
+
+export function readPublishedProductEntries(revision, product = "bos",
+  { repository = root, verifyCommand = VERIFY_COMMIT,
+    publishedCommand = verifyCommand === VERIFY_COMMIT ? VERIFY_PUBLISHED : null } = {}) {
   assertProduct(product);
   const root = repository;
   const prefix = `clients/codex/plugins/${product}/`;
@@ -92,7 +113,7 @@ export function readPublishedProductEntries(revision, product = "bos", { reposit
     throw new Error("Supply an exact 40-character published commit");
   }
   execFileSync("git", ["merge-base", "--is-ancestor", revision, "origin/main"], { cwd: root, stdio: "pipe" });
-  execFileSync(verifyCommand[0], [...verifyCommand.slice(1), revision], { cwd: root, stdio: "pipe" });
+  verifyPublishedProvenance(revision, root, verifyCommand, publishedCommand);
   const listing = execFileSync("git", ["ls-tree", "-r", "-z", revision, "--", prefix], { cwd: root }).toString();
   return listing.split("\0").filter(Boolean).map(line => {
     const [header, path] = line.split("\t");

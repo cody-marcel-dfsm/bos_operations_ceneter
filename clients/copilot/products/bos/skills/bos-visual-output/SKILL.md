@@ -2,8 +2,8 @@
 name: bos-visual-output
 description: Present BOS operational results as polished visual-first briefs using charts, timelines, diagrams, maps, images, status markers, and compact tables when they materially improve comprehension. Use with BOS MCP results, reconciliation, rosters, schedules, pipelines, capacity, campaigns, invoices, attribution, reviews, performance summaries, daily planners, and executive operating reports.
 metadata:
-  version: "1.0.10"
-  requires: "{\"bos-mcp-client\":\"1.0.10\"}"
+  version: "1.0.13"
+  requires: "{\"bos-mcp-client\":\"1.0.12\"}"
 ---
 
 
@@ -15,6 +15,13 @@ with empty arguments and terminate after its receipt or canonical challenged
 401. This connection-level action precedes context/default selection and
 authentication recovery; do not sign in to perform logout.
 
+
+Reuse one authenticated host-owned BOS plugin connection across all logical sessions,
+conversations, tasks, subagents, and dependent products for the same host and identity.
+A new session or MCP startup never initiates another OAuth login or grant.
+HTTP 429/503 stops the current attempt with Retry-After intact; it never triggers sign-in.
+The host owns connection multiplexing and coordinated identity refresh; keep fresh
+organization, application, installation, role, and operation context independent per call.
 
 First apply the versioned identity-context workflow in `bos-mcp-client`.
 For live `bos-identity-mcp/v2`, resolve explicit request scope or the saved
@@ -162,6 +169,46 @@ For a static schedule, pipeline, lifecycle, or reconciliation with three or
 more records or states, Mermaid is the minimum visual fallback when an inline
 chart is unavailable. For quantitative comparisons with three or more values,
 render a bar, line, stacked, heatmap, or scatter chart.
+
+## Workflow execution display
+
+When presenting a BOS workflow execution — a demo run, a live execution, a
+UAT result, or an agent-driven purchase or subscription — do not present it
+as text alone when the current host supports a visual. Use the existing
+inline visual or Mermaid fallback; disclose unavailable host layout or persistent
+display capabilities. Render only authorized source and verified execution
+evidence, preserving redaction and partial-evidence labels, in this order:
+
+- **Graph, always visible.** Every workflow node in execution order, with its
+  state: completed, current/highlighted, delayed/pending, blocked,
+  duplicate-suppressed, or failed. The graph is the explanation; do not hide
+  it behind a link or a collapsible panel.
+- **BOSL source beside the graph.** Show authorized, sanitized BOSL source, or the
+  executed nodes' identifiers when source cannot be shown, next to the graph,
+  so a reader can see code and execution side by side.
+- **Balance chart.** For any money workflow, show balance before and balance
+  after from the same account, and the change as a single number. Never invent
+  an absolute balance: if only the change is verified, show the change and
+  label the absolute values as not shown.
+- **Transaction / receipt panel.** One row per real transaction, never per
+  attempt. A retried payment is one transaction, not two. Show authorized payment
+  reference, product, price, status, and receipt when verified. Label unavailable
+  fields rather than inferring them.
+- **Footprint per node.** Each executed node shows its checksum/proof where
+  the service provides one. A node without a checksum is labeled as such,
+  not faked.
+- **Incident branch, labeled.** A delayed transfer, duplicate attempt, or
+  policy block gets its own labeled branch (for example, a delayed transfer
+  with no double payment), with attempt count, charge count, and the
+  suppression result. Attempts and charges are different numbers and must
+  never be conflated.
+
+A display of a workflow that has not yet run must be labeled "proposed, not
+executed" on the display itself. Text in the conversation stays short —
+verdict, one line per finding, and a pointer to the display — while the
+display carries the detail. Never encode credentials, API keys, tokens, or
+personal details in the display. Sandbox/demo runs are labeled toy/demo on
+the display itself.
 
 ## Composition
 

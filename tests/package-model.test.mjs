@@ -556,7 +556,9 @@ test("every generated Education Center domain skill enforces first-run initializ
       assert.match(guidance, /missing file, an incomplete[\s\S]*or an invalid value/i);
       assert.match(guidance, /invoke `education-center-customer-initialization`[\s\S]*immediately/i);
       assert.match(guidance, /invoke `bos-plugin-settings-initialization`/i);
-      assert.match(guidance, /host-managed BOS authentication/i);
+      assert.match(guidance, /reuse the product's authenticated host-owned BOS plugin binding across logical sessions/i);
+      assert.match(guidance, /Only a verified identity failure requires its existing native sign-in action/);
+      assert.match(guidance, /HTTP 429\/503 preserves Retry-After and stops the attempt without another grant/);
       assert.match(guidance, /resume the original request automatically/i);
     }
   }

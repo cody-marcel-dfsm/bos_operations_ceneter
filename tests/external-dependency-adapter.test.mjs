@@ -298,6 +298,64 @@ test("public recovery methods validate exact host wire results", async () => {
   );
 });
 
+test("429 and 503 retain their retry gate without authentication recovery or replay", async (t) => {
+  const paths = [
+    ["state action", current => current.invokeStateAction(stateAction)],
+    ["returned action", current => current.invokeReturnedAction(completeAction, {acknowledged: true})],
+    ["discovered operation", current => current.invokeDiscoveredOperation(discoveredOperation, {text: "Synthetic Contact"})]
+  ];
+  for (const status of [429, 503]) {
+    for (const transportMode of ["response", "throw"]) {
+      for (const code of authenticationConditionCodes) {
+        for (const [path, invoke] of paths) {
+          await t.test(`${path} ${status} ${transportMode} ${code}`, async () => {
+            let requests = 0;
+            let recoveries = 0;
+            let waits = 0;
+            const current = adapter({
+              request: async () => {
+                requests += 1;
+                const failure = {
+                  status,
+                  headers: {"retry-after": "60"},
+                  body: {error: publicError(code)},
+                  resource
+                };
+                if (transportMode === "throw") throw failure;
+                return failure;
+              },
+              recoverAuthentication: async () => { recoveries += 1; return result("READY"); },
+              waitForAuthentication: async () => { waits += 1; return result("READY"); }
+            });
+            const response = await invoke(current);
+            assert.equal(response.status, status);
+            assert.equal(response.headers["retry-after"], "60");
+            assert.equal(response.body.error.code, code);
+            assert.equal(requests, 1);
+            assert.equal(recoveries, 0);
+            assert.equal(waits, 0);
+          });
+        }
+      }
+    }
+  }
+});
+
+test("unclassified MCP startup failure does not establish a missing identity grant", async () => {
+  let requests = 0;
+  let recoveries = 0;
+  const current = adapter({
+    request: async () => {
+      requests += 1;
+      return {status: 500, body: {error: publicError("MCP_STARTUP_FAILED")}};
+    },
+    recoverAuthentication: async () => { recoveries += 1; return result("READY"); }
+  });
+  assert.equal((await current.invokeStateAction(stateAction)).status, 500);
+  assert.equal(requests, 1);
+  assert.equal(recoveries, 0);
+});
+
 test("identity-v2 returned and state actions attach only a fresh private context header", async () => {
   const requests = [];
   let currentContext = 0;

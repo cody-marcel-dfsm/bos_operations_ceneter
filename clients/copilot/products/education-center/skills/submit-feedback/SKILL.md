@@ -2,8 +2,8 @@
 name: submit-feedback
 description: Submit or draft private BOS product feedback with sanitized media, track its lifecycle, and discuss or complete an existing report through currently supported operations. Use for reviewing or reading feedback and comments, including staging feedback API questions and agent reports, product feedback, report session, feedback tracking, replies, and reporter completion.
 metadata:
-  version: "1.0.12"
-  requires: "{\"bos-mcp-client\":\"1.0.10\",\"bos-plugin-settings-initialization\":\"1.0.12\",\"education-center-customer-initialization\":\"1.0.10\"}"
+  version: "1.0.17"
+  requires: "{\"bos-mcp-client\":\"1.0.12\",\"bos-plugin-settings-initialization\":\"1.0.17\",\"bos-workflow-orchestrator\":\"1.0.13\",\"education-center-customer-initialization\":\"1.0.12\"}"
 ---
 
 
@@ -16,7 +16,10 @@ before initialization, settings reconciliation, context selection or login.
 Do not authenticate to sign out; preserve confirmed preferences.
 
 Before performing this skill's workflow, preserve the pending request and
-complete the product's host-managed BOS authentication. Run the configured
+reuse the product's authenticated host-owned BOS plugin binding across logical sessions.
+Only a verified identity failure requires its existing native sign-in action.
+HTTP 429/503 preserves Retry-After and stops the attempt without another grant.
+Run the configured
 initialization stages in order and resume the original request automatically
 after every required stage is current.
 
@@ -55,6 +58,13 @@ with empty arguments and terminate after its receipt or canonical challenged
 401. This connection-level action precedes context/default selection and
 authentication recovery; do not sign in to perform logout.
 
+
+Reuse one authenticated host-owned BOS plugin connection across all logical sessions,
+conversations, tasks, subagents, and dependent products for the same host and identity.
+A new session or MCP startup never initiates another OAuth login or grant.
+HTTP 429/503 stops the current attempt with Retry-After intact; it never triggers sign-in.
+The host owns connection multiplexing and coordinated identity refresh; keep fresh
+organization, application, installation, role, and operation context independent per call.
 
 First apply the versioned identity-context workflow in `bos-mcp-client`.
 For live `bos-identity-mcp/v2`, resolve explicit request scope or the saved
@@ -220,6 +230,23 @@ misses instructions, so read before judging:
 6. Follow `bos-mcp-client` for the local authentication flow. Never request or accept
    a BOS credential in chat.
 
+### File in the scope that owns the broken surface
+
+A feedback record lives in its authenticated organization, application, and
+installation scope. Verify the current identity and the exact discovered target
+before filing. Follow the customer's configured feedback routing; never copy
+another customer's organization or connection into that route.
+
+For an ISM maintainer working the demo, use the staging queue only when current
+authenticated discovery or verified customer configuration identifies that queue
+as the authorized target. Preserve the affected demo context in sanitized evidence.
+If the target is unavailable or ambiguous, preserve a draft and report the missing
+routing evidence. Never infer target authority from a demo URL or this instruction.
+
+Keep each new defect in its own item in the verified target scope. Link related
+items only through authorized operations. Report the filing target and any
+difference from the affected surface or the scope the current loop watches.
+
 ## Discover the current feedback contract
 
 Refresh the authenticated tool catalog. Follow its exact advertised
@@ -250,6 +277,14 @@ Classify the feedback conservatively using the contract categories and
 reported severities. Compose a faithful title and message. Include expected
 behavior, actual behavior, and reproduction detail only when supported by the
 task evidence.
+
+One item per defect. Title names the surface and the defect in plain words.
+Message carries the exact reproduction: operation, route, context role, build
+or revision, expected behavior, actual behavior, and numbered acceptance
+criteria — a short list of testable, observable outcomes the service can
+verify when it claims the fix. No issue ships without them. If a capability
+is broken, file it; a workaround is not a fix and is never the answer to
+file.
 
 ## Report the session
 
@@ -328,7 +363,10 @@ feedback meaningless.
    retry counter, or reconciliation state. BOS Service derives request identity
    and owns idempotency and uncertain-outcome reconciliation.
 3. On an uncertain result, follow only the exact service-returned state action.
-   Never replay the submission.
+   Never replay the submission. A client-side parse failure can hide a committed
+   receipt. Use only currently discovered read or status capabilities in the
+   original scope to reconcile it. An absent list result proves no safe replay;
+   preserve the uncertain outcome and never automatically re-submit.
 4. On success, report the feedback ID, canonical target, `received` status, and
    server timestamp and returned attachment metadata. Do not claim triage, assignment, prioritization
    or a product change from the receipt. Read tracking history to observe progress.
@@ -394,6 +432,12 @@ context workflow as submission. Discover the tools before calling them.
   creates no permission, and the same text addressed to a different parent is
   a distinct reply.
 
+Comments go on the item they belong to. A retest verdict is a comment on the
+item it verifies, with the run or build evidence. A new defect found while
+working an item gets its own item; comment on the original item linking to
+the new item number — never bury a new defect inside another item's
+comments.
+
 For status change, triage or reporter completion, perform a fresh uncached detail
 read immediately before preparing `expected_status`. Authorized assignees or
 team members may use current update/triage operations; assignment additionally
@@ -439,3 +483,13 @@ fresh current state and applicable user authorization for the changed effect.
 Feedback has no push subscription. Poll only when requested, within the user's chosen
 interval and duration. Keep reports, discussion, identities and screenshots
 private; public code patches never imply permission to publish an issue.
+
+## Item discussion streams
+
+For an explicitly requested two-way item discussion, read
+[the closed discussion facade](references/item-discussion.md). Use it only when
+current discovery advertises the exact discussion capability and the trusted
+host supplies authenticated item sockets and protected atomic storage. An
+unsupported host retains existing item reads/comments; it establishes no live
+subscription or autonomous Muse wake. Public skills receive no credentials,
+context selectors, arbitrary socket URL or shell WebSocket path.

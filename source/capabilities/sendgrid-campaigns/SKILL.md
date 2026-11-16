@@ -2,8 +2,8 @@
 name: sendgrid-campaigns
 description: Prepare, validate, send, and reconcile permission-based, tenant-scoped SendGrid campaigns using deterministic tooling, suppression hygiene, tracking verification, and durable result artifacts.
 metadata:
-  version: "1.0.10"
-  requires: "{\"marketing-analysis\":\"1.0.10\"}"
+  version: "1.0.12"
+  requires: "{\"marketing-analysis\":\"1.0.12\"}"
 ---
 
 # SendGrid Campaigns

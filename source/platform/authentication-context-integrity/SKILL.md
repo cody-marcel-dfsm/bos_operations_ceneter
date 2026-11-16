@@ -2,7 +2,7 @@
 name: authentication-context-integrity
 description: Preserve BOS authentication and execution context across login, app selection, organization selection, role selection, installed-app resolution, MCP calls, plugin configuration, provider authorization, sessions, and background work. Use for application-neutral auth, selector, OAuth, credential, tenant-scope design and review, and automatic authentication handoffs from dependent plugins.
 metadata:
-  version: "1.0.10"
+  version: "1.0.12"
   requires: "{}"
 ---
 
@@ -35,6 +35,11 @@ configuration as distinct validated dimensions.
 
 - User role authorizes the actor; plugin `run_as_role` governs execution.
 - One OAuth identity login or identity API key authenticates the BOS user.
+  Reuse one host-owned BOS plugin connection across all logical sessions,
+  conversations, tasks, subagents, and dependent products for that identity.
+  A new session or MCP initialization never requires another grant by itself.
+  The host owns physical transport multiplexing and coordinated identity refresh;
+  separate hosts and identities retain independent credential custody.
   Current server-authorized contexts expose that identity's eligible organizations,
   applications, installations and assigned roles. Explicit requests or confirmed
   plugin defaults select one fresh context per operation; business request values
@@ -55,13 +60,17 @@ configuration as distinct validated dimensions.
   arguments carry no raw authority selector. Each context requires current server
   authorization through the same identity connection; restricted grants keep their limits.
 - Background jobs carry the same validated scope as interactive operations.
-- The agent owns MCP transport and session recovery. On a closed stream or
-  session, it reconnects the configured endpoint, rediscovers tools,
+- The agent delegates MCP transport and session recovery to the existing host
+  connection. On a closed stream or session, the host reuses its current
+  credential at the configured endpoint; the agent refreshes an invalidated catalog
   and revalidates context. It then follows only an exact host- or
   service-returned continuation action and its declared timing. When none is
   available, it preserves the interrupted request and reports the exact failed
   operation without resubmitting it. It never delegates reconnection to the
   user.
+- HTTP 429/503 stops the current attempt with its `Retry-After` gate intact.
+  Session startup, transport closure, and rate limits never initiate OAuth login,
+  client registration, a replacement grant, or a connection reload on their own.
 - Expose BOS as a remote HTTPS Streamable HTTP MCP server. Claude and
   ChatGPT/Codex marketplace plugins both declare `mcpServers: "./.mcp.json"`
   and ship the immutable resource URL in their own package-owned `.mcp.json`,

@@ -3,13 +3,14 @@ import { spawn } from "node:child_process";
 // Every job remains a separate process. Results retain declaration order even
 // when workers finish in a different order; a failure never skips later jobs.
 export function isolatedTestCohort(jobs, { concurrency = 4, outputLimit = 1024 * 1024,
-  killAfterMs = 5000, signal } = {}) {
+  killAfterMs = 5000, timeoutMs = 0, signal } = {}) {
   if (!Array.isArray(jobs) || !jobs.length || jobs.some(job =>
     !job || typeof job.name !== "string" || !job.name || typeof job.command !== "string" ||
     !Array.isArray(job.args) || job.args.some(arg => typeof arg !== "string")) ||
     new Set(jobs.map(job => job.name)).size !== jobs.length) throw new Error("Unique named process jobs required");
   if (!Number.isInteger(concurrency) || concurrency < 1 || concurrency > 4 ||
-    !Number.isInteger(outputLimit) || outputLimit < 1 || !Number.isInteger(killAfterMs) || killAfterMs < 1)
+    !Number.isInteger(outputLimit) || outputLimit < 1 || !Number.isInteger(killAfterMs) || killAfterMs < 1 ||
+    !Number.isInteger(timeoutMs) || timeoutMs < 0)
     throw new Error("Bounded concurrency, output and cancellation limits required");
   const deferred = jobs.map(() => {
     let resolve;
@@ -38,6 +39,7 @@ export function isolatedTestCohort(jobs, { concurrency = 4, outputLimit = 1024 *
       let bytes = 0;
       let error = null;
       let timer;
+      let deadline;
       let cleanup = Promise.resolve();
       let stopped = false;
       const send = signum => {
@@ -49,6 +51,7 @@ export function isolatedTestCohort(jobs, { concurrency = 4, outputLimit = 1024 *
       const stop = () => {
         if (stopped) return;
         stopped = true;
+        clearTimeout(deadline);
         send("SIGTERM");
         cleanup = new Promise(done => {
           timer = setTimeout(() => { send("SIGKILL"); done(); }, killAfterMs);
@@ -56,6 +59,7 @@ export function isolatedTestCohort(jobs, { concurrency = 4, outputLimit = 1024 *
       };
       active.add(stop);
       const finish = async (code, exitSignal) => {
+        clearTimeout(deadline);
         // Wait for the bounded process-group cleanup even if the leader closes
         // its pipes first. Descendants can ignore TERM or close their own pipes.
         await cleanup;
@@ -68,6 +72,10 @@ export function isolatedTestCohort(jobs, { concurrency = 4, outputLimit = 1024 *
       try {
         child = spawn(job.command, job.args, { cwd: job.cwd, env: job.env ?? process.env,
           detached: process.platform !== "win32", stdio: ["ignore", "pipe", "pipe"] });
+        if (timeoutMs) deadline = setTimeout(() => {
+          error ??= `Process timed out after ${timeoutMs} milliseconds`;
+          stop();
+        }, timeoutMs);
         const collect = key => data => {
           const remaining = Math.max(0, outputLimit - bytes);
           const kept = data.subarray(0, remaining).toString("utf8");
