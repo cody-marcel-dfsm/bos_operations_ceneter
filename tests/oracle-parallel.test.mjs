@@ -46,24 +46,25 @@ print(json.dumps({'ids':full,'units':units,'source_sha256':hashes,'runtime':{'ex
 `;
 
 const execute = String.raw`
-import json,pathlib,sys,time,unittest
+import json,os,pathlib,sys,time,unittest
 sys.path.insert(0,'tests')
 name,report_path=sys.argv[1:]
 class Result(unittest.TextTestResult):
  def __init__(self,*args,**kwargs):
-  super().__init__(*args,**kwargs);self.executed=[];self.passed=[]
+  super().__init__(*args,**kwargs);self.executed=[];self.passed=[];self.spans=[]
  def startTest(self,case):
-  self.executed.append(case.id());super().startTest(case)
+  self.executed.append(case.id());self.spans.append({'id':case.id(),'started_ms':time.monotonic()*1000});super().startTest(case)
+ def stopTest(self,case):
+  self.spans[-1]['finished_ms']=time.monotonic()*1000;super().stopTest(case)
  def addSuccess(self,case):
   self.passed.append(case.id());super().addSuccess(case)
-started=time.monotonic()*1000
 result=unittest.TextTestRunner(verbosity=2,resultclass=Result).run(unittest.defaultTestLoader.loadTestsFromName(name))
-report={'unit':name,'executed':result.executed,'passed':result.passed,'tests_run':result.testsRun,
+report={'unit':name,'pid':os.getpid(),'executable':sys.executable,'version':sys.version,
+ 'executed':result.executed,'passed':result.passed,'tests_run':result.testsRun,'spans':result.spans,
  'failures':[case.id() for case,_ in result.failures],'errors':[case.id() for case,_ in result.errors],
  'skips':[{'id':case.id(),'reason':reason} for case,reason in result.skipped],
  'expected_failures':[case.id() for case,_ in result.expectedFailures],
- 'unexpected_successes':[case.id() for case in result.unexpectedSuccesses],
- 'started_ms':started,'finished_ms':time.monotonic()*1000}
+ 'unexpected_successes':[case.id() for case in result.unexpectedSuccesses]}
 pathlib.Path(report_path).write_text(json.dumps(report))
 sys.exit(0 if result.wasSuccessful() else 1)
 `;
@@ -114,7 +115,10 @@ test("native independent review cohorts preserve bindings and overlap", async ()
           for (const key of ["failures", "errors", "skips", "expected_failures", "unexpected_successes"])
             assert.deepEqual(report[key], []);
           assert.match(result.stderrBytes.toString("utf8"), new RegExp(`\\nRan ${expected.length} tests? in [0-9.]+s\\n\\nOK\\s*$`, "u"));
-          assert.ok(Number.isFinite(report.started_ms) && Number.isFinite(report.finished_ms) && report.finished_ms > report.started_ms);
+          assert.equal(report.executable, inventory.runtime.executable);
+          assert.equal(report.version, inventory.runtime.version);
+          assert.deepEqual(report.spans.map(span => span.id), expected);
+          assert.ok(report.spans.every(span => Number.isFinite(span.started_ms) && Number.isFinite(span.finished_ms) && span.finished_ms > span.started_ms));
         } catch (error) { problems.push(`${result.name}: ${error.message}`); }
       }
     }
@@ -128,12 +132,13 @@ test("native independent review cohorts preserve bindings and overlap", async ()
     const { commit: currentCommit, ...current } = discover();
     const { commit: originalCommit, ...original } = inventory;
     if (JSON.stringify(current) !== JSON.stringify(original)) problems.push("Discovery/source/runtime identity changed");
-    const events = reports.flatMap(report => [[report.started_ms, 1], [report.finished_ms, -1]])
+    const events = reports.flatMap(report => report.spans.flatMap(span => [[span.started_ms, 1], [span.finished_ms, -1]]))
       .sort((a, b) => a[0] - b[0] || a[1] - b[1]);
     let active = 0;
     let peak = 0;
     for (const [, change] of events) { active += change; peak = Math.max(peak, active); }
     if (active !== 0 || peak < 2 || peak > 3) problems.push("Actual independent case overlap exceeded or missed the bounded pool");
+    if (new Set(reports.map(report => report.pid)).size !== jobs.length) problems.push("Each unit requires an independent process");
     console.log(`BOC_ORACLE_MEMBERSHIP ${JSON.stringify({ ...inventory, concurrency: 3,
       executed, peak, current_commit: currentCommit, temporary_directory_sha256: digest(Buffer.from(temporary)),
       node: { executable: process.execPath, version: process.version }, problems })}`);
