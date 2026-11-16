@@ -8,7 +8,7 @@ export function isolatedTestCohort(jobs, { concurrency = 4, outputLimit = 1024 *
     !job || typeof job.name !== "string" || !job.name || typeof job.command !== "string" ||
     !Array.isArray(job.args) || job.args.some(arg => typeof arg !== "string")) ||
     new Set(jobs.map(job => job.name)).size !== jobs.length) throw new Error("Unique named process jobs required");
-  if (!Number.isInteger(concurrency) || concurrency < 1 || concurrency > 4 ||
+  if (!Number.isInteger(concurrency) || concurrency < 1 || concurrency > 8 ||
     !Number.isInteger(outputLimit) || outputLimit < 1 || !Number.isInteger(killAfterMs) || killAfterMs < 1 ||
     !Number.isInteger(timeoutMs) || timeoutMs < 0 || typeof captureBytes !== "boolean")
     throw new Error("Bounded concurrency, output and cancellation limits required");
