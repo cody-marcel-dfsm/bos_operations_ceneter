@@ -10,6 +10,7 @@ import {isolatedTestCohort} from './helpers/isolated-test-cohort.mjs';
 const root=new URL('../',import.meta.url);
 const hash=bytes=>createHash('sha256').update(bytes).digest('hex');
 const environmentHash=environment=>hash(JSON.stringify(environment,Object.keys(environment).sort()));
+const parentEnvironment=environmentHash(process.env);
 const discovery=String.raw`
 import ast,json,sys,unittest,hashlib,subprocess,platform,stat
 from pathlib import Path
@@ -41,9 +42,11 @@ for name in paths:
  mode=subprocess.check_output(['git','ls-tree','-z','HEAD','--',name]).split(b' ',1)[0].decode()
  assert mode==('100755' if fact.st_mode&0o111 else '100644'),'Uncommitted fixture mode: '+name
  source[name]={'sha256':hashlib.sha256(body).hexdigest(),'mode':mode}
-print(json.dumps({'source':source,'rows':rows,'ids':sorted(all_ids),'commit':subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip(),'runtime':{'executable':sys.executable,'version':sys.version,'platform':platform.platform()}}))
+def binary_digest(path):
+ with open(path,'rb') as stream:return hashlib.file_digest(stream,'sha256').hexdigest()
+print(json.dumps({'source':source,'rows':rows,'ids':sorted(all_ids),'commit':subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip(),'runtime':{'executable':sys.executable,'version':sys.version,'platform':platform.platform(),'sha256':binary_digest(sys.executable),'node':{'executable':sys.argv[1],'version':sys.argv[2],'sha256':binary_digest(sys.argv[1])}}}))
 `;
-const discover=()=>JSON.parse(execFileSync('python3',['-B','-c',discovery],
+const discover=()=>JSON.parse(execFileSync('python3',['-B','-c',discovery,process.execPath,process.version],
  {cwd:root,encoding:'utf8',timeout:30000,maxBuffer:2*1024*1024,stdio:'pipe'}));
 const inventory=discover();
 const execute=String.raw`
@@ -135,11 +138,12 @@ try{
     }catch(error){problems.push(job.name+': '+error.message);}
    }
    const executed=reports.flatMap(row=>row.executed).sort();assert.deepEqual(executed,inventory.ids);assert.equal(new Set(executed).size,inventory.ids.length);
+   assert.equal(environmentHash(process.env),parentEnvironment,'Parent execution environment changed');
    const current=discover();const {commit:beforeCommit,...before}=inventory;const {commit:afterCommit,...after}=current;
    assert.deepEqual(after,before);continuity={before_commit:beforeCommit,after_commit:afterCommit};
   }catch(error){problems.push(error.message);cohort.cancel();await cohort.completion;}
   finally{try{cleanup();cleaned=true;}catch(error){problems.push('Owned cleanup failed: '+error.message);}}
-  const proof={...inventory,executed:reports.flatMap(row=>row.executed).sort(),reports,concurrency:4,continuity,cleanup:cleaned,problems};
+  const proof={...inventory,executed:reports.flatMap(row=>row.executed).sort(),reports,concurrency:4,parent_environment_sha256:parentEnvironment,continuity,cleanup:cleaned,problems};
   console.log('BOC_SPEC_MEMBERSHIP '+JSON.stringify(proof));return proof;
  })();
 }catch(error){if(cohort){cohort.cancel();await cohort.completion;}try{cleanup();}catch(cleanupError){throw new AggregateError([error,cleanupError],'Spec unit startup and cleanup failed');}throw error;}
