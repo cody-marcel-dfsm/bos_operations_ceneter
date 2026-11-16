@@ -392,9 +392,9 @@ class PackageGateTests(unittest.TestCase):
         self.assertEqual(summaries[0]['output_sha256'], checksum)
 
     def test_preserved_native_scope_requires_complete_spec_modules_and_rejects_neighboring_paths(self):
-        self.assertEqual(len(d.PRESERVED_SPEC_PATHS),32)
+        self.assertEqual(len(d.PRESERVED_SPEC_PATHS),33)
         self.assertEqual(d.native.digest('\n'.join(sorted(d.PRESERVED_SPEC_PATHS)).encode()),
-                         '45bf62bc4a7d0daf27d0bbd4b4cc364cce234f92ff60cc1620ef1695ecc74bdd')
+                         'cc90c47a1b2711c64d674a161b6e67d75f6395c02c69458c69aa89c903307358')
         baseline=self.git('rev-parse','HEAD');path=self.root/'tools/vault_index.py'
         path.parent.mkdir(parents=True,exist_ok=True);path.write_text('bounded preserved implementation\n');self.commit()
         source=self.git('rev-parse','HEAD')
@@ -422,7 +422,7 @@ class PackageGateTests(unittest.TestCase):
 
     def test_test_only_git_and_series_paths_require_actual_sealed_helper_coverage(self):
         baseline=self.git('rev-parse','HEAD')
-        for name in ('tests/oracle-review-series.test.mjs','tests/helpers/native-validation-git.mjs'):
+        for name in ('tests/oracle-review-series.test.mjs','tests/helpers/native-validation-git.mjs','tests/helpers/native-validation-state.mjs'):
             path=self.root/name;path.parent.mkdir(parents=True,exist_ok=True);path.write_text('exact bounded test-only resource\n')
         self.commit();source=self.git('rev-parse','HEAD')
         selection={'selection':{'categories':[{'tests':sorted(d.PRESERVED_SPEC_TESTS)}]}}

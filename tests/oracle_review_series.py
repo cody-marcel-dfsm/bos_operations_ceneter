@@ -5,6 +5,8 @@ import ast
 import inspect
 import json
 import os
+import hashlib
+import stat
 from contextlib import contextmanager, redirect_stderr, redirect_stdout
 import subprocess
 import sys
@@ -19,6 +21,53 @@ from tools import oracle_lifecycle as lifecycle
 
 
 SETUP_PROPOSAL = "Problem: synthetic; Cause: synthetic; Recommended change: synthetic"
+
+
+def fixture_projection(root):
+    """Capture actual constructor inputs, including their immutable Git modes."""
+    names = set(o.REVIEW_POLICY_MODULES) | {
+        'AGENTS.md', '.agents/skills/oracle/SKILL.md', '.gitignore',
+        'source.py', 'peer.py', 'dependency.py', 'config.json',
+        'package.json', 'package-manifest.json', 'skill-release-manifest.json',
+        'products/bos/product.json',
+        *('clients/'+client+'/'+prefix+'/bos/.bos-product.json' for client, prefix in
+          {'codex':'plugins','claude':'plugins','copilot':'products',
+           'gemini':'extensions','muse':'plugins'}.items())}
+    raw = subprocess.check_output(['git', 'ls-tree', '-rz', '--full-tree', 'HEAD'], cwd=root)
+    entries = {}
+    total = 0
+    for row in raw.split(b'\0'):
+        if not row: continue
+        header, name = row.split(b'\t', 1)
+        mode, kind, oid = header.decode('ascii').split(' ')
+        name = name.decode('utf-8')
+        if name not in names or name in entries or kind != 'blob' or mode not in {'100644','100755'}:
+            raise ValueError('Unexpected constructor input inventory')
+        path = root / name
+        for parent in path.parents:
+            if parent == root: break
+            if parent.is_symlink() or not parent.is_dir(): raise ValueError('Constructor parent custody changed')
+        fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
+        try:
+            before = os.fstat(fd)
+            if not stat.S_ISREG(before.st_mode) or before.st_size > 8*1024*1024:
+                raise ValueError('Constructor input bounds changed')
+            with os.fdopen(fd, 'rb', closefd=False) as stream: body = stream.read(8*1024*1024+1)
+            after = os.fstat(fd)
+            identity = lambda value: (value.st_dev,value.st_ino,value.st_uid,value.st_mode,value.st_size,value.st_mtime_ns,value.st_ctime_ns)
+            if identity(before) != identity(after) or identity(path.lstat()) != identity(after):
+                raise ValueError('Constructor input changed during capture')
+        finally: os.close(fd)
+        actual_mode = '100755' if before.st_mode & 0o111 else '100644'
+        algorithm = {40:'sha1',64:'sha256'}.get(len(oid))
+        if algorithm is None or not all(c in '0123456789abcdef' for c in oid): raise ValueError('Invalid constructor object')
+        if actual_mode != mode or hashlib.new(algorithm, b'blob '+str(len(body)).encode()+b'\0'+body).hexdigest() != oid:
+            raise ValueError('Constructor input differs from committed bytes or mode')
+        total += len(body)
+        if total > 32*1024*1024: raise ValueError('Constructor input total exceeds bound')
+        entries[name] = {'mode':mode,'bytes':len(body),'sha256':hashlib.sha256(body).hexdigest()}
+    if set(entries) != names or len(entries) != 30: raise ValueError('Constructor input membership changed')
+    return {name:entries[name] for name in sorted(entries)}
 
 
 class ReviewSeries(unittest.TestCase):
@@ -67,6 +116,7 @@ class ReviewSeries(unittest.TestCase):
         patch.object(o, "__file__", str(self.root / "tools/oracle_approval.py")).start()
         self.git("add", "."); self.git("commit", "-qm", "base")
         self.base = self.git("rev-parse", "HEAD")
+        self.fixture_inputs = fixture_projection(self.root)
         self.environment = patch.object(o, "_environment_digest", return_value="environment-A").start()
         self.addCleanup(patch.stopall)
         self.evidence = self.root / "Vault/tmp/validation.json"

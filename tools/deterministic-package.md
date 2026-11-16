@@ -591,3 +591,24 @@ proofs, checks source/schema/helper/tool/runtime/environment identity, preserves
 deadlines and drains owned cancellation before aggregate success. This retains
 all prior commands/privacy/history/security/package/export and original timing
 evidence; the previous556.363-second proof remains a genuine historical result.
+
+### Profile /17: validation resources and source lifetime
+
+The finite preserved inventory adds only `tests/helpers/native-validation-state.mjs`
+(33 exact preserved paths, unchanged mandatory selected modules). The existing
+review-series consumer retains every actual case and raw output while binding the
+constructor's 30 tracked input files, including 26 control inputs, by bytes and
+Git executable modes. Commit movement is provenance; all consumed content,
+runtime, schema, helper and tool identities remain checked.
+
+Test-only Darwin admission credits at most one quarter of the lesser inactive
+and file-backed memory after a reserve of at least 2 GiB or one sixteenth of
+physical RAM. Normal pressure and stable swap observations are required;
+malformed or unavailable metrics retain free-only admission. Credited execution
+monitors pressure and swap, cancels owned work on degradation, drains results and
+fails. The CPU/eight-worker/256-MiB limits and every existing deadline remain.
+Whole-lifetime cleanup covers preparation and source-discovery rejection, checks
+owned directory identities, and preserves foreign replacements. The existing
+isolated-cohort and sealed-spec modules test resource decisions, content/mode
+continuity, actual startup rejection and constructor mutations. Full current
+native verification remains required; historical timing breaches stay recorded.

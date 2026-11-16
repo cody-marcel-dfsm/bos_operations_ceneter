@@ -33,7 +33,7 @@ except ImportError:
     import oracle_spec_seal as spec_seal
 
 KIND = 'boc-deterministic-package/1'
-PROFILE = 'feedback-discovery-and-release-tool/16'
+PROFILE = 'feedback-discovery-and-release-tool/17'
 _OUTPUT_LOCK = threading.Lock()
 WS_LOCK_RECORD = {
     'version': '8.23.0', 'resolved': 'https://registry.npmjs.org/ws/-/ws-8.23.0.tgz',
@@ -214,6 +214,7 @@ PRESERVED_SPEC_PATHS = {'.agents/skills/operations-center-implementation/SKILL.m
  'tests/oracle-parallel.test.mjs',
  'tests/oracle-review-series.test.mjs',
  'tests/helpers/native-validation-git.mjs',
+ 'tests/helpers/native-validation-state.mjs',
  'tests/oracle-scope-index.test.mjs',
  'tests/oracle-source-frontier.test.mjs',
  'tests/oracle_scope_index_test.py',

@@ -5,12 +5,13 @@ import { chmod, mkdir, mkdtemp, readFile, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
+import {assertValidationContinuity} from "./helpers/native-validation-state.mjs";
 import { isolatedTestCohort } from "./helpers/isolated-test-cohort.mjs";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
 const digest = bytes => createHash("sha256").update(bytes).digest("hex");
 const discovery = String.raw`
-import hashlib,importlib,json,pathlib,platform,subprocess,sys,unittest
+import hashlib,importlib,json,pathlib,platform,stat,subprocess,sys,unittest
 sys.path.insert(0,'tests')
 module=importlib.import_module('oracle_parallel_test')
 from tools import oracle_approval as oracle
@@ -36,13 +37,19 @@ for name in classes:
 full=ids(loader.loadTestsFromModule(module))
 assert len(full)==44 and len(set(full))==44 and sorted(full)==sorted(member for members in units.values() for member in members)
 assert [len(ids(loader.loadTestsFromTestCase(getattr(module,name)))) for name in classes]==[34,3,7]
-paths=sorted(set(oracle.REVIEW_POLICY_MODULES)|{'tests/oracle_parallel_test.py','tests/oracle_review_series.py','tests/oracle-parallel.test.mjs','tests/helpers/isolated-test-cohort.mjs'})
+paths=sorted(set(oracle.REVIEW_POLICY_MODULES)|{'tests/oracle_parallel_test.py','tests/oracle_review_series.py','tests/oracle-parallel.test.mjs','tests/helpers/isolated-test-cohort.mjs','tests/helpers/native-validation-state.mjs','.agents/skills/oracle/review-output.schema.json'})
 hashes={}
+modes={}
 for name in paths:
- raw=pathlib.Path(name).read_bytes()
+ path=pathlib.Path(name);fact=path.lstat()
+ assert stat.S_ISREG(fact.st_mode) and not path.is_symlink(),'Discovery requires regular source: '+name
+ raw=path.read_bytes()
+ mode=subprocess.check_output(['git','ls-tree','-z','HEAD','--',name]).split(b' ',1)[0].decode()
+ assert mode==('100755' if fact.st_mode&0o111 else '100644'),'Discovery mode differs from committed source: '+name
+ modes[name]=mode
  assert raw==subprocess.check_output(['git','show','HEAD:'+name]),'Discovery source differs from committed content: '+name
  hashes[name]=hashlib.sha256(raw).hexdigest()
-print(json.dumps({'ids':full,'units':units,'source_sha256':hashes,'runtime':{'executable':sys.executable,'version':sys.version,'platform':platform.platform()},'commit':subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip()}))
+print(json.dumps({'ids':full,'units':units,'source_sha256':hashes,'source_modes':modes,'runtime':{'executable':sys.executable,'version':sys.version,'platform':platform.platform()},'commit':subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip()}))
 `;
 
 const execute = String.raw`
@@ -129,9 +136,10 @@ test("native independent review cohorts preserve bindings and overlap", async ()
     for (const [name, hash] of Object.entries(inventory.source_sha256)) {
       if (digest(await readFile(join(root, name))) !== hash) problems.push(`Source moved: ${name}`);
     }
-    const { commit: currentCommit, ...current } = discover();
-    const { commit: originalCommit, ...original } = inventory;
-    if (JSON.stringify(current) !== JSON.stringify(original)) problems.push("Discovery/source/runtime identity changed");
+    const current=discover();
+    const currentCommit=current.commit;
+    try {assertValidationContinuity(inventory,current);}
+    catch(error){problems.push("Discovery/source/runtime identity changed: "+error.message);}
     const events = reports.flatMap(report => report.spans.flatMap(span => [[span.started_ms, 1], [span.finished_ms, -1]]))
       .sort((a, b) => a[0] - b[0] || a[1] - b[1]);
     let active = 0;

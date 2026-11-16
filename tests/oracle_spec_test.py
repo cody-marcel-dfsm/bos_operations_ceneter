@@ -939,5 +939,56 @@ class NativePolicyBatch(unittest.TestCase):
         self.assertEqual(oracle._review_policy_tree_sources(self.root,self.revision),original)
 
 
+
+
+class NativeValidationFixtureInputs(unittest.TestCase):
+    def test_actual_constructor_projection_rejects_body_mode_link_missing_and_extra(self):
+        import oracle_review_series as suite
+        case = suite.ReviewSeries('runTest')
+        try:
+            case.setUp()
+            self.assertEqual(len(case.fixture_inputs), 30)
+            for name in ('source.py', 'peer.py'):
+                (case.root/name).write_bytes(subprocess.check_output(['git','show','HEAD:'+name],cwd=case.root))
+            self.assertEqual(suite.fixture_projection(case.root), case.fixture_inputs)
+            path=case.root/'source.py'; original=path.read_bytes(); mode=path.stat().st_mode&0o777
+            path.write_bytes(original+b'changed')
+            with self.assertRaisesRegex(ValueError,'committed bytes'):suite.fixture_projection(case.root)
+            path.write_bytes(original);path.chmod(mode^0o111)
+            with self.assertRaisesRegex(ValueError,'committed bytes or mode'):suite.fixture_projection(case.root)
+            path.chmod(mode);path.unlink()
+            with self.assertRaises(FileNotFoundError):suite.fixture_projection(case.root)
+            path.symlink_to(case.root/'peer.py')
+            with self.assertRaises(OSError):suite.fixture_projection(case.root)
+            path.unlink();path.write_bytes(original);path.chmod(mode)
+            (case.root/'unexpected.py').write_text('synthetic extra input')
+            case.git('add','unexpected.py','source.py','peer.py');case.git('commit','-qm','Synthetic extra input')
+            with self.assertRaisesRegex(ValueError,'inventory'):suite.fixture_projection(case.root)
+        finally:case.doCleanups()
+
+    def test_real_wrapper_startup_source_rejection_cleans_owned_resources(self):
+        import shutil
+        files=set(oracle.REVIEW_POLICY_MODULES)|{
+            'tests/oracle-review-series.test.mjs','tests/oracle_review_series.py',
+            'tests/helpers/isolated-test-cohort.mjs','tests/helpers/native-validation-git.mjs',
+            'tests/helpers/native-validation-state.mjs','.agents/skills/oracle/review-output.schema.json'}
+        scratch=REPOSITORY/'Vault/tmp';scratch.mkdir(parents=True,exist_ok=True)
+        with tempfile.TemporaryDirectory(dir=scratch,prefix='startup-custody-') as temporary:
+            root=Path(temporary)/'repository';root.mkdir()
+            for name in files:
+                target=root/name;target.parent.mkdir(parents=True,exist_ok=True);shutil.copy2(REPOSITORY/name,target)
+            def git(*args):return subprocess.check_output(['git',*args],cwd=root,stderr=subprocess.PIPE)
+            git('init','-q');git('config','user.name','Synthetic Validation')
+            git('config','user.email','validation@example.invalid');git('add','.')
+            git('commit','-qm','Synthetic validation inputs')
+            schema=root/'.agents/skills/oracle/review-output.schema.json'
+            schema.write_bytes(schema.read_bytes()+b'\n')
+            result=subprocess.run(['node','--test','tests/oracle-review-series.test.mjs'],cwd=root,
+                                  stdout=subprocess.PIPE,stderr=subprocess.PIPE,timeout=30)
+            self.assertNotEqual(result.returncode,0)
+            self.assertIn(b'Discovery differs from committed source',result.stdout+result.stderr)
+            self.assertEqual(list((root/'Vault/tmp').iterdir()),[])
+
+
 if __name__ == '__main__':
     unittest.main()

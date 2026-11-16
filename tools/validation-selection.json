@@ -6,10 +6,10 @@
     "model": "gpt-6.1-sol",
     "oracle_sha256": "9e1a36bf3e4dc5ed8e303b3ec8de515abbf060c356a6870f02a621dddd0435df",
     "host": "Codys-MacBook-Pro.local",
-    "time": "2026-11-16T07:42:49Z",
+    "time": "2026-11-16T08:57:26Z",
     "origin_main": "b16128819f56e81b2cb794c07506da056d073535",
-    "request_sha256": "c559a8c460109af46de6c3b12cfab8a1088c86a3157118d901be4983814e2bfc",
-    "proposal_sha256": "16c91f37449cfec7bd5fb1681828b918942ce3b90257547d093793a777f64ebd"
+    "request_sha256": "a83883f328b78fb2f78627eaae8256615a80d311226a6150299414be4025dd10",
+    "proposal_sha256": "7732fffc27ac353a533ef8e18f37fc5cbc2fc93369eeaabc4ece4d452d259fb5"
   },
   "selection": {
     "acceptance": [
@@ -69,7 +69,12 @@
       "Partition the complete discovered 44-case Oracle membership exactly once, keeping the 34-case class together and splitting only independent cases from the remaining two classes after rejecting module/class lifetime hooks. Use the existing three-process fixed pool and an at-most-three-process selected wrapper cohort. Verify actual executed IDs, counts, zero skips, committed/live test hashes, private temporary directories, original per-case deadlines, raw stdout/stderr byte proofs, canonical ordering, drained pipes and bounded process-group cancellation. Reject omitted or duplicate cases, unsafe fixtures, malformed or incomplete output and result/source/runtime tampering.",
       "Read each historical reviewer-policy closure over the fixed fourteen literal module paths using exactly one bounded Git tree-inventory process and one binary-safe batch-body process, returning bytes and executable modes identical to independent per-path reads. Require exact inventory membership and reject duplicate, missing, extra or incorrect paths, unsupported modes or types, invalid full object identities, inconsistent sizes, per-body or aggregate bound violations, reordered responses, malformed newline framing, truncation, trailing output and raw-object hash mismatches before policy interpretation. Accept only validated immutable revision inputs, preserve existing Git routing and current-source custody checks and unchanged AST/legacy interpretation, and introduce no cross-operation cache or caller-defined inventory. Prove real-Git equivalence including executable modes and binary/newline payloads, actual twenty-eight-to-two process reduction, malformed-output and tamper rejection, and independent current-mutation and repository reads; execute complete existing policy/spec and review-series coverage and retain honest representative and complete-category timings without resetting original lifecycle evidence.",
       "Limit direct native Git selection to the ReviewSeries test child environment when the originally resolved executable is the actual system-owned regular Darwin shim. Resolve the same selected developer Git under the original environment and verify version, exec-path, executable identity, content and directory custody before execution and after completion. Preserve custom Git resolution and Linux behavior, pin the original absolute Python and Node executables, preserve every other PATH entry and environment value, reject malformed selection, mismatch, symlink substitution and tool or directory tampering, and remove only owned temporary artifacts.",
-      "Retain the generic cohort default of four and enforce an integer hard maximum of eight, with only ReviewSeries selecting up to eight within actual available CPU capacity. Demonstrate actual eight-worker overlap and rejection of nine and invalid settings while preserving other callers' existing caps, independent processes and private temporary directories, bounded output, cancellation and cleanup. Execute the complete fixed 172-case inventory without caller filtering, caching, duplication, omission or skips; collect actual outcomes before aggregate success and retain raw output hashes plus source, schema, helper, runtime and environment custody. Admit only the exact helper and associated test/profile paths, reject neighboring unsupported paths, preserve existing deadlines and guards, and require complete current native verification without resetting original clocks or replacing historical results."
+      "Retain the generic cohort default of four and enforce an integer hard maximum of eight, with only ReviewSeries selecting up to eight within actual available CPU capacity. Demonstrate actual eight-worker overlap and rejection of nine and invalid settings while preserving other callers' existing caps, independent processes and private temporary directories, bounded output, cancellation and cleanup. Execute the complete fixed 172-case inventory without caller filtering, caching, duplication, omission or skips; collect actual outcomes before aggregate success and retain raw output hashes plus source, schema, helper, runtime and environment custody. Admit only the exact helper and associated test/profile paths, reject neighboring unsupported paths, preserve existing deadlines and guards, and require complete current native verification without resetting original clocks or replacing historical results.",
+      "Admit additional Darwin test capacity only from strictly bounded native metrics with normal pressure and stable swap counters. Credit at most one quarter of the lesser inactive and file-backed memory after reserving the greater of two GiB and one sixteenth of total memory; avoid double counting and preserve CPU, eight-worker and 256-MiB-per-worker limits. Unknown or malformed observations use conservative free-memory admission, and credited execution cancels and drains owned work on pressure or swap degradation.",
+      "Treat before-and-after commits as provenance while comparing exact required source bytes, executable modes, case membership, schema, helpers, runtimes, tools and environments. Permit bookkeeping-only commit movement, retain committed/live equivalence, and reject changed consumed content, modes, symlinks, unknown inputs or runtime identities.",
+      "Bind discovery and every independent review-series fixture to the exact constructor inventory of copied control sources, literal metadata, governance and synthetic data. Verify immutable bytes and modes and reject missing, extra, substituted or modified entries without treating temporary locations or commit timestamps as source identity.",
+      "Establish verified ownership immediately after creating each lifetime resource and cover preparation, discovery, job construction, execution, verification and disposal. Preserve foreign replacements and original failures, settle owned work, retain every actual result and raw stream, and complete verified-owned cleanup before aggregate success; exercise real wrapper startup rejection and cancellation failures.",
+      "Extend deterministic profile admission only through finite exact paths and corresponding tests for the new test helper and necessary wrapper composition. Preserve every existing criterion, selected module, case inventory, deadline, privacy, credential, history, packaging and publication check, and require complete current native verification without replacing historical results or resetting lifecycle clocks."
     ],
     "acceptance_tests": [
       {
@@ -88,7 +93,8 @@
           27,
           46,
           48,
-          54
+          54,
+          59
         ],
         "module": "tests/oracle-implementation-spec.test.mjs",
         "purpose": "Verify sealed spec production, privacy, engine invocation, external input custody, native migration, publication-range scope, configured interpreter preservation, CI admission and historical provenance refusal."
@@ -115,7 +121,8 @@
           50,
           52,
           53,
-          56
+          56,
+          61
         ],
         "module": "tests/deterministic-lanes.test.mjs",
         "purpose": "Verify finite profile membership, neighboring-path refusal, mandatory conformance modules, complete selected execution and exact-source leased publication."
@@ -153,7 +160,9 @@
       {
         "covers": [
           15,
-          53
+          53,
+          58,
+          60
         ],
         "module": "tests/oracle-parallel.test.mjs",
         "purpose": "Verify independent parallel custody, capped effort, overlap and failure handling."
@@ -186,7 +195,11 @@
           18,
           54,
           55,
-          56
+          56,
+          57,
+          58,
+          59,
+          60
         ],
         "module": "tests/oracle-review-series.test.mjs",
         "purpose": "Verify scoped custody, authority-drift errors, launcher dependencies and bounded reviewer settings."
@@ -421,7 +434,10 @@
           44,
           48,
           55,
-          56
+          56,
+          57,
+          58,
+          60
         ],
         "module": "tests/isolated-test-cohort.test.mjs",
         "purpose": "Verify complete nonduplicated native test membership, bounded isolated execution, retained outputs and failure propagation."
@@ -467,7 +483,8 @@
           "tests/helpers/synthetic-onboarding.mjs",
           "tests/helpers/synthetic-bos-discovery-service.mjs",
           "tests/helpers/isolated-test-cohort.mjs",
-          "tests/helpers/native-validation-git.mjs"
+          "tests/helpers/native-validation-git.mjs",
+          "tests/helpers/native-validation-state.mjs"
         ],
         "name": "interactions",
         "tests": [
@@ -527,9 +544,9 @@
       }
     ],
     "change_class": "feature",
-    "design": "Vault/tmp/feedback-development/aio-integration/test-only-git-worker-design.md",
-    "reason": "Add bounded test-only native Git selection and resource-aware fixture concurrency, with executable custody, unchanged execution semantics and complete current native verification. Retain the entire prior contract and historical evidence.",
-    "revision_of": "d29feed231f133f2b946577c4f2a9ae60981889419fdf55db04015cc126cf76c",
+    "design": "Vault/tmp/feedback-development/aio-integration/validation-state-design-v3.md",
+    "reason": "Add bounded resource admission, exact fixture continuity and whole-lifetime cleanup coverage using retained modules. Preserve the complete prior contract, original timing evidence and complete native verification requirements.",
+    "revision_of": "b54e59946e53f60ce9fbfba0357131893ec65de917302f5a035310a6faebb708",
     "scope_paths": [
       ".agents/skills/operations-center-implementation/SKILL.md",
       ".agents/skills/oracle/review-output.schema.json",
@@ -1100,6 +1117,7 @@
       "tests/helpers/isolated-test-cohort.mjs",
       "tests/helpers/lead-graph-acceptance.mjs",
       "tests/helpers/native-validation-git.mjs",
+      "tests/helpers/native-validation-state.mjs",
       "tests/helpers/synthetic-bos-discovery-service.mjs",
       "tests/helpers/synthetic-notifications.mjs",
       "tests/helpers/synthetic-onboarding.mjs",
@@ -1156,8 +1174,8 @@
       "tools/vault_index.py"
     ]
   },
-  "base_commit": "b8259ed18061356609ac7c30b6a91d94648c10ef",
-  "base_tree": "ea8e0335e2344e3cb5e75d505f0afc7c591ba062",
+  "base_commit": "9d41b03cc9fd6378d5c576af358fadf226f7c1cd",
+  "base_tree": "ebdf4e36ccdca7a54bbb84ceae49ba850b631e3c",
   "catalog_sha256": "9a96f1cd2a973457f9da681dddcc5161aa8ffda188b092d849e5bc83999391c8",
   "runtime": {
     "node": "v22.11.0",
@@ -1167,8 +1185,8 @@
     "architecture": "arm64",
     "options_sha256": "ebc442c160f8629073a82976daadaba1d95a60a38d768c81c8eb06598aedcac5"
   },
-  "proposal_sha256": "16c91f37449cfec7bd5fb1681828b918942ce3b90257547d093793a777f64ebd",
-  "review_sha256": "8916a7c2a82c7d39128fb984536d7dac0a422c4bcc7e036e052f7f346a950dfb",
+  "proposal_sha256": "7732fffc27ac353a533ef8e18f37fc5cbc2fc93369eeaabc4ece4d452d259fb5",
+  "review_sha256": "9e2da18f6dca2dc69e6b85158328b112878b0364a77188ed7d2a500970d9878d",
   "commands": [
     {
       "category": "sanity",
@@ -1281,7 +1299,8 @@
         "tests/helpers/synthetic-onboarding.mjs",
         "tests/helpers/synthetic-bos-discovery-service.mjs",
         "tests/helpers/isolated-test-cohort.mjs",
-        "tests/helpers/native-validation-git.mjs"
+        "tests/helpers/native-validation-git.mjs",
+        "tests/helpers/native-validation-state.mjs"
       ]
     },
     {
@@ -1320,16 +1339,18 @@
     "maximum_reasoning_effort": "medium"
   },
   "design_binding": {
-    "design": "Vault/tmp/feedback-development/aio-integration/test-only-git-worker-design.md",
-    "design_sha256": "195c157d07ac0fe70648a9444abeba6dffdc139683c0c664c8f28323716a5595",
-    "plan": "Vault/tmp/feedback-development/aio-integration/test-only-git-worker-design.test-plan.json",
-    "plan_sha256": "5582b26e19a1e496358ae85ac0e9cbce69402911c6a889c752c5d13c0c2c4286",
+    "design": "Vault/tmp/feedback-development/aio-integration/validation-state-design-v3.md",
+    "design_sha256": "20896f3538e5886d516e3dd35a7eb507a2fccd004d86733b2815f17ca0f3afbe",
+    "plan": "Vault/tmp/feedback-development/aio-integration/validation-state-design-v3.test-plan.json",
+    "plan_sha256": "9600303ac2ceed6f62b6edd1fa3778bf667bf4534b4c46ace37858f21eb8f17c",
     "tests": [
       "tests/deterministic-lanes.test.mjs",
       "tests/isolated-test-cohort.test.mjs",
+      "tests/oracle-implementation-spec.test.mjs",
+      "tests/oracle-parallel.test.mjs",
       "tests/oracle-review-series.test.mjs"
     ]
   },
-  "contract_sha256": "b54e59946e53f60ce9fbfba0357131893ec65de917302f5a035310a6faebb708",
-  "seal": "94fb36d0ccdfc799595f9a62bb702b000c7de96043b0f75ba692c2a8ffa40ebc"
+  "contract_sha256": "4a0b6d242256dbef9ecb3d40db0d99775a6e00d07482ebb5644b88b84c7255e5",
+  "seal": "18ca804f9a1362df5b8932aa5bffdb3d4c6524ed61158ec530a9ffebc695f972"
 }
