@@ -177,13 +177,12 @@ class CommandCoverage(unittest.TestCase):
         git("commit", "-qm", "base")
         git("branch", "-M", "main")
         baseline = git("rev-parse", "HEAD")
-        remote = self.root / "owned-synthetic-remote.git"
-        git("init", "--bare", "-q", str(remote))
-        git("push", str(remote), baseline + ":refs/heads/main")
         git("remote", "add", "origin", o.PUBLICATION_REMOTE)
-        git("config", "remote.origin.pushurl", publication.public_status.SSH_REMOTE)
-        # The owned SSH destination resolves to the synthetic bare remote; no network.
-        git("config", "url." + str(remote) + ".insteadOf", publication.public_status.SSH_REMOTE)
+        # Production routing still resolves the exact owned URL. Only the
+        # actual Git transport is redirected by the closed synthetic fixture.
+        from publication_admission_test import owned_remote
+        remote = owned_remote(self, self.root, baseline)
+        self.assertEqual(publication.public_status.push_url(self.root), publication.public_status.SSH_REMOTE)
         (self.root / "package.json").write_text('{"version":"0.0.2"}')
         git("add", "package.json")
         git("commit", "-qm", "validated source")
