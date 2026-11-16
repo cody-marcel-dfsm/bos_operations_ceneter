@@ -33,7 +33,7 @@ except ImportError:
     import oracle_spec_seal as spec_seal
 
 KIND = 'boc-deterministic-package/1'
-PROFILE = 'feedback-discovery-and-release-tool/14'
+PROFILE = 'feedback-discovery-and-release-tool/15'
 _OUTPUT_LOCK = threading.Lock()
 WS_LOCK_RECORD = {
     'version': '8.23.0', 'resolved': 'https://registry.npmjs.org/ws/-/ws-8.23.0.tgz',

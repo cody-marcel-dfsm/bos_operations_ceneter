@@ -554,3 +554,13 @@ The fixed Python dispatcher starts its measured89-second package module first,
 then fills the remaining slots with the exact independent cases. The previous
 dispatch delayed that module behind those cases and took156.476seconds. The
 three-process cap, complete membership and canonical result order remain fixed.
+
+Amendment `/15` preserves the exact fourteen-module reviewer-policy closure while
+reading each immutable historical closure with two finite Git processes. A
+size-bearing canonical tree inventory precedes bounded binary object frames;
+path/mode/type/object/size/order/framing/hash/EOF mismatches fail before policy
+interpretation. No cross-operation cache or current Git routing/HEAD/index check
+is removed. Actual old per-path reads, executable/binary/newline equivalence and
+malformed/oversized/cross-repository/ref/mutation regressions accompany the full
+existing policy/spec and172-case review-series modules. Original clocks and all
+privacy/history/publication gates remain unchanged.

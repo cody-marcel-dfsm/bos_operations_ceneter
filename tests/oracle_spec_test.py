@@ -824,5 +824,120 @@ class NativeDelta(Fixture):
         self.assertEqual((self.root/v.SELECTION).read_bytes(),before)
 
 
+
+class NativePolicyBatch(unittest.TestCase):
+    def setUp(self):
+        self.temp=tempfile.TemporaryDirectory(dir=REPOSITORY/'Vault/tmp',prefix='policy-batch-')
+        self.addCleanup(self.temp.cleanup);self.root=Path(self.temp.name)/'repository'
+        self.make_repo(self.root)
+        self.revision=self.git(self.root,'rev-parse','HEAD').decode().strip()
+
+    def git(self,root,*args):
+        return subprocess.check_output(['git',*args],cwd=root,stderr=subprocess.DEVNULL)
+
+    def make_repo(self,root,seed=0):
+        root.mkdir();self.git(root,'init','-q');self.git(root,'config','user.name','Synthetic')
+        self.git(root,'config','user.email','fixture@example.invalid')
+        for index,name in enumerate(oracle.REVIEW_POLICY_MODULES):
+            path=root/name;path.parent.mkdir(exist_ok=True)
+            path.write_text('value_'+str(index)+' = '+str(seed+index)+'\n')
+            if index==0:path.chmod(0o755)
+        self.git(root,'add','.');self.git(root,'commit','-qm','synthetic policy')
+
+    def original(self):
+        values={}
+        for name in oracle.REVIEW_POLICY_MODULES:
+            metadata,actual=self.git(self.root,'ls-tree','-z',self.revision,'--',name)[:-1].split(b'\t')
+            mode,kind,oid=metadata.split();self.assertEqual(actual.decode(),name)
+            values[name]=(mode.decode(),self.git(self.root,'show',self.revision+':'+name))
+        return values
+
+    def wire(self):
+        inventory=self.git(self.root,'ls-tree','--long','-z','--full-tree',self.revision,'--',*oracle.REVIEW_POLICY_MODULES)
+        rows=[line.split(b'\t')[0].split() for line in inventory[:-1].split(b'\0')]
+        payload=subprocess.check_output(['git','cat-file','--batch'],cwd=self.root,input=b'\n'.join(row[2] for row in rows)+b'\n')
+        return inventory,payload,rows
+
+    def test_real_fourteen_modules_keep_exact_modes_ast_and_reduce_twenty_eight_to_two(self):
+        with patch.object(oracle,'_git_bytes',wraps=oracle._git_bytes) as calls:
+            expected={}
+            for name in oracle.REVIEW_POLICY_MODULES:
+                metadata,actual=oracle._git_bytes(self.root,'ls-tree','-z',self.revision,'--',name)[:-1].split(b'\t')
+                mode,kind,oid=metadata.split()
+                expected[name]={'mode':mode.decode(),'ast':oracle._policy_ast(oracle._git_bytes(self.root,'show',self.revision+':'+name))}
+            self.assertEqual(calls.call_count,28)
+        with patch.object(oracle,'_git_bytes',wraps=oracle._git_bytes) as calls:
+            self.assertEqual(oracle._review_policy_sources(self.root,self.revision),expected)
+            self.assertEqual(calls.call_count,2)
+        self.assertEqual(expected[oracle.REVIEW_POLICY_MODULES[0]]['mode'],'100755')
+
+    def test_raw_binary_and_newline_bodies_preserve_original_git_bytes(self):
+        path=self.root/oracle.REVIEW_POLICY_MODULES[0];path.write_bytes(b'first\n\0middle\r\nlast\xff')
+        self.git(self.root,'add','.');self.git(self.root,'commit','-qm','binary synthetic payload')
+        self.revision=self.git(self.root,'rev-parse','HEAD').decode().strip()
+        self.assertEqual(oracle._review_policy_tree_sources(self.root,self.revision),self.original())
+        with self.assertRaises((ValueError,SyntaxError)):
+            oracle._review_policy_sources(self.root,self.revision)
+
+    def test_closed_revision_inputs_never_dispatch_git(self):
+        for revision in ('HEAD','',self.revision+'\n',None,'-'+self.revision,'z'*40):
+            with self.subTest(revision=revision),patch.object(oracle,'_git_bytes') as git:
+                with self.assertRaises(ValueError):oracle._review_policy_tree_sources(self.root,revision)
+                git.assert_not_called()
+
+    def test_inventory_missing_duplicate_unknown_mode_kind_identity_size_and_order_reject(self):
+        inventory,payload,rows=self.wire();entries=inventory[:-1].split(b'\0')
+        first=entries[0];metadata,name=first.split(b'\t');mode,kind,oid,size=metadata.split()
+        def entry(*,m=mode,k=kind,o=oid,n=name,z=size):return b' '.join((m,k,o,z))+b'\t'+n
+        variants=[b'\0'.join(entries[:-1])+b'\0',inventory+entries[-1]+b'\0',
+            b'\0'.join([entry(n=b'tools/unknown.py'),*entries[1:]])+b'\0',
+            b'\0'.join(reversed(entries))+b'\0',inventory[:-1],b'x'*32769,b'\0']
+        variants += [b'\0'.join([bad,*entries[1:]])+b'\0' for bad in
+                     (entry(m=b'120000'),entry(k=b'tree'),entry(o=b'z'*40),entry(z=b'-1'),entry(z=b'00'),entry(z=b'99999999999999999999'))]
+        for raw in variants:
+            with self.subTest(digest=hashlib.sha256(raw).hexdigest()),patch.object(oracle,'_git_bytes',side_effect=[raw,payload]):
+                with self.assertRaises(ValueError):oracle._review_policy_tree_sources(self.root,self.revision)
+
+    def test_per_body_and_aggregate_limits_reject_before_body_process(self):
+        inventory,payload,rows=self.wire();entries=inventory[:-1].split(b'\0')
+        for count,size in ((1,8*1024*1024+1),(5,8*1024*1024)):
+            altered=[]
+            for index,entry in enumerate(entries):
+                metadata,name=entry.split(b'\t');mode,kind,oid,old=metadata.split()
+                altered.append(b' '.join((mode,kind,oid,str(size).encode() if index<count else old))+b'\t'+name)
+            with patch.object(oracle,'_git_bytes',return_value=b'\0'.join(altered)+b'\0') as git:
+                with self.assertRaisesRegex(ValueError,'bound'):oracle._review_policy_tree_sources(self.root,self.revision)
+                self.assertEqual(git.call_count,1)
+
+    def test_batch_type_size_order_framing_hash_truncation_and_trailing_bytes_reject(self):
+        inventory,payload,rows=self.wire();first_header=rows[0][2]+b' blob '+rows[0][3]+b'\n'
+        body_start=len(first_header);end=body_start+int(rows[0][3]);first_frame=payload[:end+1]
+        variants=[payload[:-1],payload+b'x',payload.replace(b' blob ',b' tree ',1),
+                  b'0'+payload[1:],payload[:body_start]+bytes([payload[body_start]^1])+payload[body_start+1:],
+                  payload[:end]+b'!'+payload[end+1:],payload[end+1:]+first_frame,b'']
+        variants.append(payload.replace(first_header,rows[0][2]+b' blob '+b'0'*len(rows[0][3])+b'\n',1))
+        for raw in variants:
+            with self.subTest(digest=hashlib.sha256(raw).hexdigest()),patch.object(oracle,'_git_bytes',side_effect=[inventory,raw]):
+                with self.assertRaises(ValueError):oracle._review_policy_tree_sources(self.root,self.revision)
+
+    def test_independent_revisions_modes_and_repositories_never_reuse_prior_reads(self):
+        original=oracle._review_policy_tree_sources(self.root,self.revision)
+        name=oracle.REVIEW_POLICY_MODULES[1];path=self.root/name;path.write_text('changed = 100\n');path.chmod(0o755)
+        self.git(self.root,'add','.');self.git(self.root,'commit','-qm','new immutable source')
+        revision=self.git(self.root,'rev-parse','HEAD').decode().strip()
+        current=oracle._review_policy_tree_sources(self.root,revision)
+        self.assertNotEqual(current[name],original[name]);self.assertEqual(current[name][0],'100755')
+        self.assertEqual(oracle._review_policy_tree_sources(self.root,self.revision),original)
+        peer=Path(self.temp.name)/'peer';self.make_repo(peer,seed=100)
+        peer_revision=self.git(peer,'rev-parse','HEAD').decode().strip()
+        self.assertNotEqual(oracle._review_policy_tree_sources(peer,peer_revision),original)
+        with self.assertRaises((ValueError,oracle.OracleApprovalError)):
+            oracle._review_policy_tree_sources(self.root,'0'*40)
+        path.unlink();self.git(self.root,'add','-A');self.git(self.root,'commit','-qm','missing original module')
+        missing=self.git(self.root,'rev-parse','HEAD').decode().strip()
+        with self.assertRaises(ValueError):oracle._review_policy_tree_sources(self.root,missing)
+        self.assertEqual(oracle._review_policy_tree_sources(self.root,self.revision),original)
+
+
 if __name__ == '__main__':
     unittest.main()

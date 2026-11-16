@@ -1069,8 +1069,11 @@ def _git(root: Path, *args: str) -> str:
     if p.returncode: raise OracleApprovalError(p.stderr.strip() or "git command failed")
     return p.stdout
 
-def _git_bytes(root: Path, *args: str) -> bytes:
-    p = subprocess.run(["git", *args], cwd=root, capture_output=True)
+def _git_bytes(root: Path, *args: str, input: bytes | None = None, timeout: float | None = None) -> bytes:
+    options = {}
+    if input is not None: options["input"] = input
+    if timeout is not None: options["timeout"] = timeout
+    p = subprocess.run(["git", *args], cwd=root, capture_output=True, **options)
     if p.returncode: raise OracleApprovalError(p.stderr.decode(errors="replace").strip() or "git command failed")
     return p.stdout
 
@@ -1360,6 +1363,50 @@ REVIEW_POLICY_MODULES = ("tools/oracle_approval.py", "tools/codex_child_model.py
                          "tools/deterministic_source.py", "tools/deterministic_package.py")
 
 
+def _review_policy_tree_sources(root: Path, tree: str) -> dict[str, tuple[str, bytes]]:
+    """One finite immutable inventory and one binary-safe body read; no cache."""
+    if (not isinstance(tree,str) or re.fullmatch(r"(?:[0-9a-f]{40}|[0-9a-f]{64})",tree) is None
+            or len(REVIEW_POLICY_MODULES)!=14 or len(set(REVIEW_POLICY_MODULES))!=14):
+        raise ValueError("Immutable reviewer policy revision required")
+    raw = _git_bytes(root,"ls-tree","--long","-z","--full-tree",tree,"--",*REVIEW_POLICY_MODULES,timeout=30)
+    if len(raw)>32*1024 or not raw.endswith(b"\0"):
+        raise ValueError("Bounded reviewer inventory required")
+    rows=[];names=[];total=0
+    for entry in raw[:-1].split(b"\0"):
+        metadata,name=entry.split(b"\t",1)
+        mode,kind,oid,size=metadata.split()
+        path=name.decode("ascii")
+        if (path not in REVIEW_POLICY_MODULES or path in names or mode not in {b"100644",b"100755"}
+                or kind!=b"blob" or re.fullmatch(rb"[0-9a-f]{%d}"%len(tree),oid) is None
+                or re.fullmatch(rb"(?:0|[1-9][0-9]*)",size) is None):
+            raise ValueError("Exact original reviewer inventory required")
+        count=int(size);total+=count
+        if count>8*1024*1024 or total>32*1024*1024:
+            raise ValueError("Reviewer policy body bound exceeded")
+        names.append(path);rows.append((path,mode.decode("ascii"),oid,count))
+    if names!=sorted(REVIEW_POLICY_MODULES):
+        raise ValueError("Complete canonical reviewer inventory required")
+    body=_git_bytes(root,"cat-file","--batch",input=b"\n".join(row[2] for row in rows)+b"\n",timeout=30)
+    expected=total+sum(len(oid)+len(str(size))+8 for path,mode,oid,size in rows)
+    if len(body)!=expected:
+        raise ValueError("Reviewer batch length or EOF changed")
+    offset=0;result={}
+    for path,mode,oid,size in rows:
+        header=oid+b" blob "+str(size).encode()+b"\n"
+        if body[offset:offset+len(header)]!=header:
+            raise ValueError("Reviewer batch object type, size or order changed")
+        offset+=len(header);source=body[offset:offset+size];offset+=size
+        if body[offset:offset+1]!=b"\n":
+            raise ValueError("Reviewer batch body framing changed")
+        offset+=1
+        identity=(hashlib.sha1 if len(oid)==40 else hashlib.sha256)(b"blob "+str(size).encode()+b"\0"+source).hexdigest().encode()
+        if identity!=oid:
+            raise ValueError("Reviewer batch raw object hash changed")
+        result[path]=(mode,source)
+    if offset!=len(body):raise ValueError("Reviewer batch trailing bytes changed")
+    return result
+
+
 def _review_policy_sources(root: Path, tree: str | None = None) -> dict:
     """Bind the complete local governance/emission closure without interpreting it.
 
@@ -1368,14 +1415,10 @@ def _review_policy_sources(root: Path, tree: str | None = None) -> dict:
     Comments and source coordinates do not change executed policy.
     """
     result = {}
+    originals = _review_policy_tree_sources(root,tree) if tree is not None else None
     for name in REVIEW_POLICY_MODULES:
-        if tree:
-            entry = _git_bytes(root, "ls-tree", "-z", tree, "--", name).split(b"\0")[0]
-            metadata, actual_name = entry.split(b"\t", 1)
-            mode, kind, _ = metadata.decode().split()
-            if os.fsdecode(actual_name) != name or kind != "blob" or mode not in {"100644", "100755"}:
-                raise ValueError("Unavailable original reviewer module")
-            source = _git_bytes(root, "show", f"{tree}:{name}")
+        if originals is not None:
+            mode,source = originals[name]
         else:
             path = Path(__file__).parent / Path(name).name
             if path.is_symlink() or not path.is_file():
