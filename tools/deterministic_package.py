@@ -71,7 +71,9 @@ ORACLE_CLASSES = ('ParallelReview', 'CriterionDependencyRoles', 'RawObservationC
 ORACLE_INDEPENDENT_CASES = {'CriterionDependencyRoles': ('test_authentic_legacy_controls_require_fresh_adoption_and_future_roles_remain_separate', 'test_original_functional_control_module_and_changed_support_stay_individual', 'test_tampered_unknown_lineage_policy_changed_body_and_admitted_control_invalidation'), 'RawObservationCriterion': ('test_postcheck_error_reuses_only_unchanged_completed_body_after_independent_adoption', 'test_tampered_output_or_foreign_producer_role_cannot_form_a_raw_criterion', 'test_aggregate_error_retains_authenticated_completed_per_file_observation', 'test_raw_checkpoint_guard_lookup_is_once_per_original_record', 'test_later_admitted_unreviewed_keeps_raw_source_individual_until_reassessed', 'test_later_admitted_invalidated_support_keeps_raw_source_individual_until_reassessed', 'test_changed_inputs_and_negative_rows_remain_individual_assignments')}
 PYTHON_UNITS = PYTHON_MODULES[:2] + ('oracle_parallel_test.ParallelReview',) + tuple(
     'oracle_parallel_test.'+name+'.'+method for name,methods in ORACLE_INDEPENDENT_CASES.items() for method in sorted(methods))
-PYTHON_DISPATCH = PYTHON_UNITS[3:] + PYTHON_UNITS[:3]
+# The measured89s module starts immediately; exact independent cases fill the
+# remaining slots. Result order and the complete membership remain canonical.
+PYTHON_DISPATCH = (PYTHON_MODULES[0],) + PYTHON_UNITS[3:] + (PYTHON_MODULES[1], PYTHON_UNITS[2])
 PYTHON_CHECK = [sys.executable, '-B', 'tools/deterministic_package.py', 'python-category', 'unittest']
 _PYTHON_ACTIVE = set()
 _PYTHON_LOCK = threading.Lock()

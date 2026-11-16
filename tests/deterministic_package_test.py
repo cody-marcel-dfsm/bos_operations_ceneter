@@ -671,6 +671,8 @@ class PackageGateTests(unittest.TestCase):
                  'temporary_directory_sha256':'d'*64} for module in d.PYTHON_UNITS]
 
     def test_fixed_python_category_runs_all_three_independently_and_merges_in_fixed_order(self):
+        self.assertEqual(d.PYTHON_DISPATCH[0],d.PYTHON_MODULES[0])
+        self.assertEqual(set(d.PYTHON_DISPATCH),set(d.PYTHON_UNITS));self.assertEqual(len(d.PYTHON_DISPATCH),len(d.PYTHON_UNITS))
         before=d.native.identity(self.root);barrier=threading.Barrier(3);active=0;peak=0;lock=threading.Lock()
         def execute(root,module):
             nonlocal active,peak

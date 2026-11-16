@@ -549,3 +549,8 @@ the existing three-process native pool and an at-most-three-process wrapper.
 Module/class lifetime hooks, unknown/omitted/duplicated cases, source drift,
 skips, count mismatches and altered raw proofs reject. All existing privacy,
 history, packaging, selected contracts and original SLA evidence remain required.
+
+The fixed Python dispatcher starts its measured89-second package module first,
+then fills the remaining slots with the exact independent cases. The previous
+dispatch delayed that module behind those cases and took156.476seconds. The
+three-process cap, complete membership and canonical result order remain fixed.
