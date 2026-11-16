@@ -74,6 +74,7 @@ export function parseDarwinValidationMetrics(vm, pressure, swap) {
   const rows = {};
   const known = new Set(["Pages free", "Pages active", "Pages inactive", "Pages speculative", "Pages throttled", "Pages wired down", "Pages purgeable",
     '"Translation faults"', '"Pages copy-on-write"', '"Pages zero filled"', '"Pages reactivated"', '"Pages purged"', "File-backed pages", "Anonymous pages",
+    "Pages copy-on-write", "Pages zero filled", "Pages reactivated", "Pages purged",
     "Pages stored in compressor", "Pages occupied by compressor", "Decompressions", "Compressions", "Pageins", "Pageouts", "Swapins", "Swapouts"]);
   for (const line of lines) {
     const match = /^([^:]+):\s+([0-9]+)\.$/u.exec(line);
@@ -147,8 +148,14 @@ async function tool(path) {
     return { path, ...toolIdentity(before), sha256: digest(raw) };
   } finally { await descriptor.close(); }
 }
+export async function settleValidationOperations(operations) {
+  const results = await Promise.allSettled(operations);
+  const failure = results.find(result => result.status === "rejected");
+  if (failure) throw failure.reason;
+  return results.map(result => result.value);
+}
 async function capture() {
-  const outputs = await Promise.all([["/usr/bin/vm_stat", []], ["/usr/sbin/sysctl", ["-n", "kern.memorystatus_vm_pressure_level"]], ["/usr/sbin/sysctl", ["-n", "vm.swapusage"]]].map(async ([path, args]) => {
+  const outputs = await settleValidationOperations([["/usr/bin/vm_stat", []], ["/usr/sbin/sysctl", ["-n", "kern.memorystatus_vm_pressure_level"]], ["/usr/sbin/sysctl", ["-n", "vm.swapusage"]]].map(async ([path, args]) => {
     const result = await run(path, args, { encoding: "utf8", timeout: 2000, maxBuffer: 32768 });
     if (result.stderr) throw new Error("Metric tool emitted diagnostics");
     return result.stdout;
@@ -161,7 +168,7 @@ export async function prepareNativeValidationResources() {
   hostValid(host);
   let first, second, tools, fallback;
   if (host.platform === "darwin") {
-    try { tools = await Promise.all(["/usr/bin/vm_stat", "/usr/sbin/sysctl"].map(tool)); first = await capture(); second = await capture(); }
+    try { tools = await settleValidationOperations(["/usr/bin/vm_stat", "/usr/sbin/sysctl"].map(tool)); first = await capture(); second = await capture(); }
     catch (error) { fallback = error.code ?? error.name; }
   }
   const decision = evaluateNativeValidationCapacity(host, first, second);
@@ -173,7 +180,7 @@ export async function prepareNativeValidationResources() {
     if (disposed) throw new Error("Validation resources already disposed");
     if (guard) guard.verify();
     if (decision.mode === "darwin-credited") {
-      assert.deepEqual(await Promise.all(["/usr/bin/vm_stat", "/usr/sbin/sysctl"].map(tool)), tools, "Metric tool identity changed");
+      assert.deepEqual(await settleValidationOperations(["/usr/bin/vm_stat", "/usr/sbin/sysctl"].map(tool)), tools, "Metric tool identity changed");
       const current = await capture();
       if (!sampleValid(current, host) || !swapStable(second, current)) throw new Error("Credited validation pressure or swap degraded");
       if (guard) guard.verify();

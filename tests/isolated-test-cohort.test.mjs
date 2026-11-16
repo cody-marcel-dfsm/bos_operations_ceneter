@@ -9,7 +9,7 @@ import test from "node:test";
 import { isolatedTestCohort } from "./helpers/isolated-test-cohort.mjs";
 import { assertNativeGitEquivalent, nativeGitEligible, prepareNativeValidationGit } from "./helpers/native-validation-git.mjs";
 import { assertValidationContinuity, createVerifiedDirectory, createValidationPressureGuard,
-  evaluateNativeValidationCapacity, parseDarwinValidationMetrics, prepareNativeValidationResources } from "./helpers/native-validation-state.mjs";
+  evaluateNativeValidationCapacity, parseDarwinValidationMetrics, prepareNativeValidationResources, settleValidationOperations } from "./helpers/native-validation-state.mjs";
 
 const GiB = 1024 ** 3;
 const metricVm = `Mach Virtual Memory Statistics: (page size of 16384 bytes)
@@ -302,6 +302,8 @@ test("native resource rejects directory, foreign-entry and link tampering with o
 
 test("closed Darwin parsing and reserve credit retain hard CPU/eight/worker bounds", () => {
   const sample = parseDarwinValidationMetrics(metricVm, "1\n", metricSwap);
+  for (const label of ["Pages copy-on-write", "Pages zero filled", "Pages reactivated", "Pages purged"])
+    for (const key of [label, '"' + label + '"']) assert.deepEqual(parseDarwinValidationMetrics(metricVm + key + ": 0.\n", "1", metricSwap), sample);
   const host = { platform: "darwin", cpus: 10, free_bytes: GiB / 2, total_bytes: 64 * GiB };
   const result = evaluateNativeValidationCapacity(host, sample, sample);
   assert.equal(result.mode, "darwin-credited"); assert.equal(result.reserve_bytes, 4 * GiB);
@@ -381,11 +383,30 @@ test("verified directory lifetime preserves foreign parents, replacements and no
 });
 
 test("real native resource preparation records bounded capacity and drains its owned monitor", async () => {
+  if (process.platform === "darwin") {
+    const captured = [["/usr/bin/vm_stat", []], ["/usr/sbin/sysctl", ["-n", "kern.memorystatus_vm_pressure_level"]], ["/usr/sbin/sysctl", ["-n", "vm.swapusage"]]]
+      .map(([path,args]) => execFileSync(path,args,{encoding:"utf8",timeout:2000,maxBuffer:32768}));
+    const actual = parseDarwinValidationMetrics(...captured);
+    assert.ok([4096,16384].includes(actual.page_size)); assert.ok(Number.isSafeInteger(actual.inactive_bytes));
+  }
   const resources = await prepareNativeValidationResources();
   try {
     assert.ok(resources.capacity >= 1 && resources.capacity <= 8 && resources.capacity <= resources.provenance.host.cpus);
     assert.ok(Object.isFrozen(resources.provenance)); let degraded;
+    if (process.platform === "darwin") assert.equal(resources.provenance.fallback, null, "Real supported native metrics must parse without hidden fallback");
     const stop = resources.startMonitor(error => { degraded = error; });
     await stop(); assert.equal(degraded, undefined); assert.equal(await resources.verify(), true);
   } finally { await resources.dispose(); await resources.dispose(); }
+});
+
+test("metric operation failure drains an actual later child before propagating the original error", async () => {
+  const directory = await ownedDirectory("validation-operation-drain-");
+  try {
+    const marker = join(directory, "settled");
+    const cohort = isolatedTestCohort([nodeJob("early", "process.exit(3)"), nodeJob("late", `setTimeout(()=>{require('node:fs').writeFileSync(${JSON.stringify(marker)},String(process.pid));console.log('actual late result')},100)`)], { concurrency: 2 });
+    const original = new Error("Original metric failure");
+    await assert.rejects(settleValidationOperations([cohort.outcome("early").then(result => { assert.equal(result.code,3); throw original; }), cohort.outcome("late")]), error => error === original);
+    const pid = Number(await readFile(marker,"utf8")); assert.ok(terminated(pid));
+    const results = await cohort.completion; assert.equal(results[1].code,0); assert.equal(results[1].stdout,"actual late result\n");
+  } finally { await rm(directory,{recursive:true,force:true}); }
 });
