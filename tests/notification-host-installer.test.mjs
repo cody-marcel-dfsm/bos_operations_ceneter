@@ -19,6 +19,7 @@ function ownedChild(children,args){
   const state={child,stdout:"",stderr:"",closed:false,error:null,code:null,signal:null};children.push(state);
   child.stdout.on("data",data=>{state.stdout+=data;});child.stderr.on("data",data=>{state.stderr+=data;});
   child.on("error",error=>{state.error=error.code??error.name;});
+  child.stdin.on("error",error=>{state.error??=error.code??error.name;});
   state.done=new Promise(resolve=>child.once("close",(code,signal)=>{state.closed=true;state.code=code;state.signal=signal;resolve(code);}));
   const diagnostic=()=>JSON.stringify({code:state.code,signal:state.signal,error:state.error,stderr:state.stderr.slice(0,2000)});
   state.ready=async()=>{
@@ -137,7 +138,7 @@ test("immutable published host closure installs atomically, verifies modes and p
   assert.equal((await callCompanion(join(root,"run","control.json"),"onboarding-read",{payload:{}})).available,false);
   assert.equal((await callCompanion(join(root,"run","control.json"),"poll")).pending,false);
   await callCompanion(join(root,"run","control.json"),"retire");assert.equal(await onboarding.done,0,onboarding.stderr);
-  assert(!ownOut.includes("synthetic-existing-key"));
+  assert(!onboarding.stdout.includes("synthetic-existing-key"));
   const vendor=join(destination,"source/host-runtime/bos-journey-notifications/vendor/ws.bundle.mjs");
   const vendorBytes=await readFile(vendor);await writeFile(vendor,"changed vendor");
   await assert.rejects(verifyNotificationHost(destination),NotificationHostError);await writeFile(vendor,vendorBytes);
