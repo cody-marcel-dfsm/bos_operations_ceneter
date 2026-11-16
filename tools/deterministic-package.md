@@ -571,3 +571,23 @@ selected module was already mandatory; admitting its source edit also requires
 that complete sealed module. Missing module coverage and neighboring wrappers
 still reject. This corrects path wiring without claiming filename membership as
 passing behavior.
+
+Amendment `/16` admits exactly the ReviewSeries wrapper and its test-only
+`tests/helpers/native-validation-git.mjs` resource. Together with the previously
+admitted wrapper there are32preserved exact editable paths; the original21
+mandatory sealed modules remain and the existing isolated-cohort module becomes
+explicitly mandatory as well. Missing module coverage and neighboring helpers
+reject. The actual original resolved system Darwin Git shim alone permits
+selection of its already-selected native developer Git after version/exec-path
+and executable custody checks. Custom Git and Linux retain their original
+routing; a private git-only child PATH preserves absolute Python/Node and all
+other environment values. The helper verifies and safely removes only owned
+artifacts. No production Oracle/global or installed runtime environment changes.
+
+The cohort helper retains default4 and admits an integer maximum8. Only the
+ReviewSeries wrapper chooses up to8within actual CPU/memory capacity. It still
+executes every fixed172case, collects actual unittest IDs/results and raw byte
+proofs, checks source/schema/helper/tool/runtime/environment identity, preserves
+deadlines and drains owned cancellation before aggregate success. This retains
+all prior commands/privacy/history/security/package/export and original timing
+evidence; the previous556.363-second proof remains a genuine historical result.

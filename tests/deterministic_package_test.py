@@ -392,9 +392,9 @@ class PackageGateTests(unittest.TestCase):
         self.assertEqual(summaries[0]['output_sha256'], checksum)
 
     def test_preserved_native_scope_requires_complete_spec_modules_and_rejects_neighboring_paths(self):
-        self.assertEqual(len(d.PRESERVED_SPEC_PATHS),30)
+        self.assertEqual(len(d.PRESERVED_SPEC_PATHS),32)
         self.assertEqual(d.native.digest('\n'.join(sorted(d.PRESERVED_SPEC_PATHS)).encode()),
-                         '301289f1e68299d0e75881138ca21eec4a0cf15c83a8216c266fc437dbbeacae')
+                         '45bf62bc4a7d0daf27d0bbd4b4cc364cce234f92ff60cc1620ef1695ecc74bdd')
         baseline=self.git('rev-parse','HEAD');path=self.root/'tools/vault_index.py'
         path.parent.mkdir(parents=True,exist_ok=True);path.write_text('bounded preserved implementation\n');self.commit()
         source=self.git('rev-parse','HEAD')
@@ -418,6 +418,20 @@ class PackageGateTests(unittest.TestCase):
             with patch.object(d.contract,'verify',return_value=missing):
                 with self.assertRaisesRegex(ValueError,'modules missing'):d.scope(self.root,baseline,source)
             (path.parent/'oracle-parallel-neighbor.test.mjs').write_text('unknown wrapper');self.commit()
+            with self.assertRaisesRegex(ValueError,'Unsupported'):d.scope(self.root,baseline,self.git('rev-parse','HEAD'))
+
+    def test_test_only_git_and_series_paths_require_actual_sealed_helper_coverage(self):
+        baseline=self.git('rev-parse','HEAD')
+        for name in ('tests/oracle-review-series.test.mjs','tests/helpers/native-validation-git.mjs'):
+            path=self.root/name;path.parent.mkdir(parents=True,exist_ok=True);path.write_text('exact bounded test-only resource\n')
+        self.commit();source=self.git('rev-parse','HEAD')
+        selection={'selection':{'categories':[{'tests':sorted(d.PRESERVED_SPEC_TESTS)}]}}
+        with patch.object(d.contract,'gate',return_value={'status':'SPEC_SEALED'}),patch.object(d.contract,'verify',return_value=selection):
+            admitted=d.scope(self.root,baseline,source);self.assertIn('tests/helpers/native-validation-git.mjs',admitted)
+            incomplete={'selection':{'categories':[{'tests':sorted(d.PRESERVED_SPEC_TESTS-{'tests/isolated-test-cohort.test.mjs'})}]}}
+            with patch.object(d.contract,'verify',return_value=incomplete):
+                with self.assertRaisesRegex(ValueError,'modules missing'):d.scope(self.root,baseline,source)
+            (self.root/'tests/helpers/native-git-neighbor.mjs').write_text('unadmitted helper');self.commit()
             with self.assertRaisesRegex(ValueError,'Unsupported'):d.scope(self.root,baseline,self.git('rev-parse','HEAD'))
 
     def test_exact_history_fixture_metadata_rejects_mutation_duplicate_unknown_and_boolean_counts(self):
