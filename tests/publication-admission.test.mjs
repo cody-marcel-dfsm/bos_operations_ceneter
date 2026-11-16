@@ -106,14 +106,14 @@ try{
   cohort=isolatedTestCohort(jobs,{concurrency,captureBytes:true});
   stopMonitor=resources.startMonitor(()=>cohort.cancel());
   finish=(async()=>{
-    const reports=[],problems=[];let continuity=null,peak=0,cleanupComplete=false;
+    const reports=[],observedReports=[],problems=[];let continuity=null,peak=0,cleanupComplete=false;
     try{
       await cohort.completion;if(interrupted)problems.push("Consumer validation interrupted");
       for(const job of jobs){
-        const result=await cohort.outcome(job.name);let report=null;
+        const result=await cohort.outcome(job.name);let report=null,reportBytes=null;
         try{
           const fact=await lstat(job.report);assert.ok(fact.isFile()&&!fact.isSymbolicLink());assert.equal(fact.mode&0o777,0o600);assert.equal(fact.uid,Number(job.identity.uid));assert.ok(fact.size>0&&fact.size<=1024*1024);
-          report=JSON.parse(await readFile(job.report,"utf8"));
+          reportBytes=await readFile(job.report);report=JSON.parse(reportBytes.toString("utf8"));observedReports.push(report);
           assert.deepEqual(Object.keys(report).sort(),["unit","executed","passed","tests_run","spans","pid","executable","version","environment_before_sha256","environment_after_sha256","failures","errors","skipped","expected_failures","unexpected_successes"].sort());
           assert.equal(report.unit,job.name);assert.deepEqual(report.executed,[job.name]);assert.deepEqual(report.passed,[job.name]);assert.equal(report.tests_run,1);
           for(const key of ["failures","errors","skipped","expected_failures","unexpected_successes"])assert.deepEqual(report[key],[]);
@@ -126,12 +126,12 @@ try{
         }catch(error){problems.push(job.name+": "+error.message);}
         // Persist every actual stream and available report before cleanup,
         // including failing, skipped, cancelled and malformed outcomes.
-        console.log("BOC_PUBLICATION_CONSUMER_UNIT "+JSON.stringify({module:moduleName,name:job.name,code:result.code,signal:result.signal,error:result.error,cancelled:result.cancelled,report,
+        console.log("BOC_PUBLICATION_CONSUMER_UNIT "+JSON.stringify({module:moduleName,name:job.name,code:result.code,signal:result.signal,error:result.error,cancelled:result.cancelled,report,report_bytes:reportBytes?.length??0,report_sha256:reportBytes?hash(reportBytes):null,report_base64:reportBytes?.toString("base64")??null,
           stdout_bytes:result.stdoutBytes.length,stderr_bytes:result.stderrBytes.length,stdout_sha256:hash(result.stdoutBytes),stderr_sha256:hash(result.stderrBytes),
           stdout_base64:result.stdoutBytes.toString("base64"),stderr_base64:result.stderrBytes.toString("base64")}));
         if(result.code!==0||result.signal||result.error||result.cancelled)problems.push(job.name+": process failed");
       }
-      const executed=reports.flatMap(row=>row.executed).sort();
+      const executed=observedReports.flatMap(row=>Array.isArray(row?.executed)?row.executed:[]).sort();
       if(JSON.stringify(executed)!==JSON.stringify([...initial.ids].sort())||new Set(executed).size!==expectedCount)problems.push("Complete consumer case membership changed");
       const events=reports.flatMap(row=>row.spans.flatMap(span=>[[span.started_ms,1],[span.finished_ms,-1]])).sort((a,b)=>a[0]-b[0]||a[1]-b[1]);
       let active=0;for(const [,change]of events){active+=change;peak=Math.max(peak,active);}
@@ -140,7 +140,7 @@ try{
       catch(error){problems.push("Consumer source/runtime/tool/resource custody changed: "+error.message);}
     }catch(error){problems.push("Consumer execution failed: "+error.message);cohort.cancel();await cohort.completion;}
     finally{try{await cleanup();cleanupComplete=true;}catch(error){problems.push(error.message);}}
-    const proof={...initial,module:moduleName,labels:initial.ids.map(testLabel),executed:reports.flatMap(row=>row.executed).sort(),concurrency,actual_peak:peak,
+    const proof={...initial,module:moduleName,labels:initial.ids.map(testLabel),executed:observedReports.flatMap(row=>Array.isArray(row?.executed)?row.executed:[]).sort(),verified_passed:reports.flatMap(row=>row.passed).sort(),concurrency,actual_peak:peak,
       resource_admission:resources.provenance,native_git:prepared.provenance,continuity,node:{executable:process.execPath,version:process.version},cleanup:cleanupComplete,problems};
     console.log("BOC_PUBLICATION_CONSUMER_MEMBERSHIP "+JSON.stringify(proof));
     return{reports,problems,proof};
