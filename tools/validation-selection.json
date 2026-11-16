@@ -4,12 +4,12 @@
   "stamp": {
     "engine": "codex",
     "model": "gpt-6.1-sol",
-    "oracle_sha256": "bdc1e90057c6f908c31fc803d836f517e6c8d09dd59a69aab016d0d00ebfe3a8",
-    "host": "aio",
-    "time": "2026-11-12T15:42:59Z",
-    "origin_main": "e70de278e116c7761f60fcfc700641e1ecb9288d",
-    "request_sha256": "c3f6d9f981db003ee560b57c062bcac2105195c29ffb6c3947dd20b92febce33",
-    "proposal_sha256": "476d5600587d2f437b0fa8cb09456b72d6b02b83fe30e7e20504f7664d697930"
+    "oracle_sha256": "fec99d008cff059d93908d90e00bf9ff6e8525f39be67b25a4709481efb52994",
+    "host": "Codys-MacBook-Pro.local",
+    "time": "2026-11-16T04:06:20Z",
+    "origin_main": "b16128819f56e81b2cb794c07506da056d073535",
+    "request_sha256": "b96f3af07b1628c9be64563002272ed57b33b845be606e74b3adb45ffe1b0fbb",
+    "proposal_sha256": "d58e4ffcacace665ce36a2fdda4f5b8e6759f07f6fe2b0feea6388e1817bf730"
   },
   "selection": {
     "acceptance": [
@@ -50,7 +50,15 @@
       "Promote through ancestry-checked, exact-baseline leased fast-forward pushes with destination revalidation and exact main readback across native and deterministic paths; preserve immutable receipts, later-decision revocation, scoped human authority and concurrent authoring.",
       "After observing an owner no longer alive, re-read its custody-checked completed result before orphan recovery and return an admitted result without duplicate review dispatch; preserve genuine orphan recovery and failure propagation. Retain an unchanged deterministic fail-before/pass-after regression that drives incomplete-result, dead-owner and completed-result reads without timers, and preserve the existing attached-caller checkpoint-admission regression.",
       "Bind an operator-named main-chain Claude Code assistant question, its complete verbatim text and digest, and the effects that instruction describes to the current prepared main-promotion plan and admitted review-push record. Remove the Claude generated-question command, generated-question text requirements and question-time ordering while preserving exact plan, review, destination, candidate-history, product-asset and effect-scope checks and unchanged Codex behavior.",
-      "Accept a Claude Code instruction only from a unique owned regular session journal without linked routes, with retained exact byte ranges, a main-chain assistant question and the next message a same-session human-origin user string whose parent chain reaches that question only through non-message entries. Require an explicit affirmative and reject tool results, sidechains, wrappers, intervening messages, malformed provenance, changed bound bytes, linked routes, non-affirmative answers and effects outside the instruction scope; preserve append-safe custody without interpreting later Claude messages for withdrawal or supersession, and retain immutable technical receipts and all other publication gates."
+      "Accept a Claude Code instruction only from a unique owned regular session journal without linked routes, with retained exact byte ranges, a main-chain assistant question and the next message a same-session human-origin user string whose parent chain reaches that question only through non-message entries. Require an explicit affirmative and reject tool results, sidechains, wrappers, intervening messages, malformed provenance, changed bound bytes, linked routes, non-affirmative answers and effects outside the instruction scope; preserve append-safe custody without interpreting later Claude messages for withdrawal or supersession, and retain immutable technical receipts and all other publication gates.",
+      "Admit only the finite enumerated native-profile amendment, require the complete retained and added conformance modules, and reject neighboring tool or test paths while preserving spec-origin, current-source, runtime, history and fixed-package checks.",
+      "Emit subscriber wake metadata only after durable queue commitment through the fixed current-task bridge; exclude discussion bodies, credentials, headers and URLs, preserve cursor replay and deduplication, perform no idle polling, and report bounded host capabilities truthfully.",
+      "Preserve current and legacy discussion descriptors, rolling command windows, consecutive-failure reconnect budgets, queue bounds, gap recovery and committed acknowledgement semantics; repair the legacy deadline test using a bounded referenced completion guard without changing production timers.",
+      "Exercise protected host and installer behavior through synthetic TLS WebSocket transport, exact header and context confinement, task-bound tickets, distinct-task peer delivery, revocation, credential invalidation, finite lifetime and retirement; subscriber mode installs no native hook and source checks establish no observed native wake.",
+      "Keep API-key onboarding metadata-only and require a trusted existing linked OAuth capability for account execution; enforce exact current-subject confirmation, connection generation, scope, stale-state and uncertain-result recovery without another login.",
+      "Classify only the exact bare delimiter occurrence in each enumerated immutable historical negative fixture after verifying path, Git blob, raw digest, size, offset and context; preserve full original-byte privacy and remaining credential checks, reject altered or copied inputs and real key material, and retain original failure evidence.",
+      "Preserve complete privacy coverage, generated-consumer and skill-dependency parity, existing authentication and context contracts, shared behavioral safeguards, graphical presentation models, onboarding composition and published-only runtime export with exact dependency, file and mode integrity.",
+      "Preserve automatic compact graph completion after lookup clarification, every selected-route intermediate node and edge, ranking provenance and shortest structural fallback; require plain labels with diagram-native emphasis, native inline renderer priority, proven Mermaid rendering, precise partial evidence and the focused student exception, while rejecting crowded defaults, invented topology, internal identifiers, unsolicited off-route explanations, ASCII completion and unrendered code."
     ],
     "acceptance_tests": [
       {
@@ -69,7 +77,7 @@
           27
         ],
         "module": "tests/oracle-implementation-spec.test.mjs",
-        "purpose": "Verify sealed spec production, privacy, engine invocation, external input custody, native migration, publication-range scope, configured interpreter preservation, CI branch admission and historical deterministic-provenance refusal boundaries."
+        "purpose": "Verify sealed spec production, privacy, engine invocation, external input custody, native migration, publication-range scope, configured interpreter preservation, CI admission and historical provenance refusal."
       },
       {
         "covers": [
@@ -78,7 +86,7 @@
           10
         ],
         "module": "tests/validation-contract.test.mjs",
-        "purpose": "Preserve native contract recording, revision rules, selected execution and exact feature-design binding."
+        "purpose": "Preserve contract recording, native revisions, selected execution and exact feature-design binding."
       },
       {
         "covers": [
@@ -87,17 +95,18 @@
           9,
           29,
           33,
-          34
+          34,
+          38
         ],
         "module": "tests/deterministic-lanes.test.mjs",
-        "purpose": "Verify both deterministic lanes retain scope admission, selected execution and fixed verification boundaries while replacing CLI merges with exact-source CI admission and leased fast-forward publication."
+        "purpose": "Verify finite profile membership, neighboring-path refusal, mandatory conformance modules, complete selected execution and exact-source leased publication."
       },
       {
         "covers": [
           11
         ],
         "module": "tests/publication-safety.test.mjs",
-        "purpose": "Verify permitted maintainer entrypoints and continued rejection of private or misleading publication paths."
+        "purpose": "Verify permitted maintainer entrypoints and rejection of private or misleading publication paths."
       },
       {
         "covers": [
@@ -109,7 +118,7 @@
           34
         ],
         "module": "tests/command-coverage.test.mjs",
-        "purpose": "Verify equivalent proposal snapshots, concurrent source deltas, evidence drift rejection, complete attestation-row consumption and exact-source prepared publication without the GitHub CLI."
+        "purpose": "Verify equivalent source observations, concurrent deltas, evidence drift rejection, attestation rows and exact-source publication preparation."
       },
       {
         "covers": [
@@ -119,21 +128,21 @@
           35
         ],
         "module": "tests/oracle-lifecycle.test.mjs",
-        "purpose": "Verify controller lifecycle, process-birth rejection, explicit launcher isolation, accepted-observer failure propagation with checkpoint preservation, and deterministic completion rechecking before orphan recovery without duplicate review dispatch."
+        "purpose": "Verify process identity, launcher isolation, attached-observer failure propagation, checkpoint preservation and deterministic completion rechecking before orphan recovery."
       },
       {
         "covers": [
           15
         ],
         "module": "tests/oracle-parallel.test.mjs",
-        "purpose": "Verify parallel review custody, capped effort, overlap and failure handling."
+        "purpose": "Verify independent parallel custody, capped effort, overlap and failure handling."
       },
       {
         "covers": [
           16
         ],
         "module": "tests/oracle-scope-index.test.mjs",
-        "purpose": "Execute the complete native scope-index suite with its copied dependencies and retained provenance checks."
+        "purpose": "Execute the complete scope-index suite with its dependency closure and provenance checks."
       },
       {
         "covers": [
@@ -144,17 +153,18 @@
       },
       {
         "covers": [
-          17
+          17,
+          44
         ],
         "module": "tests/package-model.test.mjs",
-        "purpose": "Verify canonical and generated metadata, product composition and preserved transport and authentication declarations."
+        "purpose": "Verify product composition, generated metadata and consumer parity with preserved transport and authentication declarations."
       },
       {
         "covers": [
           18
         ],
         "module": "tests/oracle-review-series.test.mjs",
-        "purpose": "Verify scoped admission custody, governing-authority drift errors, complete launcher dependencies and bounded reviewer settings."
+        "purpose": "Verify scoped custody, authority-drift errors, launcher dependencies and bounded reviewer settings."
       },
       {
         "covers": [
@@ -162,35 +172,35 @@
           21
         ],
         "module": "tests/oracle-governance.test.mjs",
-        "purpose": "Verify proposal and receipt governance with complete fixtures and the required workflow-to-native-coverage chain."
+        "purpose": "Verify proposal and receipt governance and the required native command-coverage chain."
       },
       {
         "covers": [
           19
         ],
         "module": "tests/oracle-api-version-request.test.mjs",
-        "purpose": "Verify independent direct-human version-request evidence across proposal, receipt and commit verification."
+        "purpose": "Verify direct-human version-request evidence through proposal, receipt and commit verification."
       },
       {
         "covers": [
           20
         ],
         "module": "tests/oracle-performance.test.mjs",
-        "purpose": "Verify bounded discovery and review behavior, policy-sensitive evidence and isolated explicit launcher execution."
+        "purpose": "Verify bounded discovery, policy-sensitive evidence and explicit launcher isolation."
       },
       {
         "covers": [
           22
         ],
         "module": "tests/oracle-source-frontier.test.mjs",
-        "purpose": "Execute native source-frontier delivery and forged-page refusal under the configured effort bound."
+        "purpose": "Verify source-frontier delivery and forged-page refusal under the bounded effort policy."
       },
       {
         "covers": [
           22
         ],
         "module": "tests/agent-driven-journey-live-verifier.test.mjs",
-        "purpose": "Verify closed verifier arguments, pre-execution refusal boundaries and the deterministic release verification command."
+        "purpose": "Verify closed verifier arguments, pre-execution refusals and deterministic release integration."
       },
       {
         "covers": [
@@ -198,15 +208,16 @@
           24
         ],
         "module": "tests/document-cache.test.mjs",
-        "purpose": "Verify complete atomic lock publication at an explicit barrier, private staging cleanup and preserved exclusive ownership, renewal, recovery and release."
+        "purpose": "Verify barrier-controlled atomic lock publication, staging cleanup and exclusive ownership, renewal, recovery and release."
       },
       {
         "covers": [
           23,
-          25
+          25,
+          44
         ],
         "module": "tests/journey-notifications.test.mjs",
-        "purpose": "Verify overlapping queue writers retain pending identities and newer generations under the shared mutation lock."
+        "purpose": "Verify overlapping queue writers, pending generations, acknowledgements and preserved notification execution-scope and recovery boundaries."
       },
       {
         "covers": [
@@ -214,7 +225,7 @@
           28
         ],
         "module": "tests/marketplace-update.test.mjs",
-        "purpose": "Verify local published-ref export with lane-produced provenance, exact commit checks, package parity and refusal of missing, altered, incomplete or CI-phase provenance."
+        "purpose": "Verify local published-ref export with native provenance, exact commit checks, package parity and malformed-evidence refusals."
       },
       {
         "covers": [
@@ -228,7 +239,7 @@
           37
         ],
         "module": "tests/publication-admission.test.mjs",
-        "purpose": "Verify canonical attestation custody, idempotent reuse, chained replacement, forged and revoked record refusal, legacy issuer enforcement, exact-source remote admission and leased promotion with scoped authority. Exercise transcript-shaped deterministic fixtures for a named verbatim Claude question and its genuine next human answer, reuse with current prepared records, exact effect scope, provenance and byte custody, refusal boundaries and append safety without generated questions or later-message interpretation; preserve Codex admission."
+        "purpose": "Verify attestation custody, reuse, replacement, revocation, exact remote admission and leased promotion; exercise named verbatim questions, adjacent genuine human answers, exact effect scope, journal provenance, byte custody, append safety and unchanged Codex admission."
       },
       {
         "covers": [
@@ -240,7 +251,163 @@
           34
         ],
         "module": "tests/shipment-workflow.test.mjs",
-        "purpose": "Verify SSH-only shipment preparation and confirmed delivery, shared attestation verification, immutable checkpoint reuse, later-decision revocation and publication while independent authoring continues."
+        "purpose": "Verify SSH shipment, attestation consumption, immutable checkpoint reuse, revocation and confirmed delivery during concurrent authoring."
+      },
+      {
+        "covers": [
+          39,
+          40,
+          41
+        ],
+        "module": "tests/feedback-event-subscriber.test.mjs",
+        "purpose": "Verify committed metadata-only stdout, current-task bridge, idle behavior, rolling-window longevity, replay, deduplication, terminal retirement and subscriber installation without a hook."
+      },
+      {
+        "covers": [
+          40,
+          41
+        ],
+        "module": "tests/feedback-item-discussion.test.mjs",
+        "purpose": "Verify current and legacy descriptors, bounded queues and rates, gap recovery, uncertain comments, committed acknowledgements and the production-triggered legacy deadline with a bounded live test guard."
+      },
+      {
+        "covers": [
+          41
+        ],
+        "module": "tests/feedback-socket-host.test.mjs",
+        "purpose": "Verify synthetic authenticated WebSocket construction, protected headers, item and task fencing, peer events, uncertain acknowledgements, revocation and credential invalidation."
+      },
+      {
+        "covers": [
+          41
+        ],
+        "module": "tests/notification-host.test.mjs",
+        "purpose": "Preserve protected host lifecycle, fixed local bridge, socket bounds, custody and retirement."
+      },
+      {
+        "covers": [
+          39,
+          41
+        ],
+        "module": "tests/notification-host-installer.test.mjs",
+        "purpose": "Verify immutable installation inventories, explicit modes, subscriber hook absence and protected upgrade and retirement behavior."
+      },
+      {
+        "covers": [
+          43
+        ],
+        "module": "tests/publication-history.test.mjs",
+        "purpose": "Verify complete historical scanning, all exact fixture classifications, original rejection and refusal of unknown blobs, altered bytes, copied paths, appended private content and actual key material."
+      },
+      {
+        "covers": [
+          43,
+          44
+        ],
+        "module": "tests/privacy-coverage.test.mjs",
+        "purpose": "Verify full-byte privacy coverage, policy identity, chunk-boundary equivalence and refusal of forged or stale coverage."
+      },
+      {
+        "covers": [
+          43,
+          44
+        ],
+        "module": "tests/customer-data-privacy.test.mjs",
+        "purpose": "Preserve original-byte customer-data detection, synthetic fixture boundaries and narrow public-syntax classification negatives."
+      },
+      {
+        "covers": [
+          42,
+          44
+        ],
+        "module": "tests/ada-customer-onboarding.test.mjs",
+        "purpose": "Verify onboarding consumer discovery, confirmation, recovery and generated-client composition."
+      },
+      {
+        "covers": [
+          42
+        ],
+        "module": "tests/customer-onboarding-host.test.mjs",
+        "purpose": "Verify metadata-only API-key access, trusted existing OAuth admission, exact current-subject actions, TLS boundaries, invalidation and finite lifetime."
+      },
+      {
+        "covers": [
+          44
+        ],
+        "module": "tests/runtime-skill-export.test.mjs",
+        "purpose": "Verify published-only runtime export, preview separation, exact transitive dependency and file-mode integrity, tamper refusal and generated parity."
+      },
+      {
+        "covers": [
+          44
+        ],
+        "module": "tests/skill-dependencies.test.mjs",
+        "purpose": "Verify active product dependency closure, declared skill ownership and missing or conflicting dependency refusal."
+      },
+      {
+        "covers": [
+          44
+        ],
+        "module": "tests/ada-client.test.mjs",
+        "purpose": "Preserve shared behavioral safeguards and their generated consumers without granting runtime authority."
+      },
+      {
+        "covers": [
+          44
+        ],
+        "module": "tests/ada-journey-view.test.mjs",
+        "purpose": "Verify bounded evidence-based graphical presentation models, inert rendering and generated parity."
+      },
+      {
+        "covers": [
+          44
+        ],
+        "module": "tests/bos-customer-profile.test.mjs",
+        "purpose": "Preserve customer-initialization discovery, validation and generated composition."
+      },
+      {
+        "covers": [
+          44
+        ],
+        "module": "tests/bos-oauth-live-contract.test.mjs",
+        "purpose": "Preserve bounded same-origin OAuth handoff contract checks and terminal foreign, human-page and rate-limit refusals through synthetic fixtures."
+      },
+      {
+        "covers": [
+          44
+        ],
+        "module": "tests/external-authentication-handoff.test.mjs",
+        "purpose": "Preserve the shared connection, current-context isolation and credential-free authentication handoff contract."
+      },
+      {
+        "covers": [
+          44
+        ],
+        "module": "tests/external-dependency-adapter.test.mjs",
+        "purpose": "Preserve trusted descriptor verification, session reuse, exact context, credential containment and authoritative retry gates."
+      },
+      {
+        "covers": [
+          38,
+          44
+        ],
+        "module": "tests/isolated-test-cohort.test.mjs",
+        "purpose": "Verify complete nonduplicated native test membership, bounded isolated execution, retained outputs and failure propagation."
+      },
+      {
+        "covers": [
+          44,
+          45
+        ],
+        "module": "tests/muse-workflow-guidance.test.mjs",
+        "purpose": "Preserve evidence-based workflow presentation, host capability limits, partial observations and generated guidance parity."
+      },
+      {
+        "covers": [
+          45
+        ],
+        "module": "tests/lead-graph-regression.test.mjs",
+        "purpose": "Verify lookup-after-clarification graph completion, complete compact routes, ranking and format exceptions, partial evidence, HTML-label refusal, native renderer priority, Claude raw-code refusal and generated selector behavior."
       }
     ],
     "categories": [
@@ -263,7 +430,11 @@
           "tests/oracle_source_frontier_test.py",
           "tests/published_fixture.py",
           "tests/publication_admission_test.py",
-          "tests/shipment_workflow_test.py"
+          "tests/shipment_workflow_test.py",
+          "tests/helpers/synthetic-notifications.mjs",
+          "tests/helpers/synthetic-onboarding.mjs",
+          "tests/helpers/synthetic-bos-discovery-service.mjs",
+          "tests/helpers/isolated-test-cohort.mjs"
         ],
         "name": "interactions",
         "tests": [
@@ -285,125 +456,673 @@
           "tests/journey-notifications.test.mjs",
           "tests/marketplace-update.test.mjs",
           "tests/publication-admission.test.mjs",
-          "tests/shipment-workflow.test.mjs"
+          "tests/shipment-workflow.test.mjs",
+          "tests/feedback-item-discussion.test.mjs",
+          "tests/feedback-socket-host.test.mjs",
+          "tests/notification-host.test.mjs",
+          "tests/notification-host-installer.test.mjs",
+          "tests/privacy-coverage.test.mjs",
+          "tests/customer-data-privacy.test.mjs",
+          "tests/ada-customer-onboarding.test.mjs",
+          "tests/customer-onboarding-host.test.mjs",
+          "tests/runtime-skill-export.test.mjs",
+          "tests/skill-dependencies.test.mjs",
+          "tests/ada-client.test.mjs",
+          "tests/ada-journey-view.test.mjs",
+          "tests/bos-customer-profile.test.mjs",
+          "tests/bos-oauth-live-contract.test.mjs",
+          "tests/external-authentication-handoff.test.mjs",
+          "tests/external-dependency-adapter.test.mjs",
+          "tests/isolated-test-cohort.test.mjs",
+          "tests/muse-workflow-guidance.test.mjs"
         ]
       },
       {
         "fixtures": [
-          "tests/oracle_spec_test.py"
+          "tests/oracle_spec_test.py",
+          "tests/helpers/feedback-socket-stand-in.mjs",
+          "tests/helpers/lead-graph-acceptance.mjs"
         ],
         "name": "acceptance",
         "tests": [
           "tests/oracle-implementation-spec.test.mjs",
-          "tests/publication-safety.test.mjs"
+          "tests/publication-safety.test.mjs",
+          "tests/feedback-event-subscriber.test.mjs",
+          "tests/publication-history.test.mjs",
+          "tests/lead-graph-regression.test.mjs"
         ]
       }
     ],
     "change_class": "feature",
-    "design": "Vault/docs/design/oracle-implementation-spec.md",
-    "reason": "Revise the existing feature contract while retaining criteria 0\u201335, every selected test module, fixture and scope path. Replace only the Claude generated-question and supersession requirements with named verbatim instruction binding and genuine adjacent human-answer custody. Extend the existing publication-admission fixtures deterministically without timers, preserve Codex behavior and all other publication safeguards, and run every selected category completely. Preserve historical evidence, the original 300-second delivery clock and existing spending controls.",
-    "revision_of": "1184ab6ddb2a11989c5fb019f47698ffbf8207635e01f327529d85b7d1e17651",
+    "design": "Vault/tmp/feedback-development/aio-integration/integration-design.md",
+    "reason": "Revise the current feature contract while retaining all original criteria, modules, fixtures and scope paths. Cover the finite integrated inventory, exact native-profile admission, subscriber and host interactions, historical classification negatives, privacy, generated parity and recurring graph delivery. Preserve every fixed native lane check, immutable historical result, original 300-second delivery clock and spending control. Execute every selected category completely on matching current inputs and runtime; source verification remains deterministic and native acceptance remains separately evidenced.",
+    "revision_of": "93ef075c078ae141c01ad1d3caf55ec4c2db7a91802b7d14cf63ef9540937228",
     "scope_paths": [
-      "AGENTS.md",
-      "CLAUDE.md",
       ".agents/skills/operations-center-implementation/SKILL.md",
-      ".agents/skills/ship-it/SKILL.md",
       ".agents/skills/oracle/review-output.schema.json",
+      ".agents/skills/ship-it/SKILL.md",
       ".claude/skills/operations-center-implementation/SKILL.md",
       ".claude/skills/ship-it/SKILL.md",
       ".github/workflows/publication-safety.yml",
-      "scripts/check-publication-safety.mjs",
-      "tools/oracle_spec_seal.py",
-      "tools/oracle_approval.py",
-      "tools/validation_contract.py",
-      "tools/validation-selection.json",
-      "tools/deterministic_package.py",
-      "tools/deterministic_source.py",
-      "tools/validation-contract.md",
-      "tools/deterministic-package.md",
-      "tools/deterministic-source.md",
-      "tools/vault_index.py",
-      "tests/validation-contract.test.mjs",
-      "tests/validation_contract_test.py",
-      "tests/deterministic-lanes.test.mjs",
-      "tests/deterministic_source_test.py",
-      "tests/deterministic_package_test.py",
-      "tests/oracle-implementation-spec.test.mjs",
-      "tests/oracle_spec_test.py",
-      "tests/publication-safety.test.mjs",
-      "tests/oracle_lifecycle_test.py",
-      "tests/oracle_parallel_test.py",
-      "tests/oracle_scope_index_test.py",
-      "tests/oracle-scope-index.test.mjs",
+      "AGENTS.md",
+      "CLAUDE.md",
       "README.md",
-      "package.json",
-      "package-lock.json",
-      "package-manifest.json",
-      "skill-release-manifest.json",
-      "products/bos/product.json",
-      "products/education-center/product.json",
       "clients/claude/plugins/bos/.bos-product.json",
       "clients/claude/plugins/bos/.claude-plugin/plugin.json",
+      "clients/claude/plugins/bos/skills/ada/SKILL.md",
+      "clients/claude/plugins/bos/skills/ada/agents/openai.yaml",
+      "clients/claude/plugins/bos/skills/ada/references/behavior-core.md",
+      "clients/claude/plugins/bos/skills/ada/references/customer-onboarding.md",
+      "clients/claude/plugins/bos/skills/ada/references/journey-view.md",
+      "clients/claude/plugins/bos/skills/ada/references/runtime-export.md",
+      "clients/claude/plugins/bos/skills/ada/references/turn-safeguards.md",
+      "clients/claude/plugins/bos/skills/ada/runtime-export.json",
+      "clients/claude/plugins/bos/skills/ada/scripts/customer-onboarding.mjs",
+      "clients/claude/plugins/bos/skills/ada/scripts/journey-view.mjs",
+      "clients/claude/plugins/bos/skills/ada/scripts/turn-safeguards.mjs",
+      "clients/claude/plugins/bos/skills/authentication-context-integrity/SKILL.md",
+      "clients/claude/plugins/bos/skills/bos-app-discovery/SKILL.md",
+      "clients/claude/plugins/bos/skills/bos-cache-maintenance/SKILL.md",
+      "clients/claude/plugins/bos/skills/bos-customer-initialization/SKILL.md",
+      "clients/claude/plugins/bos/skills/bos-customer-initialization/agents/openai.yaml",
+      "clients/claude/plugins/bos/skills/bos-customer-initialization/scripts/customer-profile.mjs",
+      "clients/claude/plugins/bos/skills/bos-external-dependency-adapter/SKILL.md",
+      "clients/claude/plugins/bos/skills/bos-external-dependency-adapter/references/dependency-adapter.md",
+      "clients/claude/plugins/bos/skills/bos-external-dependency-adapter/scripts/external-dependency-adapter.mjs",
+      "clients/claude/plugins/bos/skills/bos-guided-support/SKILL.md",
+      "clients/claude/plugins/bos/skills/bos-guided-support/references/support-state-machine.md",
+      "clients/claude/plugins/bos/skills/bos-mcp-client/SKILL.md",
+      "clients/claude/plugins/bos/skills/bos-mcp-client/references/identity-context.md",
+      "clients/claude/plugins/bos/skills/bos-mcp-client/references/runtime-continuation-contract.md",
+      "clients/claude/plugins/bos/skills/bos-plugin-console/SKILL.md",
+      "clients/claude/plugins/bos/skills/bos-plugin-settings-initialization/SKILL.md",
+      "clients/claude/plugins/bos/skills/bos-plugin-settings/SKILL.md",
+      "clients/claude/plugins/bos/skills/bos-visual-output/SKILL.md",
+      "clients/claude/plugins/bos/skills/bos-visual-output/references/graph-rendering.md",
+      "clients/claude/plugins/bos/skills/bos-workflow-orchestrator/SKILL.md",
+      "clients/claude/plugins/bos/skills/campaign-offer-marketing-sales/SKILL.md",
+      "clients/claude/plugins/bos/skills/collision-call-audit-email/SKILL.md",
+      "clients/claude/plugins/bos/skills/collision-repair-proposal-builder/SKILL.md",
+      "clients/claude/plugins/bos/skills/corporate-counsel/SKILL.md",
+      "clients/claude/plugins/bos/skills/email-account-routing/SKILL.md",
+      "clients/claude/plugins/bos/skills/implementation/SKILL.md",
+      "clients/claude/plugins/bos/skills/landing-page-copywriting/SKILL.md",
+      "clients/claude/plugins/bos/skills/manage-customer-extension/SKILL.md",
+      "clients/claude/plugins/bos/skills/marketing-analysis/SKILL.md",
+      "clients/claude/plugins/bos/skills/meta-ads-conversion-optimization/SKILL.md",
+      "clients/claude/plugins/bos/skills/openai-plugin-publishing/SKILL.md",
+      "clients/claude/plugins/bos/skills/planning/SKILL.md",
+      "clients/claude/plugins/bos/skills/po-go-boundary-enforcement/SKILL.md",
+      "clients/claude/plugins/bos/skills/review/SKILL.md",
+      "clients/claude/plugins/bos/skills/sendgrid-campaigns/SKILL.md",
+      "clients/claude/plugins/bos/skills/seo-improvement-loop/SKILL.md",
+      "clients/claude/plugins/bos/skills/submit-feedback/SKILL.md",
+      "clients/claude/plugins/bos/skills/submit-feedback/references/item-discussion.md",
+      "clients/claude/plugins/bos/skills/submit-feedback/scripts/item-discussion.mjs",
       "clients/claude/plugins/education-center/.bos-product.json",
       "clients/claude/plugins/education-center/.claude-plugin/plugin.json",
+      "clients/claude/plugins/education-center/skills/agent-call-operations/SKILL.md",
+      "clients/claude/plugins/education-center/skills/bos-google-review-outreach/SKILL.md",
+      "clients/claude/plugins/education-center/skills/bos-mcp-client/SKILL.md",
+      "clients/claude/plugins/education-center/skills/bos-mcp-client/references/identity-context.md",
+      "clients/claude/plugins/education-center/skills/bos-mcp-client/references/runtime-continuation-contract.md",
+      "clients/claude/plugins/education-center/skills/bos-plugin-settings-initialization/SKILL.md",
+      "clients/claude/plugins/education-center/skills/bos-plugin-settings/SKILL.md",
+      "clients/claude/plugins/education-center/skills/camp-capacity-planning/SKILL.md",
+      "clients/claude/plugins/education-center/skills/education-center-class-operations/SKILL.md",
+      "clients/claude/plugins/education-center/skills/education-center-customer-initialization/SKILL.md",
+      "clients/claude/plugins/education-center/skills/education-center-director-daily-planner/SKILL.md",
+      "clients/claude/plugins/education-center/skills/education-center-instructor-operations/SKILL.md",
+      "clients/claude/plugins/education-center/skills/education-center-invoice-operations/SKILL.md",
+      "clients/claude/plugins/education-center/skills/education-center-paid-attribution-operations/SKILL.md",
+      "clients/claude/plugins/education-center/skills/education-center-parent-communications/SKILL.md",
+      "clients/claude/plugins/education-center/skills/education-center-service-routing/SKILL.md",
+      "clients/claude/plugins/education-center/skills/education-center-student-operations/SKILL.md",
+      "clients/claude/plugins/education-center/skills/education-center-trial-reconciliation/SKILL.md",
+      "clients/claude/plugins/education-center/skills/local-school-market-research/SKILL.md",
+      "clients/claude/plugins/education-center/skills/manage-customer-extension/SKILL.md",
+      "clients/claude/plugins/education-center/skills/partnership-proposal-builder/SKILL.md",
+      "clients/claude/plugins/education-center/skills/sendgrid-campaign-operations/SKILL.md",
+      "clients/claude/plugins/education-center/skills/submit-feedback/SKILL.md",
+      "clients/claude/plugins/education-center/skills/submit-feedback/references/item-discussion.md",
+      "clients/claude/plugins/education-center/skills/submit-feedback/scripts/item-discussion.mjs",
       "clients/codex/plugins/bos/.bos-product.json",
       "clients/codex/plugins/bos/.codex-plugin/plugin.json",
+      "clients/codex/plugins/bos/skills/ada/SKILL.md",
+      "clients/codex/plugins/bos/skills/ada/agents/openai.yaml",
+      "clients/codex/plugins/bos/skills/ada/references/behavior-core.md",
+      "clients/codex/plugins/bos/skills/ada/references/customer-onboarding.md",
+      "clients/codex/plugins/bos/skills/ada/references/journey-view.md",
+      "clients/codex/plugins/bos/skills/ada/references/runtime-export.md",
+      "clients/codex/plugins/bos/skills/ada/references/turn-safeguards.md",
+      "clients/codex/plugins/bos/skills/ada/runtime-export.json",
+      "clients/codex/plugins/bos/skills/ada/scripts/customer-onboarding.mjs",
+      "clients/codex/plugins/bos/skills/ada/scripts/journey-view.mjs",
+      "clients/codex/plugins/bos/skills/ada/scripts/turn-safeguards.mjs",
+      "clients/codex/plugins/bos/skills/authentication-context-integrity/SKILL.md",
+      "clients/codex/plugins/bos/skills/bos-app-discovery/SKILL.md",
+      "clients/codex/plugins/bos/skills/bos-cache-maintenance/SKILL.md",
+      "clients/codex/plugins/bos/skills/bos-customer-initialization/SKILL.md",
+      "clients/codex/plugins/bos/skills/bos-customer-initialization/agents/openai.yaml",
+      "clients/codex/plugins/bos/skills/bos-customer-initialization/scripts/customer-profile.mjs",
+      "clients/codex/plugins/bos/skills/bos-external-dependency-adapter/SKILL.md",
+      "clients/codex/plugins/bos/skills/bos-external-dependency-adapter/references/dependency-adapter.md",
+      "clients/codex/plugins/bos/skills/bos-external-dependency-adapter/scripts/external-dependency-adapter.mjs",
+      "clients/codex/plugins/bos/skills/bos-guided-support/SKILL.md",
+      "clients/codex/plugins/bos/skills/bos-guided-support/references/support-state-machine.md",
+      "clients/codex/plugins/bos/skills/bos-mcp-client/SKILL.md",
+      "clients/codex/plugins/bos/skills/bos-mcp-client/references/identity-context.md",
+      "clients/codex/plugins/bos/skills/bos-mcp-client/references/runtime-continuation-contract.md",
+      "clients/codex/plugins/bos/skills/bos-plugin-console/SKILL.md",
+      "clients/codex/plugins/bos/skills/bos-plugin-settings-initialization/SKILL.md",
+      "clients/codex/plugins/bos/skills/bos-plugin-settings/SKILL.md",
+      "clients/codex/plugins/bos/skills/bos-visual-output/SKILL.md",
+      "clients/codex/plugins/bos/skills/bos-visual-output/references/graph-rendering.md",
+      "clients/codex/plugins/bos/skills/bos-workflow-orchestrator/SKILL.md",
+      "clients/codex/plugins/bos/skills/campaign-offer-marketing-sales/SKILL.md",
+      "clients/codex/plugins/bos/skills/collision-call-audit-email/SKILL.md",
+      "clients/codex/plugins/bos/skills/collision-repair-proposal-builder/SKILL.md",
+      "clients/codex/plugins/bos/skills/corporate-counsel/SKILL.md",
+      "clients/codex/plugins/bos/skills/email-account-routing/SKILL.md",
+      "clients/codex/plugins/bos/skills/implementation/SKILL.md",
+      "clients/codex/plugins/bos/skills/landing-page-copywriting/SKILL.md",
+      "clients/codex/plugins/bos/skills/manage-customer-extension/SKILL.md",
+      "clients/codex/plugins/bos/skills/marketing-analysis/SKILL.md",
+      "clients/codex/plugins/bos/skills/meta-ads-conversion-optimization/SKILL.md",
+      "clients/codex/plugins/bos/skills/openai-plugin-publishing/SKILL.md",
+      "clients/codex/plugins/bos/skills/planning/SKILL.md",
+      "clients/codex/plugins/bos/skills/po-go-boundary-enforcement/SKILL.md",
+      "clients/codex/plugins/bos/skills/review/SKILL.md",
+      "clients/codex/plugins/bos/skills/sendgrid-campaigns/SKILL.md",
+      "clients/codex/plugins/bos/skills/seo-improvement-loop/SKILL.md",
+      "clients/codex/plugins/bos/skills/submit-feedback/SKILL.md",
+      "clients/codex/plugins/bos/skills/submit-feedback/references/item-discussion.md",
+      "clients/codex/plugins/bos/skills/submit-feedback/scripts/item-discussion.mjs",
       "clients/codex/plugins/education-center/.bos-product.json",
       "clients/codex/plugins/education-center/.codex-plugin/plugin.json",
+      "clients/codex/plugins/education-center/skills/agent-call-operations/SKILL.md",
+      "clients/codex/plugins/education-center/skills/bos-google-review-outreach/SKILL.md",
+      "clients/codex/plugins/education-center/skills/bos-mcp-client/SKILL.md",
+      "clients/codex/plugins/education-center/skills/bos-mcp-client/references/identity-context.md",
+      "clients/codex/plugins/education-center/skills/bos-mcp-client/references/runtime-continuation-contract.md",
+      "clients/codex/plugins/education-center/skills/bos-plugin-settings-initialization/SKILL.md",
+      "clients/codex/plugins/education-center/skills/bos-plugin-settings/SKILL.md",
+      "clients/codex/plugins/education-center/skills/camp-capacity-planning/SKILL.md",
+      "clients/codex/plugins/education-center/skills/education-center-class-operations/SKILL.md",
+      "clients/codex/plugins/education-center/skills/education-center-customer-initialization/SKILL.md",
+      "clients/codex/plugins/education-center/skills/education-center-director-daily-planner/SKILL.md",
+      "clients/codex/plugins/education-center/skills/education-center-instructor-operations/SKILL.md",
+      "clients/codex/plugins/education-center/skills/education-center-invoice-operations/SKILL.md",
+      "clients/codex/plugins/education-center/skills/education-center-paid-attribution-operations/SKILL.md",
+      "clients/codex/plugins/education-center/skills/education-center-parent-communications/SKILL.md",
+      "clients/codex/plugins/education-center/skills/education-center-service-routing/SKILL.md",
+      "clients/codex/plugins/education-center/skills/education-center-student-operations/SKILL.md",
+      "clients/codex/plugins/education-center/skills/education-center-trial-reconciliation/SKILL.md",
+      "clients/codex/plugins/education-center/skills/local-school-market-research/SKILL.md",
+      "clients/codex/plugins/education-center/skills/manage-customer-extension/SKILL.md",
+      "clients/codex/plugins/education-center/skills/partnership-proposal-builder/SKILL.md",
+      "clients/codex/plugins/education-center/skills/sendgrid-campaign-operations/SKILL.md",
+      "clients/codex/plugins/education-center/skills/submit-feedback/SKILL.md",
+      "clients/codex/plugins/education-center/skills/submit-feedback/references/item-discussion.md",
+      "clients/codex/plugins/education-center/skills/submit-feedback/scripts/item-discussion.mjs",
       "clients/copilot/products/bos/.bos-product.json",
+      "clients/copilot/products/bos/skills/ada/SKILL.md",
+      "clients/copilot/products/bos/skills/ada/agents/openai.yaml",
+      "clients/copilot/products/bos/skills/ada/references/behavior-core.md",
+      "clients/copilot/products/bos/skills/ada/references/customer-onboarding.md",
+      "clients/copilot/products/bos/skills/ada/references/journey-view.md",
+      "clients/copilot/products/bos/skills/ada/references/runtime-export.md",
+      "clients/copilot/products/bos/skills/ada/references/turn-safeguards.md",
+      "clients/copilot/products/bos/skills/ada/runtime-export.json",
+      "clients/copilot/products/bos/skills/ada/scripts/customer-onboarding.mjs",
+      "clients/copilot/products/bos/skills/ada/scripts/journey-view.mjs",
+      "clients/copilot/products/bos/skills/ada/scripts/turn-safeguards.mjs",
+      "clients/copilot/products/bos/skills/authentication-context-integrity/SKILL.md",
+      "clients/copilot/products/bos/skills/bos-app-discovery/SKILL.md",
+      "clients/copilot/products/bos/skills/bos-cache-maintenance/SKILL.md",
+      "clients/copilot/products/bos/skills/bos-customer-initialization/SKILL.md",
+      "clients/copilot/products/bos/skills/bos-customer-initialization/agents/openai.yaml",
+      "clients/copilot/products/bos/skills/bos-customer-initialization/scripts/customer-profile.mjs",
+      "clients/copilot/products/bos/skills/bos-external-dependency-adapter/SKILL.md",
+      "clients/copilot/products/bos/skills/bos-external-dependency-adapter/references/dependency-adapter.md",
+      "clients/copilot/products/bos/skills/bos-external-dependency-adapter/scripts/external-dependency-adapter.mjs",
+      "clients/copilot/products/bos/skills/bos-guided-support/SKILL.md",
+      "clients/copilot/products/bos/skills/bos-guided-support/references/support-state-machine.md",
+      "clients/copilot/products/bos/skills/bos-mcp-client/SKILL.md",
+      "clients/copilot/products/bos/skills/bos-mcp-client/references/identity-context.md",
+      "clients/copilot/products/bos/skills/bos-mcp-client/references/runtime-continuation-contract.md",
+      "clients/copilot/products/bos/skills/bos-plugin-console/SKILL.md",
+      "clients/copilot/products/bos/skills/bos-plugin-settings-initialization/SKILL.md",
+      "clients/copilot/products/bos/skills/bos-plugin-settings/SKILL.md",
+      "clients/copilot/products/bos/skills/bos-visual-output/SKILL.md",
+      "clients/copilot/products/bos/skills/bos-visual-output/references/graph-rendering.md",
+      "clients/copilot/products/bos/skills/bos-workflow-orchestrator/SKILL.md",
+      "clients/copilot/products/bos/skills/campaign-offer-marketing-sales/SKILL.md",
+      "clients/copilot/products/bos/skills/collision-call-audit-email/SKILL.md",
+      "clients/copilot/products/bos/skills/collision-repair-proposal-builder/SKILL.md",
+      "clients/copilot/products/bos/skills/corporate-counsel/SKILL.md",
+      "clients/copilot/products/bos/skills/email-account-routing/SKILL.md",
+      "clients/copilot/products/bos/skills/implementation/SKILL.md",
+      "clients/copilot/products/bos/skills/landing-page-copywriting/SKILL.md",
+      "clients/copilot/products/bos/skills/manage-customer-extension/SKILL.md",
+      "clients/copilot/products/bos/skills/marketing-analysis/SKILL.md",
+      "clients/copilot/products/bos/skills/meta-ads-conversion-optimization/SKILL.md",
+      "clients/copilot/products/bos/skills/openai-plugin-publishing/SKILL.md",
+      "clients/copilot/products/bos/skills/planning/SKILL.md",
+      "clients/copilot/products/bos/skills/po-go-boundary-enforcement/SKILL.md",
+      "clients/copilot/products/bos/skills/review/SKILL.md",
+      "clients/copilot/products/bos/skills/sendgrid-campaigns/SKILL.md",
+      "clients/copilot/products/bos/skills/seo-improvement-loop/SKILL.md",
+      "clients/copilot/products/bos/skills/submit-feedback/SKILL.md",
+      "clients/copilot/products/bos/skills/submit-feedback/references/item-discussion.md",
+      "clients/copilot/products/bos/skills/submit-feedback/scripts/item-discussion.mjs",
       "clients/copilot/products/education-center/.bos-product.json",
+      "clients/copilot/products/education-center/skills/agent-call-operations/SKILL.md",
+      "clients/copilot/products/education-center/skills/bos-google-review-outreach/SKILL.md",
+      "clients/copilot/products/education-center/skills/bos-mcp-client/SKILL.md",
+      "clients/copilot/products/education-center/skills/bos-mcp-client/references/identity-context.md",
+      "clients/copilot/products/education-center/skills/bos-mcp-client/references/runtime-continuation-contract.md",
+      "clients/copilot/products/education-center/skills/bos-plugin-settings-initialization/SKILL.md",
+      "clients/copilot/products/education-center/skills/bos-plugin-settings/SKILL.md",
+      "clients/copilot/products/education-center/skills/camp-capacity-planning/SKILL.md",
+      "clients/copilot/products/education-center/skills/education-center-class-operations/SKILL.md",
+      "clients/copilot/products/education-center/skills/education-center-customer-initialization/SKILL.md",
+      "clients/copilot/products/education-center/skills/education-center-director-daily-planner/SKILL.md",
+      "clients/copilot/products/education-center/skills/education-center-instructor-operations/SKILL.md",
+      "clients/copilot/products/education-center/skills/education-center-invoice-operations/SKILL.md",
+      "clients/copilot/products/education-center/skills/education-center-paid-attribution-operations/SKILL.md",
+      "clients/copilot/products/education-center/skills/education-center-parent-communications/SKILL.md",
+      "clients/copilot/products/education-center/skills/education-center-service-routing/SKILL.md",
+      "clients/copilot/products/education-center/skills/education-center-student-operations/SKILL.md",
+      "clients/copilot/products/education-center/skills/education-center-trial-reconciliation/SKILL.md",
+      "clients/copilot/products/education-center/skills/local-school-market-research/SKILL.md",
+      "clients/copilot/products/education-center/skills/manage-customer-extension/SKILL.md",
+      "clients/copilot/products/education-center/skills/partnership-proposal-builder/SKILL.md",
+      "clients/copilot/products/education-center/skills/sendgrid-campaign-operations/SKILL.md",
+      "clients/copilot/products/education-center/skills/submit-feedback/SKILL.md",
+      "clients/copilot/products/education-center/skills/submit-feedback/references/item-discussion.md",
+      "clients/copilot/products/education-center/skills/submit-feedback/scripts/item-discussion.mjs",
+      "clients/copilot/skills/agent-call-operations/SKILL.md",
+      "clients/copilot/skills/bos-google-review-outreach/SKILL.md",
+      "clients/copilot/skills/bos-mcp-client/SKILL.md",
+      "clients/copilot/skills/bos-mcp-client/references/identity-context.md",
+      "clients/copilot/skills/bos-mcp-client/references/runtime-continuation-contract.md",
+      "clients/copilot/skills/bos-plugin-settings-initialization/SKILL.md",
+      "clients/copilot/skills/bos-plugin-settings/SKILL.md",
+      "clients/copilot/skills/camp-capacity-planning/SKILL.md",
+      "clients/copilot/skills/education-center-class-operations/SKILL.md",
+      "clients/copilot/skills/education-center-customer-initialization/SKILL.md",
+      "clients/copilot/skills/education-center-director-daily-planner/SKILL.md",
+      "clients/copilot/skills/education-center-instructor-operations/SKILL.md",
+      "clients/copilot/skills/education-center-invoice-operations/SKILL.md",
+      "clients/copilot/skills/education-center-paid-attribution-operations/SKILL.md",
+      "clients/copilot/skills/education-center-parent-communications/SKILL.md",
+      "clients/copilot/skills/education-center-service-routing/SKILL.md",
+      "clients/copilot/skills/education-center-student-operations/SKILL.md",
+      "clients/copilot/skills/education-center-trial-reconciliation/SKILL.md",
+      "clients/copilot/skills/local-school-market-research/SKILL.md",
+      "clients/copilot/skills/manage-customer-extension/SKILL.md",
+      "clients/copilot/skills/partnership-proposal-builder/SKILL.md",
+      "clients/copilot/skills/sendgrid-campaign-operations/SKILL.md",
+      "clients/copilot/skills/submit-feedback/SKILL.md",
+      "clients/copilot/skills/submit-feedback/references/item-discussion.md",
+      "clients/copilot/skills/submit-feedback/scripts/item-discussion.mjs",
       "clients/gemini/extensions/bos/.bos-product.json",
       "clients/gemini/extensions/bos/gemini-extension.json",
       "clients/gemini/extensions/bos/plugin.json",
+      "clients/gemini/extensions/bos/skills/ada/SKILL.md",
+      "clients/gemini/extensions/bos/skills/ada/agents/openai.yaml",
+      "clients/gemini/extensions/bos/skills/ada/references/behavior-core.md",
+      "clients/gemini/extensions/bos/skills/ada/references/customer-onboarding.md",
+      "clients/gemini/extensions/bos/skills/ada/references/journey-view.md",
+      "clients/gemini/extensions/bos/skills/ada/references/runtime-export.md",
+      "clients/gemini/extensions/bos/skills/ada/references/turn-safeguards.md",
+      "clients/gemini/extensions/bos/skills/ada/runtime-export.json",
+      "clients/gemini/extensions/bos/skills/ada/scripts/customer-onboarding.mjs",
+      "clients/gemini/extensions/bos/skills/ada/scripts/journey-view.mjs",
+      "clients/gemini/extensions/bos/skills/ada/scripts/turn-safeguards.mjs",
+      "clients/gemini/extensions/bos/skills/authentication-context-integrity/SKILL.md",
+      "clients/gemini/extensions/bos/skills/bos-app-discovery/SKILL.md",
+      "clients/gemini/extensions/bos/skills/bos-cache-maintenance/SKILL.md",
+      "clients/gemini/extensions/bos/skills/bos-customer-initialization/SKILL.md",
+      "clients/gemini/extensions/bos/skills/bos-customer-initialization/agents/openai.yaml",
+      "clients/gemini/extensions/bos/skills/bos-customer-initialization/scripts/customer-profile.mjs",
+      "clients/gemini/extensions/bos/skills/bos-external-dependency-adapter/SKILL.md",
+      "clients/gemini/extensions/bos/skills/bos-external-dependency-adapter/references/dependency-adapter.md",
+      "clients/gemini/extensions/bos/skills/bos-external-dependency-adapter/scripts/external-dependency-adapter.mjs",
+      "clients/gemini/extensions/bos/skills/bos-guided-support/SKILL.md",
+      "clients/gemini/extensions/bos/skills/bos-guided-support/references/support-state-machine.md",
+      "clients/gemini/extensions/bos/skills/bos-mcp-client/SKILL.md",
+      "clients/gemini/extensions/bos/skills/bos-mcp-client/references/identity-context.md",
+      "clients/gemini/extensions/bos/skills/bos-mcp-client/references/runtime-continuation-contract.md",
+      "clients/gemini/extensions/bos/skills/bos-plugin-console/SKILL.md",
+      "clients/gemini/extensions/bos/skills/bos-plugin-settings-initialization/SKILL.md",
+      "clients/gemini/extensions/bos/skills/bos-plugin-settings/SKILL.md",
+      "clients/gemini/extensions/bos/skills/bos-visual-output/SKILL.md",
+      "clients/gemini/extensions/bos/skills/bos-visual-output/references/graph-rendering.md",
+      "clients/gemini/extensions/bos/skills/bos-workflow-orchestrator/SKILL.md",
+      "clients/gemini/extensions/bos/skills/campaign-offer-marketing-sales/SKILL.md",
+      "clients/gemini/extensions/bos/skills/collision-call-audit-email/SKILL.md",
+      "clients/gemini/extensions/bos/skills/collision-repair-proposal-builder/SKILL.md",
+      "clients/gemini/extensions/bos/skills/corporate-counsel/SKILL.md",
+      "clients/gemini/extensions/bos/skills/email-account-routing/SKILL.md",
+      "clients/gemini/extensions/bos/skills/implementation/SKILL.md",
+      "clients/gemini/extensions/bos/skills/landing-page-copywriting/SKILL.md",
+      "clients/gemini/extensions/bos/skills/manage-customer-extension/SKILL.md",
+      "clients/gemini/extensions/bos/skills/marketing-analysis/SKILL.md",
+      "clients/gemini/extensions/bos/skills/meta-ads-conversion-optimization/SKILL.md",
+      "clients/gemini/extensions/bos/skills/openai-plugin-publishing/SKILL.md",
+      "clients/gemini/extensions/bos/skills/planning/SKILL.md",
+      "clients/gemini/extensions/bos/skills/po-go-boundary-enforcement/SKILL.md",
+      "clients/gemini/extensions/bos/skills/review/SKILL.md",
+      "clients/gemini/extensions/bos/skills/sendgrid-campaigns/SKILL.md",
+      "clients/gemini/extensions/bos/skills/seo-improvement-loop/SKILL.md",
+      "clients/gemini/extensions/bos/skills/submit-feedback/SKILL.md",
+      "clients/gemini/extensions/bos/skills/submit-feedback/references/item-discussion.md",
+      "clients/gemini/extensions/bos/skills/submit-feedback/scripts/item-discussion.mjs",
       "clients/gemini/extensions/education-center/.bos-product.json",
       "clients/gemini/extensions/education-center/gemini-extension.json",
       "clients/gemini/extensions/education-center/plugin.json",
+      "clients/gemini/extensions/education-center/skills/agent-call-operations/SKILL.md",
+      "clients/gemini/extensions/education-center/skills/bos-google-review-outreach/SKILL.md",
+      "clients/gemini/extensions/education-center/skills/bos-mcp-client/SKILL.md",
+      "clients/gemini/extensions/education-center/skills/bos-mcp-client/references/identity-context.md",
+      "clients/gemini/extensions/education-center/skills/bos-mcp-client/references/runtime-continuation-contract.md",
+      "clients/gemini/extensions/education-center/skills/bos-plugin-settings-initialization/SKILL.md",
+      "clients/gemini/extensions/education-center/skills/bos-plugin-settings/SKILL.md",
+      "clients/gemini/extensions/education-center/skills/camp-capacity-planning/SKILL.md",
+      "clients/gemini/extensions/education-center/skills/education-center-class-operations/SKILL.md",
+      "clients/gemini/extensions/education-center/skills/education-center-customer-initialization/SKILL.md",
+      "clients/gemini/extensions/education-center/skills/education-center-director-daily-planner/SKILL.md",
+      "clients/gemini/extensions/education-center/skills/education-center-instructor-operations/SKILL.md",
+      "clients/gemini/extensions/education-center/skills/education-center-invoice-operations/SKILL.md",
+      "clients/gemini/extensions/education-center/skills/education-center-paid-attribution-operations/SKILL.md",
+      "clients/gemini/extensions/education-center/skills/education-center-parent-communications/SKILL.md",
+      "clients/gemini/extensions/education-center/skills/education-center-service-routing/SKILL.md",
+      "clients/gemini/extensions/education-center/skills/education-center-student-operations/SKILL.md",
+      "clients/gemini/extensions/education-center/skills/education-center-trial-reconciliation/SKILL.md",
+      "clients/gemini/extensions/education-center/skills/local-school-market-research/SKILL.md",
+      "clients/gemini/extensions/education-center/skills/manage-customer-extension/SKILL.md",
+      "clients/gemini/extensions/education-center/skills/partnership-proposal-builder/SKILL.md",
+      "clients/gemini/extensions/education-center/skills/sendgrid-campaign-operations/SKILL.md",
+      "clients/gemini/extensions/education-center/skills/submit-feedback/SKILL.md",
+      "clients/gemini/extensions/education-center/skills/submit-feedback/references/item-discussion.md",
+      "clients/gemini/extensions/education-center/skills/submit-feedback/scripts/item-discussion.mjs",
       "clients/muse/plugins/bos/.bos-product.json",
       "clients/muse/plugins/bos/.muse-plugin/plugin.json",
+      "clients/muse/plugins/bos/skills/ada/SKILL.md",
+      "clients/muse/plugins/bos/skills/ada/agents/openai.yaml",
+      "clients/muse/plugins/bos/skills/ada/references/behavior-core.md",
+      "clients/muse/plugins/bos/skills/ada/references/customer-onboarding.md",
+      "clients/muse/plugins/bos/skills/ada/references/journey-view.md",
+      "clients/muse/plugins/bos/skills/ada/references/runtime-export.md",
+      "clients/muse/plugins/bos/skills/ada/references/turn-safeguards.md",
+      "clients/muse/plugins/bos/skills/ada/runtime-export.json",
+      "clients/muse/plugins/bos/skills/ada/scripts/customer-onboarding.mjs",
+      "clients/muse/plugins/bos/skills/ada/scripts/journey-view.mjs",
+      "clients/muse/plugins/bos/skills/ada/scripts/turn-safeguards.mjs",
+      "clients/muse/plugins/bos/skills/authentication-context-integrity/SKILL.md",
+      "clients/muse/plugins/bos/skills/bos-app-discovery/SKILL.md",
+      "clients/muse/plugins/bos/skills/bos-cache-maintenance/SKILL.md",
+      "clients/muse/plugins/bos/skills/bos-customer-initialization/SKILL.md",
+      "clients/muse/plugins/bos/skills/bos-customer-initialization/agents/openai.yaml",
+      "clients/muse/plugins/bos/skills/bos-customer-initialization/scripts/customer-profile.mjs",
+      "clients/muse/plugins/bos/skills/bos-external-dependency-adapter/SKILL.md",
+      "clients/muse/plugins/bos/skills/bos-external-dependency-adapter/references/dependency-adapter.md",
+      "clients/muse/plugins/bos/skills/bos-external-dependency-adapter/scripts/external-dependency-adapter.mjs",
+      "clients/muse/plugins/bos/skills/bos-guided-support/SKILL.md",
+      "clients/muse/plugins/bos/skills/bos-guided-support/references/support-state-machine.md",
+      "clients/muse/plugins/bos/skills/bos-mcp-client/SKILL.md",
+      "clients/muse/plugins/bos/skills/bos-mcp-client/references/identity-context.md",
+      "clients/muse/plugins/bos/skills/bos-mcp-client/references/runtime-continuation-contract.md",
+      "clients/muse/plugins/bos/skills/bos-plugin-console/SKILL.md",
+      "clients/muse/plugins/bos/skills/bos-plugin-settings-initialization/SKILL.md",
+      "clients/muse/plugins/bos/skills/bos-plugin-settings/SKILL.md",
+      "clients/muse/plugins/bos/skills/bos-visual-output/SKILL.md",
+      "clients/muse/plugins/bos/skills/bos-visual-output/references/graph-rendering.md",
+      "clients/muse/plugins/bos/skills/bos-workflow-orchestrator/SKILL.md",
+      "clients/muse/plugins/bos/skills/campaign-offer-marketing-sales/SKILL.md",
+      "clients/muse/plugins/bos/skills/collision-call-audit-email/SKILL.md",
+      "clients/muse/plugins/bos/skills/collision-repair-proposal-builder/SKILL.md",
+      "clients/muse/plugins/bos/skills/corporate-counsel/SKILL.md",
+      "clients/muse/plugins/bos/skills/email-account-routing/SKILL.md",
+      "clients/muse/plugins/bos/skills/implementation/SKILL.md",
+      "clients/muse/plugins/bos/skills/landing-page-copywriting/SKILL.md",
+      "clients/muse/plugins/bos/skills/manage-customer-extension/SKILL.md",
+      "clients/muse/plugins/bos/skills/marketing-analysis/SKILL.md",
+      "clients/muse/plugins/bos/skills/meta-ads-conversion-optimization/SKILL.md",
+      "clients/muse/plugins/bos/skills/openai-plugin-publishing/SKILL.md",
+      "clients/muse/plugins/bos/skills/planning/SKILL.md",
+      "clients/muse/plugins/bos/skills/po-go-boundary-enforcement/SKILL.md",
+      "clients/muse/plugins/bos/skills/review/SKILL.md",
+      "clients/muse/plugins/bos/skills/sendgrid-campaigns/SKILL.md",
+      "clients/muse/plugins/bos/skills/seo-improvement-loop/SKILL.md",
+      "clients/muse/plugins/bos/skills/submit-feedback/SKILL.md",
+      "clients/muse/plugins/bos/skills/submit-feedback/references/item-discussion.md",
+      "clients/muse/plugins/bos/skills/submit-feedback/scripts/item-discussion.mjs",
       "clients/muse/plugins/education-center/.bos-product.json",
       "clients/muse/plugins/education-center/.muse-plugin/plugin.json",
-      "tests/oracle-fixture.mjs",
-      "tests/oracle_review_series.py",
-      "tests/oracle-review-series.test.mjs",
-      "tests/oracle-governance.test.mjs",
-      "tests/oracle-api-version-request.test.mjs",
-      "tests/oracle-performance.test.mjs",
-      "tests/oracle-lifecycle.test.mjs",
-      "tests/oracle-parallel.test.mjs",
+      "clients/muse/plugins/education-center/skills/agent-call-operations/SKILL.md",
+      "clients/muse/plugins/education-center/skills/bos-google-review-outreach/SKILL.md",
+      "clients/muse/plugins/education-center/skills/bos-mcp-client/SKILL.md",
+      "clients/muse/plugins/education-center/skills/bos-mcp-client/references/identity-context.md",
+      "clients/muse/plugins/education-center/skills/bos-mcp-client/references/runtime-continuation-contract.md",
+      "clients/muse/plugins/education-center/skills/bos-plugin-settings-initialization/SKILL.md",
+      "clients/muse/plugins/education-center/skills/bos-plugin-settings/SKILL.md",
+      "clients/muse/plugins/education-center/skills/camp-capacity-planning/SKILL.md",
+      "clients/muse/plugins/education-center/skills/education-center-class-operations/SKILL.md",
+      "clients/muse/plugins/education-center/skills/education-center-customer-initialization/SKILL.md",
+      "clients/muse/plugins/education-center/skills/education-center-director-daily-planner/SKILL.md",
+      "clients/muse/plugins/education-center/skills/education-center-instructor-operations/SKILL.md",
+      "clients/muse/plugins/education-center/skills/education-center-invoice-operations/SKILL.md",
+      "clients/muse/plugins/education-center/skills/education-center-paid-attribution-operations/SKILL.md",
+      "clients/muse/plugins/education-center/skills/education-center-parent-communications/SKILL.md",
+      "clients/muse/plugins/education-center/skills/education-center-service-routing/SKILL.md",
+      "clients/muse/plugins/education-center/skills/education-center-student-operations/SKILL.md",
+      "clients/muse/plugins/education-center/skills/education-center-trial-reconciliation/SKILL.md",
+      "clients/muse/plugins/education-center/skills/local-school-market-research/SKILL.md",
+      "clients/muse/plugins/education-center/skills/manage-customer-extension/SKILL.md",
+      "clients/muse/plugins/education-center/skills/partnership-proposal-builder/SKILL.md",
+      "clients/muse/plugins/education-center/skills/sendgrid-campaign-operations/SKILL.md",
+      "clients/muse/plugins/education-center/skills/submit-feedback/SKILL.md",
+      "clients/muse/plugins/education-center/skills/submit-feedback/references/item-discussion.md",
+      "clients/muse/plugins/education-center/skills/submit-feedback/scripts/item-discussion.mjs",
+      "contracts/bos-client-dependency.v1/manifest.json",
+      "package-lock.json",
+      "package-manifest.json",
+      "package.json",
+      "products/bos/openai/bos-skills.zip",
+      "products/bos/product.json",
+      "products/education-center/openai/education-center-skills.zip",
+      "products/education-center/product.json",
+      "scripts/build-feedback-socket-runtime.mjs",
+      "scripts/build-marketplace-update.mjs",
+      "scripts/check-customer-data.mjs",
+      "scripts/check-package.mjs",
+      "scripts/check-publication-history.mjs",
+      "scripts/check-publication-safety.mjs",
+      "scripts/entries/feedback-websocket-runtime.mjs",
+      "scripts/export-runtime-skill.mjs",
+      "scripts/install-notification-host.mjs",
+      "scripts/lib/bos-oauth-live-contract.mjs",
+      "scripts/lib/package-model.mjs",
+      "scripts/lib/privacy-coverage.mjs",
+      "scripts/lib/privacy-scan-pool.mjs",
+      "scripts/lib/privacy-scan-worker.mjs",
+      "scripts/lib/publication-credentials.mjs",
+      "scripts/lib/runtime-skill-export.mjs",
+      "skill-release-manifest.json",
+      "source/capabilities/agent-call-operations/SKILL.md",
+      "source/capabilities/campaign-offer-marketing-sales/SKILL.md",
+      "source/capabilities/collision-call-audit-email/SKILL.md",
+      "source/capabilities/collision-repair-proposal-builder/SKILL.md",
+      "source/capabilities/corporate-counsel/SKILL.md",
+      "source/capabilities/email-account-routing/SKILL.md",
+      "source/capabilities/landing-page-copywriting/SKILL.md",
+      "source/capabilities/marketing-analysis/SKILL.md",
+      "source/capabilities/meta-ads-conversion-optimization/SKILL.md",
+      "source/capabilities/review-outreach/SKILL.md",
+      "source/capabilities/sendgrid-campaign-operations/SKILL.md",
+      "source/capabilities/sendgrid-campaigns/SKILL.md",
+      "source/capabilities/seo-improvement-loop/SKILL.md",
+      "source/capabilities/video-ad-drive-delivery/SKILL.md",
+      "source/capabilities/video-ad-generation/SKILL.md",
+      "source/host-runtime/bos-journey-notifications/README.md",
+      "source/host-runtime/bos-journey-notifications/customer-onboarding-host.mjs",
+      "source/host-runtime/bos-journey-notifications/event-wake-subscriber.mjs",
+      "source/host-runtime/bos-journey-notifications/feedback-discussion-host.mjs",
+      "source/host-runtime/bos-journey-notifications/feedback-socket.mjs",
+      "source/host-runtime/bos-journey-notifications/muse-companion-cli.mjs",
+      "source/host-runtime/bos-journey-notifications/muse-companion-host.mjs",
+      "source/host-runtime/bos-journey-notifications/muse-hook.sh",
+      "source/host-runtime/bos-journey-notifications/vendor/WS-LICENSE.txt",
+      "source/host-runtime/bos-journey-notifications/vendor/ws.bundle.mjs",
+      "source/host-runtime/bos-journey-notifications/vendor/ws.provenance.json",
+      "source/host-runtime/bos-shared-cache/document-cache.mjs",
+      "source/platform/ada/SKILL.md",
+      "source/platform/ada/agents/openai.yaml",
+      "source/platform/ada/references/behavior-core.md",
+      "source/platform/ada/references/customer-onboarding.md",
+      "source/platform/ada/references/journey-view.md",
+      "source/platform/ada/references/runtime-export.md",
+      "source/platform/ada/references/turn-safeguards.md",
+      "source/platform/ada/runtime-export.json",
+      "source/platform/ada/scripts/customer-onboarding.mjs",
+      "source/platform/ada/scripts/journey-view.mjs",
+      "source/platform/ada/scripts/turn-safeguards.mjs",
+      "source/platform/authentication-context-integrity/SKILL.md",
+      "source/platform/bos-app-discovery/SKILL.md",
+      "source/platform/bos-cache-maintenance/SKILL.md",
+      "source/platform/bos-customer-initialization/SKILL.md",
+      "source/platform/bos-customer-initialization/agents/openai.yaml",
+      "source/platform/bos-customer-initialization/scripts/customer-profile.mjs",
+      "source/platform/bos-external-dependency-adapter/SKILL.md",
+      "source/platform/bos-external-dependency-adapter/references/dependency-adapter.md",
+      "source/platform/bos-external-dependency-adapter/scripts/external-dependency-adapter.mjs",
+      "source/platform/bos-guided-support/SKILL.md",
+      "source/platform/bos-guided-support/references/support-state-machine.md",
+      "source/platform/bos-mcp-client/SKILL.md",
+      "source/platform/bos-mcp-client/references/identity-context.md",
+      "source/platform/bos-mcp-client/references/runtime-continuation-contract.md",
+      "source/platform/bos-plugin-console/SKILL.md",
+      "source/platform/bos-plugin-settings-initialization/SKILL.md",
+      "source/platform/bos-plugin-settings/SKILL.md",
+      "source/platform/bos-visual-output/SKILL.md",
+      "source/platform/bos-visual-output/references/graph-rendering.md",
+      "source/platform/bos-workflow-orchestrator/SKILL.md",
+      "source/platform/implementation/SKILL.md",
+      "source/platform/manage-customer-extension/SKILL.md",
+      "source/platform/openai-plugin-publishing/SKILL.md",
+      "source/platform/planning/SKILL.md",
+      "source/platform/po-go-boundary-enforcement/SKILL.md",
+      "source/platform/review/SKILL.md",
+      "source/platform/submit-feedback/SKILL.md",
+      "source/platform/submit-feedback/references/item-discussion.md",
+      "source/platform/submit-feedback/scripts/item-discussion.mjs",
+      "source/verticals/education-center/camp-capacity-planning/SKILL.md",
+      "source/verticals/education-center/education-center-class-operations/SKILL.md",
+      "source/verticals/education-center/education-center-customer-initialization/SKILL.md",
+      "source/verticals/education-center/education-center-director-daily-planner/SKILL.md",
+      "source/verticals/education-center/education-center-instructor-operations/SKILL.md",
+      "source/verticals/education-center/education-center-invoice-operations/SKILL.md",
+      "source/verticals/education-center/education-center-paid-attribution-operations/SKILL.md",
+      "source/verticals/education-center/education-center-parent-communications/SKILL.md",
+      "source/verticals/education-center/education-center-service-routing/SKILL.md",
+      "source/verticals/education-center/education-center-student-operations/SKILL.md",
+      "source/verticals/education-center/education-center-trial-reconciliation/SKILL.md",
+      "source/verticals/education-center/local-school-market-research/SKILL.md",
+      "source/verticals/education-center/partnership-proposal-builder/SKILL.md",
+      "tests/ada-client.test.mjs",
+      "tests/ada-customer-onboarding.test.mjs",
+      "tests/ada-journey-view.test.mjs",
+      "tests/agent-driven-journey-live-verifier.test.mjs",
+      "tests/bos-customer-profile.test.mjs",
+      "tests/bos-oauth-live-contract.test.mjs",
       "tests/command-coverage.test.mjs",
       "tests/command_coverage_test.py",
-      "tests/oracle_source_frontier_test.py",
-      "tests/oracle-source-frontier.test.mjs",
-      "tests/agent-driven-journey-live-verifier.test.mjs",
-      "source/host-runtime/bos-shared-cache/document-cache.mjs",
+      "tests/customer-data-privacy.test.mjs",
+      "tests/customer-onboarding-host.test.mjs",
+      "tests/deterministic-lanes.test.mjs",
+      "tests/deterministic_package_test.py",
+      "tests/deterministic_source_test.py",
       "tests/document-cache.test.mjs",
+      "tests/external-authentication-handoff.test.mjs",
+      "tests/external-dependency-adapter.test.mjs",
+      "tests/feedback-event-subscriber.test.mjs",
+      "tests/feedback-item-discussion.test.mjs",
+      "tests/feedback-socket-host.test.mjs",
+      "tests/helpers/feedback-socket-stand-in.mjs",
+      "tests/helpers/isolated-test-cohort.mjs",
+      "tests/helpers/lead-graph-acceptance.mjs",
+      "tests/helpers/synthetic-bos-discovery-service.mjs",
+      "tests/helpers/synthetic-notifications.mjs",
+      "tests/helpers/synthetic-onboarding.mjs",
+      "tests/isolated-test-cohort.test.mjs",
       "tests/journey-notifications.test.mjs",
-      "scripts/build-marketplace-update.mjs",
+      "tests/lead-graph-regression.test.mjs",
       "tests/marketplace-update.test.mjs",
+      "tests/muse-workflow-guidance.test.mjs",
+      "tests/notification-host-installer.test.mjs",
+      "tests/notification-host.test.mjs",
+      "tests/oracle-api-version-request.test.mjs",
+      "tests/oracle-fixture.mjs",
+      "tests/oracle-governance.test.mjs",
+      "tests/oracle-implementation-spec.test.mjs",
+      "tests/oracle-lifecycle.test.mjs",
+      "tests/oracle-parallel.test.mjs",
+      "tests/oracle-performance.test.mjs",
+      "tests/oracle-review-series.test.mjs",
+      "tests/oracle-scope-index.test.mjs",
+      "tests/oracle-source-frontier.test.mjs",
+      "tests/oracle_lifecycle_test.py",
+      "tests/oracle_parallel_test.py",
+      "tests/oracle_review_series.py",
+      "tests/oracle_scope_index_test.py",
+      "tests/oracle_source_frontier_test.py",
+      "tests/oracle_spec_test.py",
+      "tests/package-model.test.mjs",
+      "tests/privacy-coverage.test.mjs",
+      "tests/publication-admission.test.mjs",
+      "tests/publication-history.test.mjs",
+      "tests/publication-safety.test.mjs",
+      "tests/publication_admission_test.py",
       "tests/published_fixture.py",
+      "tests/runtime-skill-export.test.mjs",
+      "tests/shipment-workflow.test.mjs",
+      "tests/shipment_workflow_test.py",
+      "tests/skill-dependencies.test.mjs",
+      "tests/validation-contract.test.mjs",
+      "tests/validation_contract_test.py",
+      "tools/command_coverage.py",
+      "tools/deterministic-package.md",
+      "tools/deterministic-source.md",
+      "tools/deterministic_package.py",
+      "tools/deterministic_source.py",
+      "tools/oracle_approval.py",
+      "tools/oracle_lifecycle.py",
+      "tools/oracle_parallel.py",
+      "tools/oracle_spec_seal.py",
       "tools/publication_admission.py",
       "tools/publication_status.py",
-      "tools/command_coverage.py",
-      "tests/publication_admission_test.py",
-      "tests/publication-admission.test.mjs",
-      "tests/shipment_workflow_test.py",
-      "tests/shipment-workflow.test.mjs",
-      "tools/oracle_lifecycle.py"
+      "tools/validation-contract.md",
+      "tools/validation-selection.json",
+      "tools/validation_contract.py",
+      "tools/vault_index.py"
     ]
   },
-  "base_commit": "2d6d39f387ef66675e884bb6c4b6359832e3d42c",
-  "base_tree": "ca6fb00ea2a98ba7eb8c4c0df8428c019f14c87f",
+  "base_commit": "9f0f7a6203d73d5c2c5c289f0cf80d5872dfc873",
+  "base_tree": "efaafeb7960379168ad33cf6974f7d5aa583f977",
   "catalog_sha256": "9a96f1cd2a973457f9da681dddcc5161aa8ffda188b092d849e5bc83999391c8",
   "runtime": {
-    "node": "v26.12.0",
-    "node_sha256": "caa24debe02770c92a70677e2a62ca98890150e7ac1c17bcfe31bcc98cc89943",
-    "controller_sha256": "375532f83be620283ab780c14ca6bcc5907dc379d2b621de0c5d0a112cf5458b",
-    "platform": "Linux",
-    "architecture": "x86_64",
+    "node": "v22.11.0",
+    "node_sha256": "b3766cc0774a690436a2bc9e3cbfd9d80c29a3f64499ae2f98ca203853b1cd85",
+    "controller_sha256": "4f00ea2ad53d62437a6a3946b73c73614a97e8accdc5b96dc095ea1a0d9c6a56",
+    "platform": "Darwin",
+    "architecture": "arm64",
     "options_sha256": "ebc442c160f8629073a82976daadaba1d95a60a38d768c81c8eb06598aedcac5"
   },
-  "proposal_sha256": "476d5600587d2f437b0fa8cb09456b72d6b02b83fe30e7e20504f7664d697930",
-  "review_sha256": "ad33b73cfe5c3cf0fa13c73b7ecc1a247b7cdb854716a9d9268b5ab9045e8a0a",
+  "proposal_sha256": "d58e4ffcacace665ce36a2fdda4f5b8e6759f07f6fe2b0feea6388e1817bf730",
+  "review_sha256": "92136f857ce65545bf327a2442f20ff0697ce71ffd8d5bf0f79af244b5dee8d6",
   "commands": [
     {
       "category": "sanity",
@@ -439,7 +1158,25 @@
         "tests/journey-notifications.test.mjs",
         "tests/marketplace-update.test.mjs",
         "tests/publication-admission.test.mjs",
-        "tests/shipment-workflow.test.mjs"
+        "tests/shipment-workflow.test.mjs",
+        "tests/feedback-item-discussion.test.mjs",
+        "tests/feedback-socket-host.test.mjs",
+        "tests/notification-host.test.mjs",
+        "tests/notification-host-installer.test.mjs",
+        "tests/privacy-coverage.test.mjs",
+        "tests/customer-data-privacy.test.mjs",
+        "tests/ada-customer-onboarding.test.mjs",
+        "tests/customer-onboarding-host.test.mjs",
+        "tests/runtime-skill-export.test.mjs",
+        "tests/skill-dependencies.test.mjs",
+        "tests/ada-client.test.mjs",
+        "tests/ada-journey-view.test.mjs",
+        "tests/bos-customer-profile.test.mjs",
+        "tests/bos-oauth-live-contract.test.mjs",
+        "tests/external-authentication-handoff.test.mjs",
+        "tests/external-dependency-adapter.test.mjs",
+        "tests/isolated-test-cohort.test.mjs",
+        "tests/muse-workflow-guidance.test.mjs"
       ],
       "tests": [
         "tests/validation-contract.test.mjs",
@@ -460,7 +1197,25 @@
         "tests/journey-notifications.test.mjs",
         "tests/marketplace-update.test.mjs",
         "tests/publication-admission.test.mjs",
-        "tests/shipment-workflow.test.mjs"
+        "tests/shipment-workflow.test.mjs",
+        "tests/feedback-item-discussion.test.mjs",
+        "tests/feedback-socket-host.test.mjs",
+        "tests/notification-host.test.mjs",
+        "tests/notification-host-installer.test.mjs",
+        "tests/privacy-coverage.test.mjs",
+        "tests/customer-data-privacy.test.mjs",
+        "tests/ada-customer-onboarding.test.mjs",
+        "tests/customer-onboarding-host.test.mjs",
+        "tests/runtime-skill-export.test.mjs",
+        "tests/skill-dependencies.test.mjs",
+        "tests/ada-client.test.mjs",
+        "tests/ada-journey-view.test.mjs",
+        "tests/bos-customer-profile.test.mjs",
+        "tests/bos-oauth-live-contract.test.mjs",
+        "tests/external-authentication-handoff.test.mjs",
+        "tests/external-dependency-adapter.test.mjs",
+        "tests/isolated-test-cohort.test.mjs",
+        "tests/muse-workflow-guidance.test.mjs"
       ],
       "fixtures": [
         "tests/validation_contract_test.py",
@@ -475,7 +1230,11 @@
         "tests/oracle_source_frontier_test.py",
         "tests/published_fixture.py",
         "tests/publication_admission_test.py",
-        "tests/shipment_workflow_test.py"
+        "tests/shipment_workflow_test.py",
+        "tests/helpers/synthetic-notifications.mjs",
+        "tests/helpers/synthetic-onboarding.mjs",
+        "tests/helpers/synthetic-bos-discovery-service.mjs",
+        "tests/helpers/isolated-test-cohort.mjs"
       ]
     },
     {
@@ -485,14 +1244,22 @@
         "--test",
         "--test-reporter=tap",
         "tests/oracle-implementation-spec.test.mjs",
-        "tests/publication-safety.test.mjs"
+        "tests/publication-safety.test.mjs",
+        "tests/feedback-event-subscriber.test.mjs",
+        "tests/publication-history.test.mjs",
+        "tests/lead-graph-regression.test.mjs"
       ],
       "tests": [
         "tests/oracle-implementation-spec.test.mjs",
-        "tests/publication-safety.test.mjs"
+        "tests/publication-safety.test.mjs",
+        "tests/feedback-event-subscriber.test.mjs",
+        "tests/publication-history.test.mjs",
+        "tests/lead-graph-regression.test.mjs"
       ],
       "fixtures": [
-        "tests/oracle_spec_test.py"
+        "tests/oracle_spec_test.py",
+        "tests/helpers/feedback-socket-stand-in.mjs",
+        "tests/helpers/lead-graph-acceptance.mjs"
       ]
     }
   ],
@@ -506,32 +1273,16 @@
     "maximum_reasoning_effort": "medium"
   },
   "design_binding": {
-    "design": "Vault/docs/design/oracle-implementation-spec.md",
-    "design_sha256": "857b382a0538ee2cd6f80d91f8345128fc27acd4fe5b8cbf2335e824a77582a3",
-    "plan": "Vault/docs/design/oracle-implementation-spec.test-plan.json",
-    "plan_sha256": "13c03c9d8279ee60daebb35f66a467e9da8677439b841ae1c4a52ac152c7f57a",
+    "design": "Vault/tmp/feedback-development/aio-integration/integration-design.md",
+    "design_sha256": "af16a6c2160fe7e2e16751285c5a046888686d0127158e3ee97e552666a56282",
+    "plan": "Vault/tmp/feedback-development/aio-integration/integration-design.test-plan.json",
+    "plan_sha256": "2dc58d3b883c31219a06adaf8a77b6aa1996eb5df1924897583aa7ddc0df3a94",
     "tests": [
-      "tests/agent-driven-journey-live-verifier.test.mjs",
-      "tests/command-coverage.test.mjs",
       "tests/deterministic-lanes.test.mjs",
-      "tests/document-cache.test.mjs",
-      "tests/journey-notifications.test.mjs",
-      "tests/marketplace-update.test.mjs",
-      "tests/oracle-api-version-request.test.mjs",
-      "tests/oracle-governance.test.mjs",
-      "tests/oracle-implementation-spec.test.mjs",
-      "tests/oracle-lifecycle.test.mjs",
-      "tests/oracle-parallel.test.mjs",
-      "tests/oracle-performance.test.mjs",
-      "tests/oracle-review-series.test.mjs",
-      "tests/oracle-scope-index.test.mjs",
-      "tests/oracle-source-frontier.test.mjs",
-      "tests/publication-admission.test.mjs",
-      "tests/publication-safety.test.mjs",
-      "tests/shipment-workflow.test.mjs",
-      "tests/validation-contract.test.mjs"
+      "tests/feedback-event-subscriber.test.mjs",
+      "tests/publication-history.test.mjs"
     ]
   },
-  "contract_sha256": "93ef075c078ae141c01ad1d3caf55ec4c2db7a91802b7d14cf63ef9540937228",
-  "seal": "4fca3fab1b3f7e316fded72708c1e435a8452124299a6a3242b9cdc43adae73c"
+  "contract_sha256": "cf8c98a7bfbbe743d479d897105d1be382cd91883dd73eed8effe894ec98a71c",
+  "seal": "31d02da7385b8499eae2783695e1f31381b63af340aaad01fec7f9626203d418"
 }

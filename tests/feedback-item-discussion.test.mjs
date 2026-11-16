@@ -210,7 +210,14 @@ test("no connection deadline exists when none is advertised; a legacy advertised
   assert.equal(current.ended(), false); current.push(journal("late", [id(77)]));
   await settle(() => current.state().cursor === "late"); await current.session.close(); await running;
   const legacy = discovery(); const old = await liveSetup({discovery: legacy}); const ended = old.session.run();
-  await settle(() => old.state().cursor === "c0"); await ended; assert.equal(old.ended(), true);
+  await settle(() => old.state().cursor === "c0");
+  // This in-memory socket has no native I/O handle. Keep the test alive while
+  // the actual unreferenced producer deadline closes it; a missing close fails.
+  let guard;
+  try {
+    await Promise.race([ended, new Promise((_, reject) => {guard = setTimeout(() => reject(new Error("Legacy deadline did not close its socket")), 2000);})]);
+    assert.equal(old.ended(), true);
+  } finally {clearTimeout(guard); await old.session.close();}
 });
 test("legacy lifetime max_commands still bounds a legacy producer's socket", async () => {
   const legacy = discovery(); legacy.discussion.limits.max_commands = 3; legacy.discussion.limits.max_connection_seconds = 300;

@@ -15,6 +15,22 @@ function terminated(pid) {
 }
 
 const nodeJob = (name, code) => ({ name, command: process.execPath, args: ["-e", code] });
+test("optional raw capture preserves split Unicode and invalid bytes without changing default results", async () => {
+  const job=nodeJob("raw",`process.stdout.write(Buffer.from([240,159]));process.stderr.write(Buffer.from([255]));setTimeout(()=>process.stdout.write(Buffer.from([152,128])),20);`);
+  const [captured]=await isolatedTestCohort([job],{captureBytes:true}).completion;
+  assert.equal(captured.code,0);assert.deepEqual(captured.stdoutBytes,Buffer.from([240,159,152,128]));
+  assert.deepEqual(captured.stderrBytes,Buffer.from([255]));
+  const [ordinary]=await isolatedTestCohort([nodeJob("ordinary","console.log('same')")]).completion;
+  assert.equal(ordinary.stdout,"same\n");assert.equal("stdoutBytes" in ordinary,false);
+  assert.throws(()=>isolatedTestCohort([job],{captureBytes:1}),/Bounded/);
+});
+test("raw capture shares the exact output bound and pending cancellation has empty byte custody", async () => {
+  const [result]=await isolatedTestCohort([nodeJob("overflow","process.stdout.write('a'.repeat(100));process.stderr.write('b'.repeat(100))")],
+    {captureBytes:true,outputLimit:5,killAfterMs:20}).completion;
+  assert.match(result.error,/exceeded/u);assert.equal(result.stdoutBytes.length+result.stderrBytes.length,5);
+  const abort=new AbortController();abort.abort();const [cancelled]=await isolatedTestCohort([nodeJob("pending","process.exit(0)")],{captureBytes:true,signal:abort.signal}).completion;
+  assert.equal(cancelled.cancelled,true);assert.deepEqual(cancelled.stdoutBytes,Buffer.alloc(0));assert.deepEqual(cancelled.stderrBytes,Buffer.alloc(0));
+});
 test("isolated cohort runs all 152 targets with four workers, ordered outcomes and retained failures", async () => {
   const jobs = Array.from({ length: 152 }, (_, index) => nodeJob(String(index), `
     const start=Date.now();globalThis.fixture=${index};

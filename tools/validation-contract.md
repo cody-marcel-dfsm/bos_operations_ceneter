@@ -78,6 +78,34 @@ such as the declared family authority, arrive as hash-bound prompt copies.
 
 ## Feature design approval
 
+### Bounded additive native proposal revisions
+
+`npm run oracle:proposal -- --delta ...` uses a closed internal delta response.
+The parent captures the intact prior contract, current commit/tree and exact Git
+path/test inventories. Their immutable hashes are schema constants. The reviewer
+returns only added criteria, selected modules/fixtures and coverage of the new
+criteria. The parent retains all earlier criteria, categories, fixtures, mapping
+purposes and original criterion/module pairs, and materializes a full literal
+scope from the prior scope, captured source changes and newly selected tests.
+Unknown paths, missing/wrong hashes, replay, source movement, removal and changed
+old mapping purposes reject. No glob or supplied whitelist expands that scope.
+Added tests and fixtures must exist in the captured source tree. Initial designs
+with future planned files retain the full proposal mode.
+
+The raw independent response and normalization/input hashes remain in native
+custody. Only a genuine APPROVED/COMPLETE response reaches the existing seal;
+receipt consumption reconstructs the same materialization and prior projection.
+The final `oracle-spec/1` contract format and deterministic source gates remain.
+Ordinary full proposal responses also bind their prior revision digest as a
+schema constant, avoiding model transcription of immutable references.
+
+Native reviewer processes continuously drain both private streams with a combined
+eight-MiB bound. A private progress record reports elapsed time and byte counts,
+without source or output bodies. The 180-second reviewer limit yields an
+INCOMPLETE checkpoint with original bounded output and cleans up only the
+registered process group. Timeouts and output bounds never create approval.
+Original clocks, failures and complete-source verification remain required.
+
 A feature design includes a test plan. A `feature` selection names its design
 `.md` file in `design`, and the plan sits beside it as `<design>.test-plan.json`:
 

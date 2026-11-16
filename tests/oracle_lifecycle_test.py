@@ -797,4 +797,67 @@ class CommittedCatchup(unittest.TestCase):
         finally:o._METADATA_ROOT.reset(owner)
 
 
+class BoundedReviewer(unittest.TestCase):
+    def setUp(self):
+        scratch=Path(__file__).resolve().parents[1]/'Vault/tmp';scratch.mkdir(parents=True,exist_ok=True)
+        self.temp=tempfile.TemporaryDirectory(dir=scratch,prefix='reviewer-');self.addCleanup(self.temp.cleanup)
+        self.root=Path(self.temp.name);subprocess.run(['git','init','-q',str(self.root)],check=True)
+        self.token=o._METADATA_ROOT.set(self.root);self.addCleanup(o._METADATA_ROOT.reset,self.token)
+        self.controller=lifecycle.Controller(o,self.root,'proposal','bounded-streams');self.controller.claim()
+        self.addCleanup(self.controller.close)
+        self.run=o._metadata_run(self.root,self.root/'.git/oracle/runs','proposal-')
+        for name in ('model.json','request.txt'):o._atomic_write(self.run/name,b'Synthetic invocation identity')
+
+    def execute(self,body):
+        return lifecycle.reviewer_process(o,self.root,self.run,[sys.executable,'-c',body],dict(os.environ),self.controller)
+
+    def test_actual_registered_streams_are_drained_and_final_telemetry_has_exact_bytes(self):
+        result=self.execute('import sys;print("first");print("second",file=sys.stderr)')
+        self.assertEqual((result.returncode,result.stdout,result.stderr),(0,'first\n','second\n'))
+        progress=json.loads((self.run/'reviewer-progress.json').read_text())
+        self.assertTrue(progress['complete']);self.assertEqual((progress['stdout_bytes'],progress['stderr_bytes']),(6,7))
+        self.assertEqual((self.run/'stdout.log').read_bytes(),b'first\n')
+        self.assertEqual(len(list((self.controller.directory/'children').glob('*.outcome.json'))),1)
+
+    def test_timeout_retains_original_output_and_incomplete_checkpoint_with_no_live_group(self):
+        with patch.object(lifecycle,'REVIEWER_SECONDS',.15):
+            with self.assertRaisesRegex(o.OracleReviewIncomplete,'deadline'):
+                self.execute('import time;print("checkpoint",flush=True);time.sleep(5)')
+        self.assertEqual((self.run/'stdout.log').read_bytes(),b'checkpoint\n')
+        self.assertFalse(json.loads((self.run/'reviewer-progress.json').read_text())['complete'])
+        record=next((self.controller.directory/'children').glob('reviewer-*.json'))
+        data=json.loads(record.read_text());self.assertEqual(lifecycle._reviewer_group(data),[])
+        self.assertTrue(list((self.controller.directory/'children').glob('*.failure.json')))
+
+    def test_live_counts_are_available_before_the_owned_reviewer_exits(self):
+        results=[];errors=[]
+        def worker():
+            token=o._METADATA_ROOT.set(self.root)
+            try:results.append(self.execute('import time;print("first",flush=True);time.sleep(1.4);print("last")'))
+            except BaseException as exc:errors.append(exc)
+            finally:o._METADATA_ROOT.reset(token)
+        thread=threading.Thread(target=worker);thread.start()
+        try:
+            limit=time.monotonic()+4
+            while not (self.run/'reviewer-progress.json').exists() and time.monotonic()<limit:time.sleep(.02)
+            progress=json.loads((self.run/'reviewer-progress.json').read_text())
+            self.assertFalse(progress['complete']);self.assertEqual(progress['stdout_bytes'],6)
+            self.assertNotIn('first',json.dumps(progress))
+        finally:thread.join(5)
+        self.assertFalse(thread.is_alive());self.assertEqual(errors,[]);self.assertEqual(results[0].stdout,'first\nlast\n')
+
+    def test_mixed_stream_overflow_is_bounded_and_never_reports_complete(self):
+        with patch.object(lifecycle,'REVIEWER_OUTPUT_BYTES',128):
+            with self.assertRaisesRegex(o.OracleReviewIncomplete,'output bound'):
+                self.execute('import sys;sys.stdout.write("x"*1024);sys.stderr.write("y"*1024)')
+        self.assertLessEqual(sum((self.run/name).stat().st_size for name in ('stdout.log','stderr.log')),128)
+        progress=json.loads((self.run/'reviewer-progress.json').read_text())
+        self.assertTrue(progress['output_overflow']);self.assertFalse(progress['complete'])
+        self.assertEqual(progress['stdout_bytes']+progress['stderr_bytes'],2048)
+
+    def test_invalid_utf8_retains_exact_raw_bytes_and_fails_closed(self):
+        with self.assertRaises(UnicodeDecodeError):self.execute('import sys;sys.stdout.buffer.write(bytes([255]))')
+        self.assertEqual((self.run/'stdout.log').read_bytes(),bytes([255]))
+
+
 if __name__=='__main__':unittest.main()

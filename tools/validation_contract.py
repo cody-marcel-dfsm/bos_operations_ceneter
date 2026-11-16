@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Project-owned executable validation selection; no approval or customer runtime."""
 from __future__ import annotations
-import argparse, fnmatch, hashlib, json, os, platform, re, shutil, subprocess, sys, tempfile
+import argparse, copy, fnmatch, hashlib, json, os, platform, re, shutil, subprocess, sys, tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 try: from . import oracle_spec_seal as spec_seal
@@ -74,6 +74,109 @@ def selection_schema():
       'categories':{'type':'array','minItems':1,'items':{'type':'object','additionalProperties':False,'required':['name','tests','fixtures'],'properties':{'name':{'type':'string','enum':['sanity','focused','interactions','acceptance','regression']},'tests':{'type':'array','items':{'type':'string'}},'fixtures':{'type':'array','items':{'type':'string'}}}}},
       'reason':{'type':'string','minLength':1},'revision_of':{'type':['string','null']},
       'design':{'type':['string','null'],'description':'For a feature, the repository-relative design .md file; its required test plan sits beside it as <design>.test-plan.json. Null for every other class.'}}}
+
+DELTA_KIND = 'boc.proposal-delta/1'
+_CURRENT_ORIGIN = object()
+
+def delta_context(root, source, tree, *, origin_main=_CURRENT_ORIGIN):
+    """Capture producer-owned exact membership; neither a model nor a caller supplies scope."""
+    if not all(re.fullmatch('[a-f0-9]{40}', x or '') for x in (source, tree)):
+        raise ValueError('Delta requires immutable source/tree identities')
+    prior = blob(root, tree, SELECTION)
+    if not isinstance(prior, dict) or not spec_seal.seal_matches(prior):
+        raise ValueError('Delta requires an intact prior sealed contract')
+    body = {k:v for k,v in prior.items() if k not in ('contract_sha256','seal')}
+    if digest(body) != prior.get('contract_sha256'):
+        raise ValueError('Prior delta contract identity changed')
+    catalog = blob(root, tree, CATALOG)
+    validate_selection(prior['selection'], catalog)
+    if digest(catalog) != prior['catalog_sha256']:
+        raise ValueError('Delta catalog changed')
+    git(root, 'merge-base', '--is-ancestor', prior['base_commit'], source)
+    if origin_main is _CURRENT_ORIGIN:
+        observed=subprocess.run(['git','--no-replace-objects','rev-parse','--verify','refs/remotes/origin/main^{commit}'],cwd=root,capture_output=True,text=True)
+        origin_main=observed.stdout.strip() if observed.returncode==0 else None
+    if origin_main is not None:
+        if not re.fullmatch('[a-f0-9]{40}',origin_main):raise ValueError('Exact delta origin required')
+        git(root,'merge-base','--is-ancestor',origin_main,source)
+    paths = git(root, 'diff', '--name-only', '-z', prior['base_commit'], tree).split('\0')
+    paths = sorted(set(p for p in paths if p) | set(prior['selection']['scope_paths']))
+    if len(paths)>4096 or any(not safe_path(p) or any(c in p for c in '*?[]\r\n') for p in paths):
+        raise ValueError('Delta requires finite exact paths')
+    tracked = git(root, 'ls-tree', '-r', '--name-only', '-z', tree).split('\0')
+    tests = sorted(p for p in tracked if p.startswith('tests/') and safe_path(p) and not any(c in p for c in '*?[]\r\n'))
+    binding = {'prior_contract_sha256':prior['contract_sha256'], 'source_commit':source,
+               'source_tree':tree, 'origin_main':origin_main, 'inventory_sha256':digest(paths), 'test_inventory_sha256':digest(tests)}
+    return {'binding':binding, 'prior':prior, 'paths':paths, 'test_paths':tests}
+
+def delta_schema(context):
+    row = {'type':'object','additionalProperties':False,'required':['name','tests','fixtures'],
+           'properties':{'name':{'type':'string','enum':[r['name'] for r in context['prior']['selection']['categories'] if r['name'] in TESTED]},
+                         'tests':{'type':'array','items':{'type':'string'}},
+                         'fixtures':{'type':'array','items':{'type':'string'}}}}
+    coverage = {'type':'object','additionalProperties':False,'required':['module','covers','purpose'],
+                'properties':{'module':{'type':'string'},
+                              'covers':{'type':'array','items':{'type':'integer','minimum':0},'minItems':1},
+                              'purpose':{'type':['string','null']}}}
+    return {'type':'object','additionalProperties':False,
+            'required':['kind','binding','reason','design','acceptance_additions','category_additions','coverage_additions'],
+            'properties':{'kind':{'type':'string','const':DELTA_KIND},'binding':{'type':'object','const':context['binding'],
+                          'additionalProperties':False,'required':list(context['binding']),
+                          'properties':{k:{'type':'null' if value is None else 'string','const':value} for k,value in context['binding'].items()}},
+                          'reason':{'type':'string','minLength':1},'design':{'type':['string','null']},
+                          'acceptance_additions':{'type':'array','minItems':1,'maxItems':32,'items':{'type':'string'}},
+                          'category_additions':{'type':'array','items':row,'maxItems':len(context['prior']['selection']['categories'])},
+                          'coverage_additions':{'type':'array','items':coverage,'maxItems':128}}}
+
+def materialize_delta(root, context, delta):
+    """Normalize a genuine approval's closed delta before the unchanged seal procedure."""
+    keys={'kind','binding','reason','design','acceptance_additions','category_additions','coverage_additions'}
+    if not isinstance(delta,dict) or set(delta)!=keys or delta['kind']!=DELTA_KIND or delta['binding']!=context['binding']:
+        raise ValueError('Delta binding or fields changed')
+    fresh=delta_context(root,context['binding']['source_commit'],context['binding']['source_tree'],origin_main=context['binding']['origin_main'])
+    if fresh!=context: raise ValueError('Delta source/prior/inventory changed')
+    prior=context['prior']['selection']; value=copy.deepcopy(prior)
+    value.update(revision_of=context['prior']['contract_sha256'], reason=delta['reason'], design=delta['design'])
+    added=delta['acceptance_additions']
+    if not isinstance(added,list) or not 1<=len(added)<=32 or not all(text(x) for x in added):
+        raise ValueError('Delta needs bounded new criteria')
+    value['acceptance']+=added
+    categories={r['name']:r for r in value['categories']}; seen=set(); new_paths=set()
+    if (not isinstance(delta['category_additions'],list) or len(delta['category_additions'])>len(categories)
+            or not isinstance(delta['coverage_additions'],list) or len(delta['coverage_additions'])>128):
+        raise ValueError('Delta category/coverage bounds changed')
+    previous_paths={p for r in prior['categories'] for p in r['tests']+r['fixtures']}
+    for row in delta['category_additions']:
+        if (not isinstance(row,dict) or set(row)!={'name','tests','fixtures'} or row['name'] not in TESTED
+                or row['name'] not in categories or row['name'] in seen): raise ValueError('Invalid delta category')
+        seen.add(row['name'])
+        for key in ('tests','fixtures'):
+            names=row[key]
+            if (not isinstance(names,list) or len(names)!=len(set(names)) or any(p not in context['test_paths'] for p in names)
+                    or set(names)&previous_paths): raise ValueError('Unknown, repeated or retained delta test path')
+            categories[row['name']][key]+=sorted(names);new_paths.update(names)
+        if set(row['tests']) & set(row['fixtures']): raise ValueError('Delta test/fixture paths overlap')
+    value['scope_paths']=sorted(set(context['paths'])|new_paths)
+    offset=len(prior['acceptance']); mappings={r['module']:r for r in value['acceptance_tests']};seen=set()
+    for row in delta['coverage_additions']:
+        if (not isinstance(row,dict) or set(row)!={'module','covers','purpose'} or row['module'] in seen
+                or not isinstance(row['covers'],list) or not row['covers'] or len(row['covers'])!=len(set(row['covers']))
+                or any(type(i) is not int or not 0<=i<len(added) for i in row['covers'])): raise ValueError('Invalid delta coverage')
+        seen.add(row['module']); indices=[offset+i for i in row['covers']]
+        if row['module'] in mappings:
+            if row['purpose'] is not None: raise ValueError('Retained mapping purpose cannot change')
+            mappings[row['module']]['covers']+=indices
+        else:
+            value['acceptance_tests'].append({'module':row['module'],'covers':indices,'purpose':row['purpose']})
+    validate_selection(value,blob(root,context['binding']['source_tree'],CATALOG))
+    retained=copy.deepcopy(value)
+    if retained['acceptance'][:offset]!=prior['acceptance']: raise ValueError('Prior criteria changed')
+    projected=[dict(row,covers=[i for i in row['covers'] if i<offset]) for row in value['acceptance_tests'] if row['module'] in {r['module'] for r in prior['acceptance_tests']}]
+    if projected!=prior['acceptance_tests']: raise ValueError('Prior coverage changed')
+    audit={'kind':DELTA_KIND,'binding':context['binding'],'raw_delta_sha256':digest(delta),
+           'selection_sha256':digest(value),'scope_sha256':digest(value['scope_paths']),
+           'retained_acceptance_sha256':digest(prior['acceptance']), 'retained_coverage_sha256':digest(projected)}
+    return value,audit
 
 def validate_selection(selection,catalog):
     catalog_check(catalog)
@@ -283,6 +386,24 @@ def native_proposal_record(root,path,contract,head):
     body={k:x for k,x in record.items() if k!='proposal_review_id'}
     review=record.get('review') if isinstance(record.get('review'),dict) else {}
     proposal=record.get('proposal')
+    if record.get('proposal_materialization') is not None:
+        try:
+            audit=record['proposal_materialization']; raw_review=record['raw_review']
+            response=record['raw_response']
+            if set(response)!={'path','sha256','engine_path','engine_sha256'}:return False
+            for path_key,hash_key in (('path','sha256'),('engine_path','engine_sha256')):
+                name=response[path_key]
+                if not isinstance(name,str) or not re.fullmatch(r'\.git/oracle/runs/review_proposal-[a-f0-9]+/(?:raw-proposal-response|result)\.json',name):return False
+                raw=native._custody_read(root,Path(root)/name)[1]
+                if native._sha(raw)!=response[hash_key] or json.loads(raw)!=raw_review:return False
+            if (raw_review.get('verdict')!='APPROVED' or raw_review.get('review_status')!='COMPLETE'
+                    or raw_review.get('findings')!=[]): return False
+            context=delta_context(root,audit['binding']['source_commit'],audit['binding']['source_tree'],origin_main=audit['binding']['origin_main'])
+            if audit['binding']['origin_main'] is not None and contract['stamp']['origin_main']!=audit['binding']['origin_main']:return False
+            selection,expected=materialize_delta(root,context,raw_review['validation_selection'])
+            if audit!=expected or selection!=contract['selection'] or selection!=review.get('validation_selection'):
+                return False
+        except (ValueError,KeyError,TypeError,OSError,subprocess.SubprocessError,native.OracleApprovalError): return False
     return (record.get('proposal_review_id')==native._sha(native._canonical(body))
             and record.get('schema_version')==native.SCHEMA_VERSION and record.get('issuer')==native.ISSUER
             and record.get('kind')=='proposal-review' and record.get('review_scope')=='CONCEPTUAL_PROPOSAL'

@@ -3,14 +3,14 @@ import { spawn } from "node:child_process";
 // Every job remains a separate process. Results retain declaration order even
 // when workers finish in a different order; a failure never skips later jobs.
 export function isolatedTestCohort(jobs, { concurrency = 4, outputLimit = 1024 * 1024,
-  killAfterMs = 5000, timeoutMs = 0, signal } = {}) {
+  killAfterMs = 5000, timeoutMs = 0, signal, captureBytes = false } = {}) {
   if (!Array.isArray(jobs) || !jobs.length || jobs.some(job =>
     !job || typeof job.name !== "string" || !job.name || typeof job.command !== "string" ||
     !Array.isArray(job.args) || job.args.some(arg => typeof arg !== "string")) ||
     new Set(jobs.map(job => job.name)).size !== jobs.length) throw new Error("Unique named process jobs required");
   if (!Number.isInteger(concurrency) || concurrency < 1 || concurrency > 4 ||
     !Number.isInteger(outputLimit) || outputLimit < 1 || !Number.isInteger(killAfterMs) || killAfterMs < 1 ||
-    !Number.isInteger(timeoutMs) || timeoutMs < 0)
+    !Number.isInteger(timeoutMs) || timeoutMs < 0 || typeof captureBytes !== "boolean")
     throw new Error("Bounded concurrency, output and cancellation limits required");
   const deferred = jobs.map(() => {
     let resolve;
@@ -22,7 +22,8 @@ export function isolatedTestCohort(jobs, { concurrency = 4, outputLimit = 1024 *
   let next = 0;
   let cancelled = false;
   const cancelledResult = job => ({ name: job.name, code: null, signal: null,
-    stdout: "", stderr: "", error: "Cohort cancelled", cancelled: true });
+    stdout: "", stderr: "", error: "Cohort cancelled", cancelled: true,
+    ...(captureBytes ? {stdoutBytes: Buffer.alloc(0), stderrBytes: Buffer.alloc(0)} : {})});
   function cancel() {
     if (cancelled) return;
     cancelled = true;
@@ -36,6 +37,7 @@ export function isolatedTestCohort(jobs, { concurrency = 4, outputLimit = 1024 *
       let child;
       let stdout = "";
       let stderr = "";
+      const raw = {stdout: [], stderr: []};
       let bytes = 0;
       let error = null;
       let timer;
@@ -66,7 +68,8 @@ export function isolatedTestCohort(jobs, { concurrency = 4, outputLimit = 1024 *
         clearTimeout(timer);
         active.delete(stop);
         deferred[index].resolve({ name: job.name, code, signal: exitSignal,
-          stdout, stderr, error, cancelled });
+          stdout, stderr, error, cancelled,
+          ...(captureBytes ? {stdoutBytes: Buffer.concat(raw.stdout), stderrBytes: Buffer.concat(raw.stderr)} : {}) });
         pump();
       };
       try {
@@ -79,6 +82,7 @@ export function isolatedTestCohort(jobs, { concurrency = 4, outputLimit = 1024 *
         const collect = key => data => {
           const remaining = Math.max(0, outputLimit - bytes);
           const kept = data.subarray(0, remaining).toString("utf8");
+          if (captureBytes && remaining) raw[key].push(Buffer.from(data.subarray(0, remaining)));
           if (key === "stdout") stdout += kept; else stderr += kept;
           bytes += data.length;
           if (bytes > outputLimit) { error ??= `Process output exceeded ${outputLimit} bytes`; stop(); }

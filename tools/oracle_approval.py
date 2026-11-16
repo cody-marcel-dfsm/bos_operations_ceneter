@@ -287,6 +287,7 @@ _PREPARED_SETTINGS = ContextVar("oracle_prepared_settings", default=None)
 _DISPATCH_BUDGET = ContextVar("oracle_dispatch_budget", default=None)
 _METADATA_ROOT = ContextVar("oracle_metadata_root", default=None)
 _SCOPE_AUDIT = ContextVar("oracle_scope_audit", default=None)
+_PROPOSAL_DELTA = ContextVar("oracle_proposal_delta", default=None)
 LIVE_AUTHORITIES = (*AUTHORITY_PATHS, ".agents/skills/oracle/review-output.schema.json",
                     "Vault/docs/CONSTITUTION.md", "Vault/docs/architecture.md",
                     "Vault/docs/issues/ISSUE_HISTORY.md", "Vault/specs/oracle-and-vault.md")
@@ -3127,13 +3128,21 @@ Return JSON matching the supplied schema. Verify the stated problem and cause, c
     if (root / validation_contract.CATALOG).exists():
         catalog = json.loads((root / validation_contract.CATALOG).read_text())
         schema = json.loads((root / ".agents/skills/oracle/review-output.schema.json").read_text())
-        schema["properties"]["validation_selection"] = validation_contract.selection_schema()
+        delta = _PROPOSAL_DELTA.get()
+        schema["properties"]["validation_selection"] = (validation_contract.delta_schema(delta) if delta else validation_contract.selection_schema())
+        if not delta:
+            previous = root / validation_contract.SELECTION
+            prior_identity = json.loads(previous.read_text())["contract_sha256"] if previous.exists() else None
+            schema["properties"]["validation_selection"]["properties"]["revision_of"] = {"const": prior_identity}
         schema["required"].append("validation_selection")
         schema_path = _RUN.get() / "proposal-contract.schema.json"
         _atomic_write(schema_path, _pretty(schema))
         prompt += "\nSelect validation_selection before implementation from this exact catalog. Use bounded scope_paths and exact planned test paths and supporting fixture paths under tests/; fixed sanity/regression fixtures are empty; bug_fix permits only small deterministic fail-before/pass-after reproduction and sanity, no integration or automatic wider regression; auth/security/cross-area or unknown impact is deep_bug_fix with all relevant interactions; feature requires thorough acceptance; docs_only minimal document sanity. Rank/pare before freezing, then run every selected test. Fixed end-to-end budgets are docs_only120s/bug_fix180s/deep_bug_fix300s/feature300s; the build host retains original insertion through retries and publication. Low reasoning for simple work, medium maximum, no paid fallback. Existing tests are not automatically added to the curated recurrence registry. Every revision names the current contract hash, never changes original evidence. The sealed selection is the self-contained implementation spec (owner direction 2026-11-11): give concrete, checkable acceptance criteria and acceptance_tests mapping every criterion (by index) to at least one selected focused/interactions/acceptance test module, with exactly one row per module whose covers lists every criterion it proves; docs_only may leave both empty. acceptance, acceptance_tests purposes and reason are committed and published: write general requirements with no secrets, credentials, tenant or customer data, person names, local absolute paths, ticket identifiers or quoted private request, proposal or Vault text. Catalog: " + json.dumps(catalog, sort_keys=True)
         previous = root / validation_contract.SELECTION
-        prompt += "\nCurrent contract: " + (previous.read_text() if previous.exists() else "none; revision_of must be null")
+        if delta:
+            prompt += "\nCLOSED NATIVE DELTA MODE. Return validation_selection matching its delta schema. The parent, not the model, retains every prior criterion/category/module/fixture/mapping, binds revision_of and expands exact scope from its immutable inventory. Emit only new acceptance criteria, new selected test modules/fixtures and new criterion coverage. New covers indices are relative to acceptance_additions. For coverage of an existing module use purpose:null to preserve its original purpose. No existing tests or criteria may be restated, removed or replaced. Read prior checkpoint evidence for completed observations; do not recopy its full selection. Binding is exact and any missing/wrong field rejects. This is conceptual proposal approval only; deterministic completed-source verification remains required.\n" + json.dumps({'binding':delta['binding'],'prior_acceptance_count':len(delta['prior']['selection']['acceptance']),'retained_modules':[r['module'] for r in delta['prior']['selection']['acceptance_tests']], 'categories':delta['prior']['selection']['categories']},sort_keys=True)
+        else:
+            prompt += "\nCurrent contract: " + (previous.read_text() if previous.exists() else "none; revision_of must be null")
         return _review_process(root, prompt, "proposal_reviewer", schema_path=schema_path)
     return _review_process(root, prompt, "proposal_reviewer")
 
@@ -3149,7 +3158,7 @@ def _proposal_guards(root: Path, evidence: dict, owner: dict | None) -> dict:
 
 @_serialized_review
 def review_proposal(root: Path, request: str, evidence_paths: Sequence[str], owner_path: str | None, reviewer: Callable = _proposal_oracle,
-                    *, request_bytes: bytes | None = None, request_path: str | None = None) -> dict[str,Any]:
+                    *, request_bytes: bytes | None = None, request_path: str | None = None, delta: bool = False) -> dict[str,Any]:
     with _phase("precheck_seconds"):
         if not request.strip(): raise OracleApprovalError("Oracle proposal review requires a proposal")
         if request_path is not None and request_bytes is not None:
@@ -3168,16 +3177,19 @@ def review_proposal(root: Path, request: str, evidence_paths: Sequence[str], own
                 raise OracleApprovalError("Original request changed while its evidence was bound")
         binding = _input_binding(root, evidence, owner)
         guards = _proposal_guards(root, evidence, owner)
+        delta_context = validation_contract.delta_context(root, binding['base_commit'], binding['candidate_tree']) if delta else None
         if request_path is not None and guards["evidence"].get(_custody_name(root, request_path)) != _sha(request_bytes):
             # The guards bind what the reviewer reads; they must name the stamped request bytes.
             raise OracleSourceBindingError("Original request changed while its evidence was bound")
         _atomic_write(_RUN.get() / "proposal-inputs.json", _pretty({"proposal_sha256": _sha(request.encode()),
             "guards": guards, "initial_commit": binding["base_commit"], "initial_tree": binding["candidate_tree"]}))
     selected_token = _PREPARED_SETTINGS.set(binding["reviewer_settings"])
+    delta_token = _PROPOSAL_DELTA.set(delta_context)
     try:
         review = reviewer(root, request, evidence, owner)
     finally:
         _PREPARED_SETTINGS.reset(selected_token)
+        _PROPOSAL_DELTA.reset(delta_token)
     if _timed("postcheck_seconds", lambda: _proposal_guards(root, evidence, owner)) != guards:
         raise OracleSourceBindingError("Oracle proposal evidence or governing criteria changed during review")
     if any(value is None for value in _declared_parent_authorities(root).values()):
@@ -3195,6 +3207,20 @@ def review_proposal(root: Path, request: str, evidence_paths: Sequence[str], own
             raise OracleApprovalError("Oracle proposal approval classification is invalid")
         if not isinstance(review.get("findings"), list) or review["findings"]:
             raise OracleApprovalError("Oracle approved proposal contains findings or lacks a finding list")
+    materialization = None
+    raw_review = None
+    if delta_context and review['verdict'] == 'APPROVED':
+        raw_review = json.loads(json.dumps(review))
+        _atomic_write(_RUN.get() / 'raw-proposal-response.json', _pretty(raw_review))
+        if review.get('review_status') != 'COMPLETE':
+            raise OracleReviewIncomplete('Delta approval is incomplete; retain raw result')
+        if (_git(root,'rev-parse','HEAD').strip()!=delta_context['binding']['source_commit']
+                or _review_tree(root)!=delta_context['binding']['source_tree']
+                or validation_contract.delta_context(root,delta_context['binding']['source_commit'],delta_context['binding']['source_tree'])['binding']!=delta_context['binding']):
+            raise OracleSourceBindingError('Delta source changed or origin moved; retain raw approval and assess current inputs')
+        selection, materialization = validation_contract.materialize_delta(root, delta_context, review.get('validation_selection'))
+        _atomic_write(_RUN.get() / 'proposal-materialization.json', _pretty(materialization))
+        review = dict(review, validation_selection=selection)
     _validate_api_version_assessment(review.get("api_version_assessment"), review["verdict"], root, evidence)
     payload = {
         "schema_version": SCHEMA_VERSION,
@@ -3218,6 +3244,14 @@ def review_proposal(root: Path, request: str, evidence_paths: Sequence[str], own
         "review_process": json.loads(_custody_read(root, _RUN.get() / "model.json")[1])
                           if (_RUN.get() / "model.json").is_file() else None,
     }
+    if materialization:
+        payload['proposal_materialization'] = materialization
+        payload['raw_review'] = raw_review
+        raw_path=_RUN.get()/'raw-proposal-response.json'
+        engine_path=_RUN.get()/'result.json'
+        if not engine_path.exists():engine_path=raw_path  # Synthetic injected reviewer tests only.
+        payload['raw_response']={'path':_custody_name(root,raw_path),'sha256':_sha(_custody_read(root,raw_path)[1]),
+                                 'engine_path':_custody_name(root,engine_path),'engine_sha256':_sha(_custody_read(root,engine_path)[1])}
     contract = None
     if review["verdict"] == "APPROVED" and (root / validation_contract.CATALOG).exists():
         contract = validation_contract.seal(root, review.get("validation_selection", {}), request, review, base=binding["base_commit"],
@@ -3650,6 +3684,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     review=sub.add_parser("review"); review.add_argument("--evidence",action="append",default=[]); review.add_argument("--owner-approval"); review.add_argument("--proposal-record", type=Path)
     proposal=sub.add_parser("proposal"); proposal.add_argument("request",nargs="?"); proposal.add_argument("--evidence",action="append",default=[]); proposal.add_argument("--owner-approval")
     proposal.add_argument("--request-file", type=Path, help="Original feedback request; only its SHA-256 enters the spec stamp")
+    proposal.add_argument("--delta", action="store_true", help="Retain the prior spec and review only a closed hash-bound additive delta")
     for command in (review, proposal):
         command.add_argument("--engine", choices=("claude", "codex", "auto"), help="Oracle LLM CLI; auto: CLAUDECODE selects claude, else codex")
     validation = sub.add_parser("validate"); validation.add_argument("--output", type=Path, required=True)
@@ -3691,7 +3726,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 if requested not in evidence:
                     evidence.append(requested)
             result = review_proposal(root,request,evidence,args.owner_approval,
-                                     request_path=str(args.request_file) if args.request_file else None)
+                                     request_path=str(args.request_file) if args.request_file else None, delta=args.delta)
             print(json.dumps(result,indent=2,sort_keys=True))
             if result["verdict"] != "APPROVED": return 1
         elif args.cmd=="verify-proposal": print(json.dumps(verify_proposal(root), sort_keys=True))

@@ -33,7 +33,7 @@ except ImportError:
     import oracle_spec_seal as spec_seal
 
 KIND = 'boc-deterministic-package/1'
-PROFILE = 'feedback-discovery-and-release-tool/11'
+PROFILE = 'feedback-discovery-and-release-tool/12'
 _OUTPUT_LOCK = threading.Lock()
 WS_LOCK_RECORD = {
     'version': '8.23.0', 'resolved': 'https://registry.npmjs.org/ws/-/ws-8.23.0.tgz',
@@ -195,6 +195,142 @@ LEGACY_FEATURE_PATHS = {
     'scripts/lib/publication-credentials.mjs', 'scripts/check-package.mjs',
 }
 
+# /12: exact preserved native implementation/spec/publication work.
+PRESERVED_SPEC_PATHS = {'.agents/skills/operations-center-implementation/SKILL.md',
+ '.agents/skills/oracle/review-output.schema.json',
+ '.claude/skills/operations-center-implementation/SKILL.md',
+ 'CLAUDE.md',
+ 'scripts/check-publication-safety.mjs',
+ 'tests/agent-driven-journey-live-verifier.test.mjs',
+ 'tests/deterministic-lanes.test.mjs',
+ 'tests/deterministic_source_test.py',
+ 'tests/marketplace-update.test.mjs',
+ 'tests/oracle-fixture.mjs',
+ 'tests/oracle-implementation-spec.test.mjs',
+ 'tests/oracle-scope-index.test.mjs',
+ 'tests/oracle-source-frontier.test.mjs',
+ 'tests/oracle_scope_index_test.py',
+ 'tests/oracle_source_frontier_test.py',
+ 'tests/oracle_spec_test.py',
+ 'tests/publication_admission_test.py',
+ 'tests/published_fixture.py',
+ 'tests/shipment_workflow_test.py',
+ 'tests/validation_contract_test.py',
+ 'tools/deterministic-source.md',
+ 'tools/deterministic_source.py',
+ 'tools/oracle_lifecycle.py',
+ 'tools/oracle_spec_seal.py',
+ 'tools/publication_admission.py',
+ 'tools/publication_status.py',
+ 'tools/validation-contract.md',
+ 'tools/validation_contract.py',
+ 'tools/vault_index.py'}
+PRESERVED_SPEC_TESTS = {'tests/agent-driven-journey-live-verifier.test.mjs',
+ 'tests/command-coverage.test.mjs',
+ 'tests/deterministic-lanes.test.mjs',
+ 'tests/document-cache.test.mjs',
+ 'tests/journey-notifications.test.mjs',
+ 'tests/marketplace-update.test.mjs',
+ 'tests/oracle-api-version-request.test.mjs',
+ 'tests/oracle-governance.test.mjs',
+ 'tests/oracle-implementation-spec.test.mjs',
+ 'tests/oracle-lifecycle.test.mjs',
+ 'tests/oracle-parallel.test.mjs',
+ 'tests/oracle-performance.test.mjs',
+ 'tests/oracle-review-series.test.mjs',
+ 'tests/oracle-scope-index.test.mjs',
+ 'tests/oracle-source-frontier.test.mjs',
+ 'tests/package-model.test.mjs',
+ 'tests/publication-admission.test.mjs',
+ 'tests/publication-safety.test.mjs',
+ 'tests/release-version.test.mjs',
+ 'tests/shipment-workflow.test.mjs',
+ 'tests/validation-contract.test.mjs'}
+HISTORICAL_HEADER_RECORDS = ({'blob': '1951d9696d5e13b3860a3ece69ebdc6c767b323b',
+  'bytes': 27255,
+  'context_sha256': '8ba4bbd1a376dce604cd14e99755f916352598bd36614a4367eb765a1ce1979f',
+  'offset': 8568,
+  'sha256': 'fd59c5e0d1826b95b94b879800210bc1227dd4aef05de4625138ee5d5262c30b',
+  'span_bytes': 27},
+ {'blob': '2619f0337bbe7b5884058d421f229b7850a781d2',
+  'bytes': 27144,
+  'context_sha256': '8ba4bbd1a376dce604cd14e99755f916352598bd36614a4367eb765a1ce1979f',
+  'offset': 8457,
+  'sha256': 'f8f0d42c12567893cf415837eb02693391fb544ced8662b6f40f400d73eb0a68',
+  'span_bytes': 27},
+ {'blob': '6313e66c4d52cc7ed88fb5fbba50510a517f325e',
+  'bytes': 32529,
+  'context_sha256': '8ba4bbd1a376dce604cd14e99755f916352598bd36614a4367eb765a1ce1979f',
+  'offset': 8580,
+  'sha256': '49d1d6b4b1329a5101654069432ea350cf480b554cd951b81cc5f38742033fd1',
+  'span_bytes': 27},
+ {'blob': '68f4e0ca18671d37480c5eac05b2b840faf3e2cc',
+  'bytes': 42404,
+  'context_sha256': '8ba4bbd1a376dce604cd14e99755f916352598bd36614a4367eb765a1ce1979f',
+  'offset': 8580,
+  'sha256': 'f0121b793435573994e873099c7345d848c55ec188bda13742fb4a11f83c3a68',
+  'span_bytes': 27},
+ {'blob': '73a6d26c670e2e22b082f3cade796c1e1dc78ab0',
+  'bytes': 36281,
+  'context_sha256': '8ba4bbd1a376dce604cd14e99755f916352598bd36614a4367eb765a1ce1979f',
+  'offset': 8580,
+  'sha256': '2a9863e18c54fe7403c69cc8019bfd8e5cf27308083d3986f3ab508ab574b350',
+  'span_bytes': 27},
+ {'blob': '792720d050c8c96e30ab3a11b500f019293f11cd',
+  'bytes': 40009,
+  'context_sha256': '8ba4bbd1a376dce604cd14e99755f916352598bd36614a4367eb765a1ce1979f',
+  'offset': 8580,
+  'sha256': 'e8c064398f5f304324bf34b6c089d76d42afd11024265adc99cf9bd49e198e81',
+  'span_bytes': 27},
+ {'blob': '8651b812804aec856f337273449f44d0f9e05763',
+  'bytes': 30804,
+  'context_sha256': '8ba4bbd1a376dce604cd14e99755f916352598bd36614a4367eb765a1ce1979f',
+  'offset': 8568,
+  'sha256': '45e0963ad42d2dc422f54dd3dcedf5e2a3fa31a960ffca8646d18588a49a6d81',
+  'span_bytes': 27},
+ {'blob': 'aa03dddc08e9905065ab7344c82724ef2debe42b',
+  'bytes': 37047,
+  'context_sha256': '8ba4bbd1a376dce604cd14e99755f916352598bd36614a4367eb765a1ce1979f',
+  'offset': 8580,
+  'sha256': 'd6befd66ad433340d43bd8aab31cc7f1ff3087107ed495c2805f9587edea7274',
+  'span_bytes': 27},
+ {'blob': 'bbb7365a6ce85ea2c92aa906f3e3aba1c2e611da',
+  'bytes': 35291,
+  'context_sha256': '8ba4bbd1a376dce604cd14e99755f916352598bd36614a4367eb765a1ce1979f',
+  'offset': 8580,
+  'sha256': '74fe638fd6f9e291ad6dcc84d189e233027f74dee50bc94aaf92955f772633c5',
+  'span_bytes': 27},
+ {'blob': 'c6a09ce01915821bfb8ef6640c5a5f9d4a7078b5',
+  'bytes': 39780,
+  'context_sha256': '8ba4bbd1a376dce604cd14e99755f916352598bd36614a4367eb765a1ce1979f',
+  'offset': 8580,
+  'sha256': 'ab70958bb8080143945151d213801a059c6d289fa673ccd80c94530fafea8aa0',
+  'span_bytes': 27},
+ {'blob': 'd59f21a9c664818fa1566807e4c322fc64d89750',
+  'bytes': 23322,
+  'context_sha256': '8ba4bbd1a376dce604cd14e99755f916352598bd36614a4367eb765a1ce1979f',
+  'offset': 8457,
+  'sha256': '1f4454821ebd549c233fc90fc7758bf8ab02024aec76cd817517605f25ddbf95',
+  'span_bytes': 27},
+ {'blob': 'dbd54291c0c5db40db492c5fe15692ae8b0b74be',
+  'bytes': 41448,
+  'context_sha256': '8ba4bbd1a376dce604cd14e99755f916352598bd36614a4367eb765a1ce1979f',
+  'offset': 8580,
+  'sha256': '980812b99a77e02c0c2230698bab7169dc7ea211525ee47d85052b44f047bd52',
+  'span_bytes': 27},
+ {'blob': 'dce815948f403e5cabb276736299b1bf0d2d2bc5',
+  'bytes': 25063,
+  'context_sha256': '8ba4bbd1a376dce604cd14e99755f916352598bd36614a4367eb765a1ce1979f',
+  'offset': 8457,
+  'sha256': '50b17f01a8cb5d6b24a6c16d5a3a79a0932ba9055a18de6a22ac399a6b2a267c',
+  'span_bytes': 27},
+ {'blob': 'fec896741581a989f6af399f0923789d3041630b',
+  'bytes': 23940,
+  'context_sha256': '8ba4bbd1a376dce604cd14e99755f916352598bd36614a4367eb765a1ce1979f',
+  'offset': 8457,
+  'sha256': 'fffe5d5ea2b9a8a9c657c8cbd4bcbbd719ecc8484daef2f2c86b457cf10a3ce8',
+  'span_bytes': 27})
+
 PRODUCT_INCLUDE_ADDITIONS = {'products/bos/product.json': {'platform/bos-customer-initialization', 'platform/ada'}}
 MAINTENANCE = {
     'AGENTS.md', '.agents/skills/ship-it/SKILL.md',
@@ -345,7 +481,7 @@ def scope(root, base, source):
     for parent,commit,path,old_mode,new_mode in rows:
         known=(path in MAINTENANCE or path in BODY_SKILLS or path in CUSTOMER_INITIALIZATION
                or path in STALE_TEST_REPAIRS or path in ADA_CLIENT or path in LEGACY_FEATURE_PATHS
-                or path in MUSE_GUIDANCE)
+                or path in MUSE_GUIDANCE or path in PRESERVED_SPEC_PATHS)
         if (path==RETIRED_SELECTION or path=='contracts/bos-client-dependency.v1/manifest.json'
                 or not known and (path=='README.md' or path.startswith('source/') and path.endswith('/SKILL.md')
                   or path in {'package.json','package-manifest.json','package-lock.json','products/bos/product.json','products/education-center/product.json'})):
@@ -378,7 +514,7 @@ def scope(root, base, source):
             continue
         if (path in MAINTENANCE or path in BODY_SKILLS or path in CUSTOMER_INITIALIZATION
                 or path in STALE_TEST_REPAIRS or path in ADA_CLIENT or path in LEGACY_FEATURE_PATHS
-                or path in MUSE_GUIDANCE):
+                or path in MUSE_GUIDANCE or path in PRESERVED_SPEC_PATHS):
             continue
         if path.startswith('clients/'):
             # The fixed build+clean-tree checks independently regenerate all consumers.
@@ -444,7 +580,12 @@ def scope(root, base, source):
         raise ValueError('Unsupported package-release scope: ' + path)
     # Owner direction 2026-11-11: a package change carries this changelist's sealed spec;
     # a missing, stale or mismatched spec fails here. Retired v1 blobs never qualify.
-    contract.gate(root, base, source)
+    admitted=contract.gate(root, base, source)
+    if paths & PRESERVED_SPEC_PATHS:
+        if admitted['status']!='SPEC_SEALED':raise ValueError('Preserved native source requires its complete sealed spec')
+        selected=contract.verify(root,source)['selection']
+        modules={name for row in selected['categories'] for name in row['tests']}
+        if not PRESERVED_SPEC_TESTS <= modules:raise ValueError('Preserved native conformance modules missing')
     return sorted(paths)
 
 
@@ -906,15 +1047,19 @@ def history_report(output, base, source):
         if set(row) != {'base','source','status','pairs','inventory_sha256','policy_sha256','findings','classifications'} or row['findings'] != []:
             raise ValueError()
         classifications = row['classifications']
-        if not isinstance(classifications, list) or len(classifications) > 1:
-            raise ValueError()
+        expected = [{'path_sha256': hashlib.sha256(b'scripts/lib/runtime-skill-export.mjs').hexdigest(),
+                     'blob':'7dab470bc8e3a1f647a2d2a5ec094e48be25f401',
+                     'sha256':'49ae97294c1c9e0b3fa09ca0dba20603e2d02685fa5a65aee3fc847f9b4db242',
+                     'kind':'exact_public_git_ssh_protocol_user','literal_count':1}]
+        expected += [dict(record,path_sha256=hashlib.sha256(b'tests/oracle_spec_test.py').hexdigest(),
+                         kind='exact_historical_negative_fixture_key_header',literal_count=1) for record in HISTORICAL_HEADER_RECORDS]
+        if not isinstance(classifications,list) or len(classifications)>len(expected):raise ValueError()
+        seen=set()
         for item in classifications:
-            expected = {'path_sha256': hashlib.sha256(b'scripts/lib/runtime-skill-export.mjs').hexdigest(),
-                        'blob':'7dab470bc8e3a1f647a2d2a5ec094e48be25f401',
-                        'sha256':'49ae97294c1c9e0b3fa09ca0dba20603e2d02685fa5a65aee3fc847f9b4db242',
-                        'kind':'exact_public_git_ssh_protocol_user','literal_count':1}
-            if item != expected or type(item.get('literal_count')) is not int:
-                raise ValueError()
+            if item not in expected or any(type(item[k]) is not int for k in ('literal_count','bytes','offset','span_bytes') if k in item):raise ValueError()
+            identity=(item['path_sha256'],item['blob'],item['kind'])
+            if identity in seen:raise ValueError()
+            seen.add(identity)
         if (row['base'] != base or row['source'] != source or row['status'] != 'PASS'
                 or type(row['pairs']) is not int or row['pairs'] < 1
                 or not re.fullmatch('[0-9a-f]{64}', row['inventory_sha256'])

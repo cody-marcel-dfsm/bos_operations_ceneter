@@ -484,3 +484,26 @@ no connection deadline, consecutive-failure reconnect budget). The stand-in is a
 repository-owned synthetic TLS WebSocket service, not BOS. All prior checks remain.
 No installed host change, enabled hook, live connection, credential trust change or
 publication exemption follows from source validation.
+
+Amendment `/12` preserves the exact twenty-nine native implementation/spec/publication
+paths in `PRESERVED_SPEC_PATHS`. They require a genuine sealed implementation
+spec retaining every one of the twenty-one named original conformance modules;
+the native runner executes their full selected categories with source/runtime/
+output custody. Path membership alone supplies no passing behavior evidence.
+Neighboring paths and missing modules fail closed. All prior checks remain.
+
+Fourteen immutable revisions of `tests/oracle_spec_test.py` contain one bare key
+delimiter used to prove secret rejection. The historical guard classifies only
+that exact delimiter after checking relative path, Git blob, raw SHA-256, byte
+count, span and surrounding-context hash. Every other original-byte credential
+pattern and the full original privacy/customer decoder remain mandatory. The
+native receipt accepts only the exact closed classification metadata; unknown,
+duplicate, copied, altered, customer-appended and actual-key cases reject.
+The original fourteen-hit failure remains historical evidence. No source history,
+global privacy policy, credential rule or publication requirement is rewritten.
+
+The same amendment admits the bounded native proposal-delta process and complete
+existing controller/lifecycle/spec suites described in `validation-contract.md`.
+The legacy socket test holds its own bounded completion handle while the actual
+advertised deadline closes an in-memory channel. Production timer behavior and
+all current/legacy descriptor and native-host checks remain unchanged.

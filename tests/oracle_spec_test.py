@@ -41,9 +41,10 @@ class Fixture(unittest.TestCase):
         environment = patch.dict(os.environ, {'BOC_ORACLE_ENGINE': 'codex'})
         environment.start()
         self.addCleanup(environment.stop)
-        self.temp = tempfile.TemporaryDirectory()
+        scratch=REPOSITORY/'Vault/tmp';scratch.mkdir(parents=True,exist_ok=True)
+        self.temp = tempfile.TemporaryDirectory(dir=scratch,prefix='oracle-spec-')
         self.addCleanup(self.temp.cleanup)
-        self.root = Path(self.temp.name) / 'repository'
+        self.root = (Path(self.temp.name) / 'repository').resolve()
         for name in ('tools', 'tests'):
             (self.root / name).mkdir(parents=True)
         catalog = {'schema': 'boc.validation-catalog/v1', 'classes': copy.deepcopy(v.CLASSES),
@@ -670,6 +671,130 @@ class VaultIndexInterpreter(unittest.TestCase):
             self.assertEqual(calls[0][0], str(venv.absolute()))
             self.assertNotEqual(calls[0][0], str(base.resolve()))
             self.assertEqual(calls[0][1][0], str(venv.absolute()))
+
+
+class NativeDelta(Fixture):
+    def prepared_delta(self):
+        prior=self.sealed(scope_paths=['source.mjs','README.md','tests/spec.test.mjs',v.SELECTION,v.CATALOG])
+        self.commit('intact exact prior')
+        (self.root/'source.mjs').write_text('export default false;\n')
+        (self.root/'tests/extra.test.mjs').write_text('synthetic selected extra test\n')
+        source=self.commit('captured additive source')
+        context=v.delta_context(self.root,source,self.git('rev-parse','HEAD^{tree}'))
+        delta={'kind':v.DELTA_KIND,'binding':copy.deepcopy(context['binding']),'reason':'Add bounded synthetic coverage',
+               'design':None,'acceptance_additions':['The extra synthetic condition is checked'],
+               'category_additions':[{'name':'focused','tests':['tests/extra.test.mjs'],'fixtures':[]}],
+               'coverage_additions':[{'module':'tests/spec.test.mjs','covers':[0],'purpose':None},
+                                     {'module':'tests/extra.test.mjs','covers':[0],'purpose':'Proves the additional condition'}]}
+        return prior,context,delta
+
+    def test_native_dispatch_uses_closed_delta_schema_and_full_mode_pins_the_exact_revision(self):
+        prior,context,delta=self.prepared_delta()
+        schema=self.root/'.agents/skills/oracle/review-output.schema.json';schema.parent.mkdir(parents=True)
+        schema.write_bytes((REPOSITORY/'.agents/skills/oracle/review-output.schema.json').read_bytes())
+        run=self.root/'.git/oracle/runs/schema-test';run.mkdir(parents=True)
+        captured=[]
+        def dispatch(root,prompt,prefix,*,schema_path):
+            captured.append((prompt,json.loads(schema_path.read_text())))
+            return dict(APPROVED,review_status='COMPLETE',validation_selection=delta)
+        metadata=oracle._METADATA_ROOT.set(self.root);active=oracle._RUN.set(run)
+        try:
+            for mode in (context,None):
+                token=oracle._PROPOSAL_DELTA.set(mode)
+                try:
+                    with patch.object(oracle,'_review_process',side_effect=dispatch):oracle._proposal_oracle(self.root,PROPOSAL,{},None)
+                finally:oracle._PROPOSAL_DELTA.reset(token)
+        finally:oracle._RUN.reset(active);oracle._METADATA_ROOT.reset(metadata)
+        selected=captured[0][1]['properties']['validation_selection']
+        self.assertEqual(selected['properties']['binding']['const'],context['binding'])
+        self.assertNotIn('scope_paths',selected['properties'])
+        self.assertNotIn('"scope_paths": [',captured[0][0])
+        self.assertEqual(captured[1][1]['properties']['validation_selection']['properties']['revision_of'],
+                         {'const':prior['contract_sha256']})
+
+    def test_parent_materializes_exact_scope_and_retains_criteria_categories_and_mapping_projection(self):
+        prior,context,delta=self.prepared_delta();before=copy.deepcopy(prior)
+        value,audit=v.materialize_delta(self.root,context,delta)
+        self.assertEqual(prior,before)
+        self.assertEqual(value['revision_of'],prior['contract_sha256'])
+        self.assertEqual(value['acceptance'][:1],prior['selection']['acceptance'])
+        self.assertEqual(value['acceptance_tests'][0],dict(prior['selection']['acceptance_tests'][0],covers=[0,1]))
+        self.assertEqual(value['categories'][1]['tests'],['tests/spec.test.mjs','tests/extra.test.mjs'])
+        self.assertEqual(value['scope_paths'],sorted(set(context['paths'])|{'tests/extra.test.mjs'}))
+        self.assertEqual(audit['retained_coverage_sha256'],v.digest(prior['selection']['acceptance_tests']))
+        self.assertEqual(v.materialize_delta(self.root,context,delta),(value,audit))
+        schema=v.delta_schema(context)
+        self.assertEqual(schema['properties']['binding']['const'],context['binding'])
+        self.assertFalse(schema['additionalProperties'])
+
+    def test_wrong_missing_replayed_hashes_and_unknown_fields_fail_without_writing_a_spec(self):
+        prior,context,delta=self.prepared_delta();original=(self.root/v.SELECTION).read_bytes()
+        for key in context['binding']:
+            for value in ('0'*64,None):
+                if value==context['binding'][key]:continue
+                bad=copy.deepcopy(delta);bad['binding'][key]=value
+                with self.assertRaisesRegex(ValueError,'binding'):v.materialize_delta(self.root,context,bad)
+            bad=copy.deepcopy(delta);del bad['binding'][key]
+            with self.assertRaisesRegex(ValueError,'binding'):v.materialize_delta(self.root,context,bad)
+        for change in ({'scope_paths':['unapproved.mjs']},{'acceptance':[]},{'revision_of':'0'*64}):
+            with self.assertRaisesRegex(ValueError,'fields'):v.materialize_delta(self.root,context,dict(delta,**change))
+        corrupt=copy.deepcopy(context);corrupt['paths'].append('unapproved.mjs')
+        with self.assertRaisesRegex(ValueError,'inventory'):v.materialize_delta(self.root,corrupt,delta)
+        self.assertEqual((self.root/v.SELECTION).read_bytes(),original)
+
+    def test_unknown_path_criterion_drop_retained_module_replacement_and_mapping_mutation_are_rejected(self):
+        _,context,delta=self.prepared_delta()
+        bads=[]
+        bad=copy.deepcopy(delta);bad['category_additions'][0]['tests']=['tests/unknown.test.mjs'];bads.append(bad)
+        bad=copy.deepcopy(delta);bad['acceptance_additions']=[];bads.append(bad)
+        bad=copy.deepcopy(delta);bad['coverage_additions'][0]['purpose']='Changed retained purpose';bads.append(bad)
+        bad=copy.deepcopy(delta);bad['coverage_additions'][0]['covers']=[-1];bads.append(bad)
+        bad=copy.deepcopy(delta);bad['category_additions'][0]['tests']=['tests/spec.test.mjs'];bads.append(bad)
+        bad=copy.deepcopy(delta);bad['category_additions']*=2;bads.append(bad)
+        for bad in bads:
+            with self.assertRaises(ValueError):v.materialize_delta(self.root,context,bad)
+
+    def test_genuine_native_delta_archive_rechecks_materialization_and_raw_approval(self):
+        _,_,delta=self.prepared_delta()
+        def reviewer(*args):
+            current=oracle._PROPOSAL_DELTA.get()
+            return dict(APPROVED,review_status='COMPLETE',validation_selection=dict(delta,binding=current['binding']))
+        with patch.object(oracle,'_review_settings_binding',return_value={'model':'synthetic','reasoning_effort':None}),patch.object(oracle,'_fresh_origin',return_value=ORIGIN):
+            oracle.review_proposal(self.root,PROPOSAL,[],None,reviewer,delta=True)
+        self.commit('native-produced delta spec')
+        record=Path(v.native_origin(self.root));raw=json.loads(record.read_text());contract=raw['validation_contract']
+        self.assertEqual(raw['proposal_materialization']['raw_delta_sha256'],v.digest(raw['raw_review']['validation_selection']))
+        self.assertTrue(v.native_proposal_record(self.root,record,contract,self.git('rev-parse','HEAD')))
+        observed=self.root/raw['raw_response']['path'];original=observed.read_bytes();observed.write_bytes(original+b' ')
+        self.assertFalse(v.native_proposal_record(self.root,record,contract,self.git('rev-parse','HEAD')))
+        observed.write_bytes(original)
+        raw['raw_review']['review_status']='INCOMPLETE'
+        # Even a freshly named canonical archive with recomputed bookkeeping cannot adopt a partial approval.
+        body={k:x for k,x in raw.items() if k!='proposal_review_id'};raw['proposal_review_id']=oracle._sha(oracle._canonical(body))
+        content=oracle._pretty(raw);other=record.parent/(oracle._sha(content)+'.json');other.write_bytes(content)
+        self.assertFalse(v.native_proposal_record(self.root,other,contract,self.git('rev-parse','HEAD')))
+
+    def test_source_movement_preserves_raw_result_and_refuses_delta_seal(self):
+        _,_,delta=self.prepared_delta();before=(self.root/v.SELECTION).read_bytes()
+        def reviewer(*args):
+            current=oracle._PROPOSAL_DELTA.get();(self.root/'source.mjs').write_text('changed during proposal\n')
+            return dict(APPROVED,review_status='COMPLETE',validation_selection=dict(delta,binding=current['binding']))
+        with patch.object(oracle,'_review_settings_binding',return_value={'model':'synthetic','reasoning_effort':None}),patch.object(oracle,'_fresh_origin',return_value=ORIGIN):
+            with self.assertRaisesRegex(oracle.OracleSourceBindingError,'Delta source changed'):
+                oracle.review_proposal(self.root,PROPOSAL,[],None,reviewer,delta=True)
+        self.assertEqual((self.root/v.SELECTION).read_bytes(),before)
+
+    def test_origin_movement_rejects_an_otherwise_unchanged_bound_delta(self):
+        _,_,delta=self.prepared_delta();before=(self.root/v.SELECTION).read_bytes()
+        self.git('remote','add','origin','https://example.invalid/native-delta.git')
+        self.git('update-ref','refs/remotes/origin/main',self.base)
+        def reviewer(*args):
+            current=oracle._PROPOSAL_DELTA.get();self.git('update-ref','refs/remotes/origin/main',self.git('rev-parse','HEAD'))
+            return dict(APPROVED,review_status='COMPLETE',validation_selection=dict(delta,binding=current['binding']))
+        with patch.object(oracle,'_review_settings_binding',return_value={'model':'synthetic','reasoning_effort':None}),patch.object(oracle,'_fresh_origin',return_value=self.base):
+            with self.assertRaisesRegex(oracle.OracleSourceBindingError,'origin moved'):
+                oracle.review_proposal(self.root,PROPOSAL,[],None,reviewer,delta=True)
+        self.assertEqual((self.root/v.SELECTION).read_bytes(),before)
 
 
 if __name__ == '__main__':

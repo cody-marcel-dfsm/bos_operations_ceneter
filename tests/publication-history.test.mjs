@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {mkdtemp,mkdir,writeFile,readFile,rm} from "node:fs/promises";
 import {join} from "node:path";
 import {execFileSync} from "node:child_process";
-import {publicationHistory,credentialFindings,historicalPrivacy} from "../scripts/check-publication-history.mjs";
+import {publicationHistory,credentialFindings,historicalPrivacy,historicalCredentials} from "../scripts/check-publication-history.mjs";
 const scratch=new URL("../Vault/tmp/",import.meta.url).pathname;
 const git=(root,...args)=>execFileSync("git",["--no-replace-objects","-C",root,...args],{encoding:"utf8",stdio:["ignore","pipe","pipe"]}).trim();
 async function fixture(t){await mkdir(scratch,{recursive:true});const root=await mkdtemp(join(scratch,"ph-"));t.after(()=>rm(root,{recursive:true,force:true}));git(root,"init","-q","-b","main");git(root,"config","user.name","Synthetic history");git(root,"config","user.email","history@example.invalid");
@@ -39,4 +39,34 @@ test("exact historical public protocol classification preserves raw rules and re
  for(const variant of [{path:"scripts/copied.mjs",body},{path,body:Buffer.concat([body,Buffer.from("\n// changed")])},{path,body:Buffer.concat([body,Buffer.from("\nname"+"@"+["outside","net"].join("."))])},{path,body:Buffer.concat([body,Buffer.from(JSON.stringify({["access"+"_token"]:"synthetic-added-credential"}))])}]){
   const result=await historicalPrivacy(variant.path,blob,variant.body,config);assert.equal(result.classification,null);assert(result.findings.length||credentialFindings(variant.path,variant.body).length);
  }
+});
+
+test("fourteen exact bare-header negative fixtures retain every other original-byte rule",async()=>{
+ const {createHash,generateKeyPairSync}=await import("node:crypto");
+ const records=JSON.parse(execFileSync("python3",["-B","-c","import json;from tools.deterministic_package import HISTORICAL_HEADER_RECORDS;print(json.dumps(HISTORICAL_HEADER_RECORDS))"],{encoding:"utf8"}));
+ assert.equal(records.length,14);const path="tests/oracle_spec_test.py";
+ const actualKey=generateKeyPairSync("ed25519").privateKey.export({type:"pkcs8",format:"pem"});
+ for(const record of records){
+  const body=execFileSync("git",["--no-replace-objects","cat-file","blob",record.blob]);
+  assert.equal(createHash("sha256").update(body).digest("hex"),record.sha256);
+  assert(credentialFindings(path,body).includes("credential_content"),"raw fail-before remains reproducible");
+  const result=historicalCredentials(path,record.blob,body);
+  assert.deepEqual(result.findings,[]);assert.equal(result.classification.kind,"exact_historical_negative_fixture_key_header");
+  assert.equal(result.classification.literal_count,1);assert.equal(result.classification.offset,record.offset);
+  for(const variant of [{path:"tests/copied_spec.py",blob:record.blob,body},{path,blob:"0".repeat(40),body},
+   {path,blob:record.blob,body:Buffer.concat([body,Buffer.from("\n# changed")])},
+   {path,blob:record.blob,body:Buffer.concat([body,Buffer.from("\nname"+"@"+["outside","net"].join("."))])},
+   {path,blob:record.blob,body:Buffer.concat([body,Buffer.from(JSON.stringify({["access"+"_token"]:"synthetic-added-credential"}))])},
+   {path,blob:record.blob,body:Buffer.from(actualKey)}]){
+   const inspected=historicalCredentials(variant.path,variant.blob,variant.body);
+   assert.equal(inspected.classification,null);assert(inspected.findings.includes("credential_content"));
+  }
+ }
+ // Customer traits receive the original full privacy decoder independently.
+ const {root,scanPrivacyFile}=await import("../scripts/check-customer-data.mjs");
+ const {executableIdentity}=await import("../scripts/lib/privacy-coverage.mjs");
+ const config={blockedDigests:new Set(),approvedBinaryDigests:new Set(),githubIdentities:[],archiveExecutable:(await executableIdentity("unzip")).path};
+ const body=execFileSync("git",["--no-replace-objects","cat-file","blob",records[0].blob]);
+ const privacy=await scanPrivacyFile(join(root,path),Buffer.concat([body,Buffer.from("\nname"+"@"+["outside","net"].join("."))]),{},config);
+ assert(privacy.some(row=>row.endsWith(": non-synthetic email address")));
 });

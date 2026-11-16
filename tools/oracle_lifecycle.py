@@ -20,6 +20,71 @@ import time
 import uuid
 
 _LIVE = {}
+REVIEWER_SECONDS = 180
+REVIEWER_OUTPUT_BYTES = 8 * 1024 * 1024
+
+def bounded_reviewer_output(o, run, process, token, record):
+    """Drain both private streams continuously; expose only bounded counts/timing."""
+    start=time.monotonic();lock=threading.Lock();chunks=[[],[]];counts=[0,0];overflow=threading.Event();errors=[]
+    def drain(stream,index):
+        try:
+            while True:
+                value=stream.read1(65536)
+                if not value:break
+                with lock:
+                    remaining=max(0,REVIEWER_OUTPUT_BYTES-sum(counts))
+                    counts[index]+=len(value)
+                    if remaining:chunks[index].append(value[:remaining])
+                    if sum(counts)>REVIEWER_OUTPUT_BYTES:overflow.set()
+        except BaseException as exc:errors.append(type(exc).__name__)
+    threads=[threading.Thread(target=drain,args=(stream,i),daemon=True) for i,stream in enumerate((process.stdout,process.stderr))]
+    for thread in threads:thread.start()
+    failure=None;last=0
+    try:
+        process.stdin.write((token+'\n').encode());process.stdin.flush();process.stdin.close();process.stdin=None
+        while True:
+            elapsed=time.monotonic()-start
+            with lock:current=list(counts)
+            if elapsed-last>=1 or process.poll() is not None:
+                o._atomic_write(run/'reviewer-progress.json',o._pretty({'kind':'boc-reviewer-progress/1',
+                    'elapsed_ms':round(elapsed*1000,3),'stdout_bytes':current[0],'stderr_bytes':current[1],
+                    'deadline_seconds':REVIEWER_SECONDS,'output_bound_bytes':REVIEWER_OUTPUT_BYTES,
+                    'output_overflow':overflow.is_set(),'complete':process.poll() is not None}))
+                last=elapsed
+            if overflow.is_set():failure='Reviewer output bound exceeded';break
+            if elapsed>=REVIEWER_SECONDS:failure='Reviewer deadline reached; retain checkpoint and resume exact inputs';break
+            if process.poll() is not None:break
+            time.sleep(.05)
+    finally:
+        if process.stdin is not None:
+            try:process.stdin.close()
+            except OSError:pass
+            process.stdin=None
+        if failure or errors:
+            try:
+                if process.poll() is None or _reviewer_group(record):os.killpg(process.pid,signal.SIGTERM)
+            except ProcessLookupError:pass
+            try:process.wait(timeout=2)
+            except subprocess.TimeoutExpired:
+                os.killpg(process.pid,signal.SIGKILL);process.wait(timeout=2)
+        for thread in threads:thread.join(2)
+        if any(thread.is_alive() for thread in threads):
+            try:
+                if process.poll() is None or _reviewer_group(record):os.killpg(process.pid,signal.SIGKILL)
+            except ProcessLookupError:pass
+            for thread in threads:thread.join(2)
+            failure=failure or 'Reviewer descendant held an output stream'
+        if overflow.is_set():failure=failure or 'Reviewer output bound exceeded'
+        raw=[b''.join(value) for value in chunks]
+        o._atomic_write(run/'stdout.log',raw[0]);o._atomic_write(run/'stderr.log',raw[1])
+        o._atomic_write(run/'reviewer-progress.json',o._pretty({'kind':'boc-reviewer-progress/1',
+            'elapsed_ms':round((time.monotonic()-start)*1000,3),'stdout_bytes':counts[0],'stderr_bytes':counts[1],
+            'deadline_seconds':REVIEWER_SECONDS,'output_bound_bytes':REVIEWER_OUTPUT_BYTES,
+            'output_overflow':overflow.is_set(),'complete':failure is None and not errors}))
+        process.native_output_drained=True
+        process.stdout.close();process.stderr.close()
+    if failure or errors:raise o.OracleReviewIncomplete(failure or 'Reviewer output stream failed')
+    return tuple(value.decode('utf8') for value in raw)
 
 
 def process_identity(pid):
@@ -90,7 +155,7 @@ def reviewer_process(o, root, run, command, environment, controller):
     gate = 'IFS= read -r token || exit 70; [ "$token" = "$1" ] || exit 70; shift; exec "$@"'
     process = subprocess.Popen(["/bin/sh", "-c", gate, "native-reviewer", token, *command],
                                cwd=root, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-                               stderr=subprocess.PIPE, text=True, env=environment, start_new_session=True)
+                               stderr=subprocess.PIPE, env=environment, start_new_session=True)
     path = controller.directory / "children" / ("reviewer-" + uuid.uuid4().hex + ".json")
     try:
         birth = process_birth(process.pid)
@@ -104,7 +169,7 @@ def reviewer_process(o, root, run, command, environment, controller):
                    "evidence": o._files(root, [str(run / "model.json"), str(run / "request.txt")])}
         record = dict(payload, record_sha256=o._sha(o._canonical(payload)))
         _publish(o, root, path, record)
-        stdout, stderr = process.communicate(input=token + "\n")
+        stdout, stderr = bounded_reviewer_output(o,run,process,token,record)
         _active_children(o, root, controller.identity)
         _publish(o, root, path.with_suffix(".outcome.json"),
                  {"record_sha256": record["record_sha256"], "exit_code": process.returncode})
@@ -117,15 +182,18 @@ def reviewer_process(o, root, run, command, environment, controller):
                 os.killpg(process.pid, signal.SIGTERM)
         except ProcessLookupError:
             pass
-        try:
-            stdout, stderr = process.communicate(timeout=2)
-        except subprocess.TimeoutExpired:
-            os.killpg(process.pid, signal.SIGKILL)
-            stdout, stderr = process.communicate(timeout=2)
+        if getattr(process,'native_output_drained',False):
+            stdout,stderr=b'',b''
+        else:
+            try:
+                stdout, stderr = process.communicate(timeout=2)
+            except subprocess.TimeoutExpired:
+                os.killpg(process.pid, signal.SIGKILL)
+                stdout, stderr = process.communicate(timeout=2)
         _publish(o, root, path.with_suffix(".failure.json"),
                  {"error_type": type(exc).__name__, "error": str(exc), "exit_code": process.returncode})
-        o._atomic_write(run / "stdout.log", stdout.encode())
-        o._atomic_write(run / "stderr.log", stderr.encode())
+        if not (run/'stdout.log').exists():o._atomic_write(run / "stdout.log", stdout if isinstance(stdout,bytes) else stdout.encode())
+        if not (run/'stderr.log').exists():o._atomic_write(run / "stderr.log", stderr if isinstance(stderr,bytes) else stderr.encode())
         raise
 
 

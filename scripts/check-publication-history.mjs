@@ -18,6 +18,39 @@ export function credentialFindings(path,body){
   for(const pattern of secretPatterns)if(!(instruction&&pattern===personalAbsolutePathPattern)&&pattern.test(text))found.push("credential_content");
   return [...new Set(found)];
 }
+// Exact immutable negative-fixture delimiters; every other original-byte rule remains.
+const historicalHeaderRecords=Object.freeze([
+  Object.freeze({"blob":"1951d9696d5e13b3860a3ece69ebdc6c767b323b","sha256":"fd59c5e0d1826b95b94b879800210bc1227dd4aef05de4625138ee5d5262c30b","bytes":27255,"offset":8568,"span_bytes":27,"context_sha256":"8ba4bbd1a376dce604cd14e99755f916352598bd36614a4367eb765a1ce1979f"}),
+  Object.freeze({"blob":"2619f0337bbe7b5884058d421f229b7850a781d2","sha256":"f8f0d42c12567893cf415837eb02693391fb544ced8662b6f40f400d73eb0a68","bytes":27144,"offset":8457,"span_bytes":27,"context_sha256":"8ba4bbd1a376dce604cd14e99755f916352598bd36614a4367eb765a1ce1979f"}),
+  Object.freeze({"blob":"6313e66c4d52cc7ed88fb5fbba50510a517f325e","sha256":"49d1d6b4b1329a5101654069432ea350cf480b554cd951b81cc5f38742033fd1","bytes":32529,"offset":8580,"span_bytes":27,"context_sha256":"8ba4bbd1a376dce604cd14e99755f916352598bd36614a4367eb765a1ce1979f"}),
+  Object.freeze({"blob":"68f4e0ca18671d37480c5eac05b2b840faf3e2cc","sha256":"f0121b793435573994e873099c7345d848c55ec188bda13742fb4a11f83c3a68","bytes":42404,"offset":8580,"span_bytes":27,"context_sha256":"8ba4bbd1a376dce604cd14e99755f916352598bd36614a4367eb765a1ce1979f"}),
+  Object.freeze({"blob":"73a6d26c670e2e22b082f3cade796c1e1dc78ab0","sha256":"2a9863e18c54fe7403c69cc8019bfd8e5cf27308083d3986f3ab508ab574b350","bytes":36281,"offset":8580,"span_bytes":27,"context_sha256":"8ba4bbd1a376dce604cd14e99755f916352598bd36614a4367eb765a1ce1979f"}),
+  Object.freeze({"blob":"792720d050c8c96e30ab3a11b500f019293f11cd","sha256":"e8c064398f5f304324bf34b6c089d76d42afd11024265adc99cf9bd49e198e81","bytes":40009,"offset":8580,"span_bytes":27,"context_sha256":"8ba4bbd1a376dce604cd14e99755f916352598bd36614a4367eb765a1ce1979f"}),
+  Object.freeze({"blob":"8651b812804aec856f337273449f44d0f9e05763","sha256":"45e0963ad42d2dc422f54dd3dcedf5e2a3fa31a960ffca8646d18588a49a6d81","bytes":30804,"offset":8568,"span_bytes":27,"context_sha256":"8ba4bbd1a376dce604cd14e99755f916352598bd36614a4367eb765a1ce1979f"}),
+  Object.freeze({"blob":"aa03dddc08e9905065ab7344c82724ef2debe42b","sha256":"d6befd66ad433340d43bd8aab31cc7f1ff3087107ed495c2805f9587edea7274","bytes":37047,"offset":8580,"span_bytes":27,"context_sha256":"8ba4bbd1a376dce604cd14e99755f916352598bd36614a4367eb765a1ce1979f"}),
+  Object.freeze({"blob":"bbb7365a6ce85ea2c92aa906f3e3aba1c2e611da","sha256":"74fe638fd6f9e291ad6dcc84d189e233027f74dee50bc94aaf92955f772633c5","bytes":35291,"offset":8580,"span_bytes":27,"context_sha256":"8ba4bbd1a376dce604cd14e99755f916352598bd36614a4367eb765a1ce1979f"}),
+  Object.freeze({"blob":"c6a09ce01915821bfb8ef6640c5a5f9d4a7078b5","sha256":"ab70958bb8080143945151d213801a059c6d289fa673ccd80c94530fafea8aa0","bytes":39780,"offset":8580,"span_bytes":27,"context_sha256":"8ba4bbd1a376dce604cd14e99755f916352598bd36614a4367eb765a1ce1979f"}),
+  Object.freeze({"blob":"d59f21a9c664818fa1566807e4c322fc64d89750","sha256":"1f4454821ebd549c233fc90fc7758bf8ab02024aec76cd817517605f25ddbf95","bytes":23322,"offset":8457,"span_bytes":27,"context_sha256":"8ba4bbd1a376dce604cd14e99755f916352598bd36614a4367eb765a1ce1979f"}),
+  Object.freeze({"blob":"dbd54291c0c5db40db492c5fe15692ae8b0b74be","sha256":"980812b99a77e02c0c2230698bab7169dc7ea211525ee47d85052b44f047bd52","bytes":41448,"offset":8580,"span_bytes":27,"context_sha256":"8ba4bbd1a376dce604cd14e99755f916352598bd36614a4367eb765a1ce1979f"}),
+  Object.freeze({"blob":"dce815948f403e5cabb276736299b1bf0d2d2bc5","sha256":"50b17f01a8cb5d6b24a6c16d5a3a79a0932ba9055a18de6a22ac399a6b2a267c","bytes":25063,"offset":8457,"span_bytes":27,"context_sha256":"8ba4bbd1a376dce604cd14e99755f916352598bd36614a4367eb765a1ce1979f"}),
+  Object.freeze({"blob":"fec896741581a989f6af399f0923789d3041630b","sha256":"fffe5d5ea2b9a8a9c657c8cbd4bcbbd719ecc8484daef2f2c86b457cf10a3ce8","bytes":23940,"offset":8457,"span_bytes":27,"context_sha256":"8ba4bbd1a376dce604cd14e99755f916352598bd36614a4367eb765a1ce1979f"}),
+]);
+export function historicalCredentials(path,blob,body){
+  const original=credentialFindings(path,body),record=historicalHeaderRecords.find(row=>row.blob===blob);
+  if(path!=="tests/oracle_spec_test.py"||!record||body.length!==record.bytes||hash(body)!==record.sha256)
+    return{findings:original,classification:null};
+  const literal=Buffer.from(["-----BEGIN ","PRIVATE KEY-----"].join("")),offset=body.indexOf(literal);
+  if(offset!==record.offset||body.indexOf(literal,offset+1)!==-1||record.span_bytes!==literal.length||
+    hash(body.subarray(Math.max(0,offset-48),offset+literal.length+48))!==record.context_sha256||
+    createHash("sha1").update(Buffer.from("blob "+body.length+"\0")).update(body).digest("hex")!==blob)
+    throw Error("Historical fixture identity changed");
+  const text=body.toString("utf8"),remaining=Buffer.concat([body.subarray(0,offset),Buffer.alloc(literal.length,32),body.subarray(offset+literal.length)]).toString("utf8");
+  // Only pattern zero's one exact delimiter is classified. Every other pattern
+  // sees original bytes, and the complete original privacy decoder runs separately.
+  const findings=original.filter(value=>value!=="credential_content");
+  if(secretPatterns.slice(1).some(pattern=>pattern.test(text))||secretPatterns[0].test(remaining))findings.push("credential_content");
+  return{findings,classification:{path_sha256:hash(path),...record,kind:"exact_historical_negative_fixture_key_header",literal_count:1}};
+}
 // One immutable historical source uses the public Git SSH transport user.
 // Classify that email-shaped protocol token only; original non-email privacy
 // findings and the separate original-byte credential scan remain mandatory.
@@ -67,7 +100,8 @@ export async function publicationHistory({root=sourceRoot,base,source,blockedDig
     if(!["100644","100755"].includes(row.mode)){add(row,"nonregular_source");continue;}
     const size=Number((await git(root,["cat-file","-s",row.blob])).trim());if(!Number.isSafeInteger(size)||size>maximum)throw Error("Blob bound exceeded");
     const body=await git(root,["cat-file","blob",row.blob],"buffer");if(body.length!==size)throw Error("Blob changed");
-    for(const code of credentialFindings(row.path,body))add(row,code);
+    const credentials=historicalCredentials(row.path,row.blob,body);if(credentials.classification)classifications.push(credentials.classification);
+    for(const code of credentials.findings)add(row,code);
     for(const finding of customerDataFindings(row.path,row.path,config.blockedDigests))add(row,"path_customer_privacy");
     const inspected=await historicalPrivacy(row.path,row.blob,body,config);if(inspected.classification)classifications.push(inspected.classification);if(inspected.findings.length)add(row,"customer_privacy_or_unapproved_binary");
     if(row.path.endsWith(".zip")){

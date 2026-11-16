@@ -338,6 +338,38 @@ class PackageGateTests(unittest.TestCase):
         self.assertNotIn('unsafe', json.dumps(summaries))
         self.assertEqual(summaries[0]['output_sha256'], checksum)
 
+    def test_preserved_native_scope_requires_complete_spec_modules_and_rejects_neighboring_paths(self):
+        self.assertEqual(len(d.PRESERVED_SPEC_PATHS),29)
+        self.assertEqual(d.native.digest('\n'.join(sorted(d.PRESERVED_SPEC_PATHS)).encode()),
+                         '026a00258dc5c3d91d136ce8c02557b93806b74f3fd5d3fad37941101dfd63b1')
+        baseline=self.git('rev-parse','HEAD');path=self.root/'tools/vault_index.py'
+        path.parent.mkdir(parents=True,exist_ok=True);path.write_text('bounded preserved implementation\n');self.commit()
+        source=self.git('rev-parse','HEAD')
+        selection={'selection':{'categories':[{'tests':sorted(d.PRESERVED_SPEC_TESTS)}]}}
+        with patch.object(d.contract,'gate',return_value={'status':'SPEC_SEALED'}),patch.object(d.contract,'verify',return_value=selection):
+            self.assertIn('tools/vault_index.py',d.scope(self.root,baseline,source))
+            incomplete={'selection':{'categories':[{'tests':sorted(d.PRESERVED_SPEC_TESTS)[1:]}]}}
+            with patch.object(d.contract,'verify',return_value=incomplete):
+                with self.assertRaisesRegex(ValueError,'conformance modules missing'):d.scope(self.root,baseline,source)
+            (self.root/'tools/unmapped_runtime.py').write_text('unapproved neighboring implementation\n');self.commit()
+            with self.assertRaisesRegex(ValueError,'Unsupported'):d.scope(self.root,baseline,self.git('rev-parse','HEAD'))
+        with self.assertRaisesRegex(ValueError,'complete sealed spec'):d.scope(self.root,baseline,source)
+
+    def test_exact_history_fixture_metadata_rejects_mutation_duplicate_unknown_and_boolean_counts(self):
+        records=[dict(row,path_sha256=hashlib.sha256(b'tests/oracle_spec_test.py').hexdigest(),
+                      kind='exact_historical_negative_fixture_key_header',literal_count=1) for row in d.HISTORICAL_HEADER_RECORDS]
+        self.assertEqual(len(records),14);self.assertEqual(len({row['blob'] for row in records}),14)
+        report={'base':self.base,'source':self.git('rev-parse','HEAD'),'status':'PASS','pairs':14,
+                'inventory_sha256':'a'*64,'policy_sha256':'b'*64,'findings':[],'classifications':records}
+        encode=lambda value:json.dumps({'publication_history':value}).encode()
+        self.assertEqual(d.history_report(encode(report),report['base'],report['source']),report)
+        for key,value in [('blob','0'*40),('path_sha256','0'*64),('sha256','0'*64),('context_sha256','0'*64),
+                          ('offset',0),('literal_count',True),('span_bytes',True),('kind','caller_allowlist')]:
+            bad=json.loads(json.dumps(report));bad['classifications'][0][key]=value
+            with self.assertRaises(ValueError):d.history_report(encode(bad),report['base'],report['source'])
+        bad=dict(report,classifications=records+[records[0]])
+        with self.assertRaises(ValueError):d.history_report(encode(bad),report['base'],report['source'])
+
     def test_muse_guidance_amendment_admits_only_exact_named_files(self):
         baseline = self.git('rev-parse', 'HEAD')
         expected = {'source/platform/bos-visual-output/SKILL.md',
