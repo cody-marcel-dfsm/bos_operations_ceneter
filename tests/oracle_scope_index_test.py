@@ -14,7 +14,10 @@ from tools import oracle_approval as o, shipment_state as shipment, publication_
 
 class ScopeIndex(unittest.TestCase):
     def setUp(self):
-        self.temp = tempfile.TemporaryDirectory(); self.addCleanup(self.temp.cleanup)
+        scratch = Path(__file__).resolve().parents[1] / 'Vault/tmp'
+        scratch.mkdir(parents=True, exist_ok=True)
+        self.temp = tempfile.TemporaryDirectory(dir=scratch, prefix='scope-index-')
+        self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name).resolve()
         self.git('init', '-q'); self.git('config', 'user.name', 'Synthetic Review')
         self.git('config', 'user.email', 'synthetic@example.invalid')
@@ -166,15 +169,13 @@ class ScopeIndex(unittest.TestCase):
                             with self.assertRaises(o.OracleApprovalError):
                                 shipment._import_currentness(self.root, receipt)
                     command = [sys.executable, str(self.cli), 'verify-commit', self.commits[0][0]]
-                    env = dict(os.environ)
                     if name == 'approved-invalidation':
                         self.git('update-ref', 'refs/remotes/origin/main', self.commits[0][0])
                         # The published approval arrives as the exact-commit git attestation on an
                         # owned synthetic remote reached through the SSH push URL; no gh, no network.
                         commit, tree = self.commits[0]
-                        holder = tempfile.TemporaryDirectory(); self.addCleanup(holder.cleanup)
-                        remote = Path(holder.name) / 'owned.git'
-                        subprocess.run(['git', 'init', '-q', '--bare', str(remote)], check=True)
+                        from publication_admission_test import owned_remote
+                        remote = owned_remote(self, self.root, commit)
                         record = {'kind': publication_status.ATTESTATION_KIND, 'repository': publication_status.REPOSITORY,
                             'candidate_commit': commit, 'candidate_tree': tree,
                             'technical_receipt_sha256': self.receipts[commit].stem,
@@ -188,8 +189,7 @@ class ScopeIndex(unittest.TestCase):
                         attestation = self.git('commit-tree', listing, '-p', commit, '-m', 'synthetic attestation').strip()
                         subprocess.run(['git', 'push', '-q', '-f', str(remote), attestation + ':' + publication_status.ATTESTATION_PREFIX + commit],
                                        cwd=self.root, check=True)
-                        self.git('config', 'remote.origin.pushurl', publication_status.SSH_REMOTE)
-                        self.git('config', 'url.' + str(remote) + '.insteadOf', publication_status.SSH_REMOTE)
+                    env = dict(os.environ)
                     actual = subprocess.run(command, cwd=self.root, capture_output=True, text=True, env=env)
                     self.assertEqual(actual.returncode == 0, retained, actual.stderr)
                     if not retained:
