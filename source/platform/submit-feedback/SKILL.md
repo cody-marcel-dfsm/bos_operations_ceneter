@@ -2,7 +2,7 @@
 name: submit-feedback
 description: Submit or draft private BOS product feedback with sanitized media, track its lifecycle, and discuss or complete an existing report through currently supported operations. Use for reviewing or reading feedback and comments, including staging feedback API questions and agent reports, product feedback, report session, feedback tracking, replies, and reporter completion.
 metadata:
-  version: "1.0.17"
+  version: "1.0.18"
   requires: "{\"bos-mcp-client\":\"1.0.12\",\"bos-workflow-orchestrator\":\"1.0.13\"}"
 ---
 
@@ -72,6 +72,14 @@ misses instructions, so read before judging:
 6. Report the contexts and views covered, their denials, and the item count.
    Refresh the queue and reread the thread right before acting on it, because
    reporters file and withdraw items during a session.
+
+Filter by category on the item's own `category` field, never by title or
+content. The list operation is scoped by context, so a category filter
+applied in one context sees only that context's items: visit every context,
+apply the filter there, and merge by `feedback_id`, deduping. An item filed
+under a wrong category does not appear in that category's filter; note the
+correct category in a comment on the item instead of reclassifying it by
+eyeballing its content.
 
 ## Decide whether to submit
 
@@ -357,6 +365,55 @@ fresh current state and applicable user authorization for the changed effect.
 Feedback has no push subscription. Poll only when requested, within the user's chosen
 interval and duration. Keep reports, discussion, identities and screenshots
 private; public code patches never imply permission to publish an issue.
+
+## Track filed requests
+
+Keep one persistent tracker of the feedback requests you filed. It is the
+source for every status answer. Do not reconstruct status from memory or from
+a fresh scan when the tracker exists; answer from the tracker and refresh it
+from a fresh read only when an item's state may have changed.
+
+Record for each item, and nothing more than this:
+
+- `feedback_id` — the service-issued identifier.
+- A short human-readable name — the surface and the defect in plain words.
+- `category` — the swim-lane marker from the item itself.
+- Where the work is — one of: Service implementing, Waiting on service,
+  Waiting on Muse, Waiting on the user, Blocked (with the cause named), or
+  Parked.
+- `last_verified` — when the state was last confirmed by a fresh read.
+
+Update the tracker on every state change: when an item is filed, commented on,
+resolved, verified, closed, or when the service replies or a deploy lands. A
+tracker that is not updated on change is worse than no tracker, because a stale
+record produces a confident wrong answer.
+
+The tracker is a status record, not a copy of the feedback and not an offline
+queue. Never put feedback bodies, screenshots, personal data, or credentials
+in it, and never queue an unsent submission in it. It holds identifiers, short
+names, lane, where-the-work-is, and last-verified time only.
+
+Programmatic consumers can use
+[`scripts/feedback-tracker.mjs`](scripts/feedback-tracker.mjs) to maintain the
+tracker record and render a status report from it. Feed it item states you
+already read through the native `bos_*` tools; it performs no feedback read
+and no mutation itself.
+
+## Report feedback status
+
+Answer a status question from the tracker. Group by lane (the `category`
+field), then by where the work is. Within a group, list each item by its short
+human-readable name, with the feedback ID only as a secondary reference and
+never as the name. Leave resolved items out unless the user explicitly asks
+for them. State the count and the source — the tracker, with its
+last-verified time — so the user can tell how fresh the answer is.
+
+Call something a blocker only when it is a task the reporter is expected to
+do and cannot complete for some reason. Work that sits on someone else's
+plate — the service's deploy, another party's key, a decision only the user
+can make — is not the reporter's blocker; report it under where the work
+actually is (Waiting on service, Waiting on the user, Blocked with the cause
+named). Never present another party's pending work as the reporter's blocker.
 
 ## Item discussion streams
 
