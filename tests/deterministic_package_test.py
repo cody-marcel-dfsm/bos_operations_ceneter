@@ -392,9 +392,9 @@ class PackageGateTests(unittest.TestCase):
         self.assertEqual(summaries[0]['output_sha256'], checksum)
 
     def test_preserved_native_scope_requires_complete_spec_modules_and_rejects_neighboring_paths(self):
-        self.assertEqual(len(d.PRESERVED_SPEC_PATHS),29)
+        self.assertEqual(len(d.PRESERVED_SPEC_PATHS),30)
         self.assertEqual(d.native.digest('\n'.join(sorted(d.PRESERVED_SPEC_PATHS)).encode()),
-                         '026a00258dc5c3d91d136ce8c02557b93806b74f3fd5d3fad37941101dfd63b1')
+                         '301289f1e68299d0e75881138ca21eec4a0cf15c83a8216c266fc437dbbeacae')
         baseline=self.git('rev-parse','HEAD');path=self.root/'tools/vault_index.py'
         path.parent.mkdir(parents=True,exist_ok=True);path.write_text('bounded preserved implementation\n');self.commit()
         source=self.git('rev-parse','HEAD')
@@ -407,6 +407,18 @@ class PackageGateTests(unittest.TestCase):
             (self.root/'tools/unmapped_runtime.py').write_text('unapproved neighboring implementation\n');self.commit()
             with self.assertRaisesRegex(ValueError,'Unsupported'):d.scope(self.root,baseline,self.git('rev-parse','HEAD'))
         with self.assertRaisesRegex(ValueError,'complete sealed spec'):d.scope(self.root,baseline,source)
+
+    def test_exact_parallel_wrapper_edit_requires_its_executed_sealed_module(self):
+        baseline=self.git('rev-parse','HEAD');path=self.root/'tests/oracle-parallel.test.mjs'
+        path.parent.mkdir();path.write_text('bounded wrapper implementation\n');self.commit();source=self.git('rev-parse','HEAD')
+        selection={'selection':{'categories':[{'tests':sorted(d.PRESERVED_SPEC_TESTS)}]}}
+        with patch.object(d.contract,'gate',return_value={'status':'SPEC_SEALED'}),patch.object(d.contract,'verify',return_value=selection):
+            self.assertIn('tests/oracle-parallel.test.mjs',d.scope(self.root,baseline,source))
+            missing={'selection':{'categories':[{'tests':sorted(d.PRESERVED_SPEC_TESTS-{'tests/oracle-parallel.test.mjs'})}]}}
+            with patch.object(d.contract,'verify',return_value=missing):
+                with self.assertRaisesRegex(ValueError,'modules missing'):d.scope(self.root,baseline,source)
+            (path.parent/'oracle-parallel-neighbor.test.mjs').write_text('unknown wrapper');self.commit()
+            with self.assertRaisesRegex(ValueError,'Unsupported'):d.scope(self.root,baseline,self.git('rev-parse','HEAD'))
 
     def test_exact_history_fixture_metadata_rejects_mutation_duplicate_unknown_and_boolean_counts(self):
         records=[dict(row,path_sha256=hashlib.sha256(b'tests/oracle_spec_test.py').hexdigest(),

@@ -564,3 +564,10 @@ is removed. Actual old per-path reads, executable/binary/newline equivalence and
 malformed/oversized/cross-repository/ref/mutation regressions accompany the full
 existing policy/spec and172-case review-series modules. Original clocks and all
 privacy/history/publication gates remain unchanged.
+
+The approved bounded Oracle wrapper additionally joins the editable inventory at
+exactly `tests/oracle-parallel.test.mjs` (thirty preserved paths total). Its full
+selected module was already mandatory; admitting its source edit also requires
+that complete sealed module. Missing module coverage and neighboring wrappers
+still reject. This corrects path wiring without claiming filename membership as
+passing behavior.

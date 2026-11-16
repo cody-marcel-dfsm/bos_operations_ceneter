@@ -211,6 +211,7 @@ PRESERVED_SPEC_PATHS = {'.agents/skills/operations-center-implementation/SKILL.m
  'tests/marketplace-update.test.mjs',
  'tests/oracle-fixture.mjs',
  'tests/oracle-implementation-spec.test.mjs',
+ 'tests/oracle-parallel.test.mjs',
  'tests/oracle-scope-index.test.mjs',
  'tests/oracle-source-frontier.test.mjs',
  'tests/oracle_scope_index_test.py',
