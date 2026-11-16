@@ -223,6 +223,7 @@ PRESERVED_SPEC_PATHS = {'.agents/skills/operations-center-implementation/SKILL.m
  'tests/publication-admission.test.mjs',
  'tests/publication_admission_test.py',
  'tests/published_fixture.py',
+ 'tests/shipment-workflow.test.mjs',
  'tests/shipment_workflow_test.py',
  'tests/validation_contract_test.py',
  'tools/deterministic-source.md',

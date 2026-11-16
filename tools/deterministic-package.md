@@ -654,3 +654,9 @@ source/tool/environment/resource checks and verified cleanup remain required.
 Other cohort defaults, these consumers' existing timeout0, top-level file
 concurrency one and the900second category guard remain unchanged. An interrupted
 run retains actual available bytes and reports incomplete execution.
+
+Profile19's exact editable native inventory contains35paths, adding only
+`tests/shipment-workflow.test.mjs` to profile18's34. Its existing required selected
+consumer remains mandatory; an unselected consumer or neighboring filename fails
+admission. The sorted newline inventory SHA256 is
+`ce8df23a9f26515e06e6f5be092842c0c5f9eda62527305810523ba70eb361f3`.

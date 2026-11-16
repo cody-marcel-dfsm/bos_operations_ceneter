@@ -392,9 +392,9 @@ class PackageGateTests(unittest.TestCase):
         self.assertEqual(summaries[0]['output_sha256'], checksum)
 
     def test_preserved_native_scope_requires_complete_spec_modules_and_rejects_neighboring_paths(self):
-        self.assertEqual(len(d.PRESERVED_SPEC_PATHS),34)
+        self.assertEqual(len(d.PRESERVED_SPEC_PATHS),35)
         self.assertEqual(d.native.digest('\n'.join(sorted(d.PRESERVED_SPEC_PATHS)).encode()),
-                         '5c41dd728671bebad131445959c6b5812287b64b23cddf2dbaa397240aa8169d')
+                         'ce8df23a9f26515e06e6f5be092842c0c5f9eda62527305810523ba70eb361f3')
         baseline=self.git('rev-parse','HEAD');path=self.root/'tools/vault_index.py'
         path.parent.mkdir(parents=True,exist_ok=True);path.write_text('bounded preserved implementation\n');self.commit()
         source=self.git('rev-parse','HEAD')
@@ -418,6 +418,18 @@ class PackageGateTests(unittest.TestCase):
             with patch.object(d.contract,'verify',return_value=missing):
                 with self.assertRaisesRegex(ValueError,'modules missing'):d.scope(self.root,baseline,source)
             (path.parent/'oracle-parallel-neighbor.test.mjs').write_text('unknown wrapper');self.commit()
+            with self.assertRaisesRegex(ValueError,'Unsupported'):d.scope(self.root,baseline,self.git('rev-parse','HEAD'))
+
+    def test_exact_shipment_consumer_requires_its_selected_module_and_rejects_neighbor(self):
+        baseline=self.git('rev-parse','HEAD');path=self.root/'tests/shipment-workflow.test.mjs'
+        path.parent.mkdir();path.write_text('bounded shipment consumer\n');self.commit();source=self.git('rev-parse','HEAD')
+        selection={'selection':{'categories':[{'tests':sorted(d.PRESERVED_SPEC_TESTS)}]}}
+        with patch.object(d.contract,'gate',return_value={'status':'SPEC_SEALED'}),patch.object(d.contract,'verify',return_value=selection):
+            self.assertIn('tests/shipment-workflow.test.mjs',d.scope(self.root,baseline,source))
+            missing={'selection':{'categories':[{'tests':sorted(d.PRESERVED_SPEC_TESTS-{'tests/shipment-workflow.test.mjs'})}]}}
+            with patch.object(d.contract,'verify',return_value=missing):
+                with self.assertRaisesRegex(ValueError,'modules missing'):d.scope(self.root,baseline,source)
+            (path.parent/'shipment-workflow-neighbor.test.mjs').write_text('unmapped consumer\n');self.commit()
             with self.assertRaisesRegex(ValueError,'Unsupported'):d.scope(self.root,baseline,self.git('rev-parse','HEAD'))
 
     def test_test_only_git_and_series_paths_require_actual_sealed_helper_coverage(self):
