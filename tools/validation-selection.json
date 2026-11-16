@@ -4,12 +4,12 @@
   "stamp": {
     "engine": "codex",
     "model": "gpt-6.1-sol",
-    "oracle_sha256": "9e1a36bf3e4dc5ed8e303b3ec8de515abbf060c356a6870f02a621dddd0435df",
+    "oracle_sha256": "11c855e3c0183799fcfdf10d02c6b89c1eb397582c73406c0defe99f07017fe1",
     "host": "Codys-MacBook-Pro.local",
-    "time": "2026-11-16T10:04:58Z",
+    "time": "2026-11-16T10:54:17Z",
     "origin_main": "b16128819f56e81b2cb794c07506da056d073535",
-    "request_sha256": "0abe35d4e4af098ec0d585fdf727bf7c29b7f418ca18ab83522690b98c332d8a",
-    "proposal_sha256": "bbd26579abbe18e7f30d81604d6918c31ba14241dbcb9389988775e70a0f78d4"
+    "request_sha256": "c4dbabf193272982e58b56e9062a4f4f5e61eac3110b7f6808c00ab159c90e32",
+    "proposal_sha256": "9d17cdd347887aed8b3975e47b29e31b0117af31c615aad552298fb68535f0a7"
   },
   "selection": {
     "acceptance": [
@@ -84,7 +84,8 @@
       "Observe installed notification-host readiness through started, child-exit or error events within the existing startup bound and guarantee cleanup of the owned child while preserving installed closure, IPC and retirement checks.",
       "Coordinate subscriber bursts with verified committed progress while retaining one connection, 130 unique events, five committed own comments, final cursor 131, duplicate-wake rejection and existing waits.",
       "Partition only the two identified heavy test classes into independently executable test IDs after checking fixture hooks; preserve the exact discovered unique case union, actual executed identities, raw outcomes, existing concurrency limits and unit/category deadlines, rejecting missing, extra, empty, skipped or timed-out execution.",
-      "Generate newly sealed selected and fixed Node command vectors with explicit per-file concurrency one; accept historical commands only as complete exact vectors in genuine immutable historical seals, reject mixed or arbitrary vectors, and require the bounded vector for the new current deterministic profile through a genuine native replacement seal."
+      "Generate newly sealed selected and fixed Node command vectors with explicit per-file concurrency one; accept historical commands only as complete exact vectors in genuine immutable historical seals, reject mixed or arbitrary vectors, and require the bounded vector for the new current deterministic profile through a genuine native replacement seal.",
+      "The selected publication consumer executes the complete admission and destination-resolution test classes, verifies exact unique declared and callable test membership, rejects unknown or missing classes and test identities, and is admitted only through its exact finite selected path with mandatory coverage and all existing checks preserved."
     ],
     "acceptance_tests": [
       {
@@ -137,7 +138,8 @@
           53,
           56,
           61,
-          71
+          71,
+          72
         ],
         "module": "tests/deterministic-lanes.test.mjs",
         "purpose": "Verify finite profile membership, neighboring-path refusal, mandatory conformance modules, complete selected execution and exact-source leased publication."
@@ -293,7 +295,8 @@
           37,
           50,
           62,
-          63
+          63,
+          72
         ],
         "module": "tests/publication-admission.test.mjs",
         "purpose": "Verify attestation custody, reuse, replacement, revocation, exact remote admission and leased promotion; exercise named verbatim questions, adjacent genuine human answers, exact effect scope, journal provenance, byte custody, append safety and unchanged Codex admission."
@@ -567,9 +570,9 @@
       }
     ],
     "change_class": "feature",
-    "design": "Vault/tmp/feedback-development/aio-integration/integrated-native-repair-design.md",
-    "reason": "Extend the retained feature contract with bounded destination-validation, fixture, lifecycle, scheduling and command-vector repairs. Existing selected modules cover every added criterion; preserve all prior criteria, cases, fixtures, mappings, evidence, deadlines and original delivery clocks.",
-    "revision_of": "4a0b6d242256dbef9ecb3d40db0d99775a6e00d07482ebb5644b88b84c7255e5",
+    "design": "Vault/tmp/feedback-development/aio-integration/command-consumer-seal-design.md",
+    "reason": "Add explicit publication-consumer discovery and finite-path coverage using retained selected modules. Preserve the complete prior feature contract, genuine producer-emitted command sealing, immutable history and original delivery limits.",
+    "revision_of": "5e32075b6bbf88f7b857082b6a8f4e8fe768eed45f88a060cb1b841fc78168b3",
     "scope_paths": [
       ".agents/skills/operations-center-implementation/SKILL.md",
       ".agents/skills/oracle/review-output.schema.json",
@@ -1197,8 +1200,8 @@
       "tools/vault_index.py"
     ]
   },
-  "base_commit": "4fcb250463b86bd3d1b78d531afe14f084e1ad74",
-  "base_tree": "215d07491e6ff83350f543e6cc225b218039d453",
+  "base_commit": "d4280129e7fc9b500d9245347bf6fd7831024332",
+  "base_tree": "9f7941ec29bafce7b9144209fc6f57528eb247ad",
   "catalog_sha256": "9a96f1cd2a973457f9da681dddcc5161aa8ffda188b092d849e5bc83999391c8",
   "runtime": {
     "node": "v22.11.0",
@@ -1208,8 +1211,8 @@
     "architecture": "arm64",
     "options_sha256": "ebc442c160f8629073a82976daadaba1d95a60a38d768c81c8eb06598aedcac5"
   },
-  "proposal_sha256": "bbd26579abbe18e7f30d81604d6918c31ba14241dbcb9389988775e70a0f78d4",
-  "review_sha256": "663370fd75ff0c1f008968ca83837c837222f77e9e58a848f4b6a4ffcbb0c94a",
+  "proposal_sha256": "9d17cdd347887aed8b3975e47b29e31b0117af31c615aad552298fb68535f0a7",
+  "review_sha256": "4ca1c99013013d1b751563aaa5283f6abd457995566668cf30b9219830812a49",
   "commands": [
     {
       "category": "sanity",
@@ -1227,6 +1230,7 @@
         "node",
         "--test",
         "--test-reporter=tap",
+        "--test-concurrency=1",
         "tests/validation-contract.test.mjs",
         "tests/deterministic-lanes.test.mjs",
         "tests/oracle-lifecycle.test.mjs",
@@ -1332,6 +1336,7 @@
         "node",
         "--test",
         "--test-reporter=tap",
+        "--test-concurrency=1",
         "tests/oracle-implementation-spec.test.mjs",
         "tests/publication-safety.test.mjs",
         "tests/feedback-event-subscriber.test.mjs",
@@ -1362,22 +1367,16 @@
     "maximum_reasoning_effort": "medium"
   },
   "design_binding": {
-    "design": "Vault/tmp/feedback-development/aio-integration/integrated-native-repair-design.md",
-    "design_sha256": "55c61d6ddbb884e5c02fe747ce97b6d157a93ffc6351a3dad39c2416bb732769",
-    "plan": "Vault/tmp/feedback-development/aio-integration/integrated-native-repair-design.test-plan.json",
-    "plan_sha256": "e524cfb902589946e8952e7c76c45ab0b4f795754219c61d508cf034fc90d5b4",
+    "design": "Vault/tmp/feedback-development/aio-integration/command-consumer-seal-design.md",
+    "design_sha256": "46f8746b04ba22575184455293798411d13540f6131d789a2c5ade30ceadb378",
+    "plan": "Vault/tmp/feedback-development/aio-integration/command-consumer-seal-design.test-plan.json",
+    "plan_sha256": "e57694669665208bb0ce91fd6ec2ae2ecbaf77172db93d4dd4adcac8923b8036",
     "tests": [
       "tests/deterministic-lanes.test.mjs",
-      "tests/feedback-event-subscriber.test.mjs",
-      "tests/notification-host-installer.test.mjs",
-      "tests/notification-host.test.mjs",
-      "tests/oracle-implementation-spec.test.mjs",
-      "tests/oracle-lifecycle.test.mjs",
       "tests/publication-admission.test.mjs",
-      "tests/shipment-workflow.test.mjs",
       "tests/validation-contract.test.mjs"
     ]
   },
-  "contract_sha256": "5e32075b6bbf88f7b857082b6a8f4e8fe768eed45f88a060cb1b841fc78168b3",
-  "seal": "0cd4bc89875e312154011ccff16a57b4d85b96faa70828b56846459800a44225"
+  "contract_sha256": "16b8ea9ab4171338094ecf42831df15727566a2eb93795c3d1754a04334863df",
+  "seal": "3d80a49afb26acfb0ef7caa2049ff347cc51448500924f8009bfa55d2a8b3251"
 }
