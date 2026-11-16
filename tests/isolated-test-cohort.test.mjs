@@ -8,6 +8,18 @@ import { join } from "node:path";
 import test from "node:test";
 import { isolatedTestCohort } from "./helpers/isolated-test-cohort.mjs";
 import { assertNativeGitEquivalent, nativeGitEligible, prepareNativeValidationGit } from "./helpers/native-validation-git.mjs";
+import { assertValidationContinuity, createVerifiedDirectory, createValidationPressureGuard,
+  evaluateNativeValidationCapacity, parseDarwinValidationMetrics, prepareNativeValidationResources } from "./helpers/native-validation-state.mjs";
+
+const GiB = 1024 ** 3;
+const metricVm = `Mach Virtual Memory Statistics: (page size of 16384 bytes)
+Pages free: 32768.
+Pages inactive: 2097152.
+File-backed pages: 1835008.
+Swapins: 0.
+Swapouts: 0.
+`;
+const metricSwap = "total = 0.00M  used = 0.00M  free = 0.00M  (encrypted)\n";
 
 const scratch = new URL("../Vault/tmp/", import.meta.url);
 async function ownedDirectory(prefix) {
@@ -286,4 +298,94 @@ test("native resource rejects directory, foreign-entry and link tampering with o
     } else await resource.dispose();
     assert.deepEqual(await readdir(directory), []);
   } finally { await rm(directory, { recursive: true, force: true }); }
+});
+
+test("closed Darwin parsing and reserve credit retain hard CPU/eight/worker bounds", () => {
+  const sample = parseDarwinValidationMetrics(metricVm, "1\n", metricSwap);
+  const host = { platform: "darwin", cpus: 10, free_bytes: GiB / 2, total_bytes: 64 * GiB };
+  const result = evaluateNativeValidationCapacity(host, sample, sample);
+  assert.equal(result.mode, "darwin-credited"); assert.equal(result.reserve_bytes, 4 * GiB);
+  assert.equal(result.credit_bytes, 3 * GiB); assert.equal(result.budget_bytes, 3.5 * GiB);
+  assert.equal(result.capacity, 8); assert.equal(result.free_capacity, 2);
+  assert.equal(evaluateNativeValidationCapacity({ ...host, cpus: 3 }, sample, sample).capacity, 3);
+  assert.equal(evaluateNativeValidationCapacity({ ...host, total_bytes: 128 * GiB }, sample, sample).mode, "free-only");
+  assert.equal(evaluateNativeValidationCapacity({ ...host, platform: "linux" }, sample, sample).capacity, 2);
+  for (const bad of [undefined, { ...sample, pressure: 2 }, { ...sample, pressure: 4 }, { ...sample, swapins: 1 },
+    { ...sample, swapouts: 1 }, { ...sample, swap_used_bytes: 1 }, { ...sample, inactive_bytes: Infinity },
+    { ...sample, inactive_bytes: 65 * GiB }, { ...sample, unknown: 1 }, { ...sample, page_size: 1 }])
+    assert.equal(evaluateNativeValidationCapacity(host, sample, bad).mode, "free-only");
+  for (const [vm, pressure, swap] of [[metricVm + "Swapins: 0.\n", "1", metricSwap],
+    [metricVm.replace("16384", "8192"), "1", metricSwap], [metricVm.replace("Swapouts: 0.\n", ""), "1", metricSwap],
+    [metricVm + "Unknown: 1.\n", "1", metricSwap], [metricVm, "3", metricSwap],
+    [metricVm, "1", metricSwap.replace("used = 0.00M", "used = 1.00M")],
+    [metricVm.replace("Pages free: 32768.", "Pages free: 9007199254740992."), "1", metricSwap],
+    [metricVm + "x".repeat(32768), "1", metricSwap]])
+    assert.throws(() => parseDarwinValidationMetrics(vm, pressure, swap));
+  assert.throws(() => evaluateNativeValidationCapacity({ ...host, cpus: 0 }, sample, sample));
+});
+
+test("credited pressure or swap degradation cancels an actual owned cohort once and cannot recover to PASS", async () => {
+  const sample = parseDarwinValidationMetrics(metricVm, "1", metricSwap);
+  const host = { platform: "darwin", cpus: 8, free_bytes: GiB / 2, total_bytes: 64 * GiB };
+  const directory = await ownedDirectory("validation-pressure-");
+  try {
+    const marker = join(directory, "started");
+    const cohort = isolatedTestCohort([nodeJob("active", `require('node:fs').writeFileSync(${JSON.stringify(marker)},String(process.pid));setInterval(()=>{},1000)`), nodeJob("pending", "process.exit(99)")],
+      { concurrency: 1, captureBytes: true, killAfterMs: 50 });
+    const deadline = Date.now() + 5000; let pid;
+    while (!pid && Date.now() < deadline) {
+      try { pid = Number(await readFile(marker, "utf8")); } catch (error) { if (error.code !== "ENOENT") throw error; await new Promise(done => setTimeout(done, 10)); }
+    }
+    assert.ok(pid);
+    let cancellations = 0;
+    const guard = createValidationPressureGuard(host, sample, () => { cancellations++; cohort.cancel(); });
+    assert.equal(guard.observe(sample), true); assert.equal(guard.observe({ ...sample, pressure: 2 }), false);
+    guard.observe({ ...sample, swapouts: 1 }); guard.observe(sample);
+    assert.equal(cancellations, 1); assert.throws(guard.verify, /degraded/);
+    const results = await cohort.completion;
+    assert.ok(results.every(row => row.cancelled)); assert.equal(results[1].code, null); assert.ok(terminated(pid));
+    for (const bad of [{ ...sample, swapins: 1 }, { ...sample, swap_used_bytes: 1 }, undefined]) {
+      let called = 0; const next = createValidationPressureGuard(host, sample, () => called++);
+      next.observe(bad); assert.equal(called, 1); assert.throws(next.verify, /degraded/);
+    }
+  } finally { await rm(directory, { recursive: true, force: true }); }
+});
+
+test("outer commit changes preserve exact actual inputs while mode/schema/runtime/nested mutations reject", () => {
+  const before = { commit: "a".repeat(40), ids: ["actual"], source: { file: { sha256: "same", mode: "100755" } },
+    schema: "schema", runtime: { executable: "/actual/python", commit: "nested" } };
+  const after = { ...structuredClone(before), commit: "b".repeat(40) };
+  const proof = assertValidationContinuity(before, after); assert.equal(proof.before_commit, before.commit); assert.equal(proof.after_commit, after.commit);
+  for (const mutate of [row => row.ids.push("extra"), row => row.source.file.mode = "100644", row => row.source.file.sha256 = "changed",
+    row => row.schema = "changed", row => row.runtime.executable = "/other/python", row => row.runtime.commit = "changed", row => row.extra = true]) {
+    const changed = structuredClone(after); mutate(changed); assert.throws(() => assertValidationContinuity(before, changed), /actual validation inputs/);
+  }
+  assert.throws(() => assertValidationContinuity(before, { ...after, commit: "HEAD" }), /outer commit/);
+});
+
+test("verified directory lifetime preserves foreign parents, replacements and nonempty descendants", async () => {
+  const parent = await ownedDirectory("verified-directory-parent-");
+  try {
+    const root = await createVerifiedDirectory(parent, "owned-"); assert.equal(await root.verify(), true); assert.ok(Object.isFrozen(root.identity));
+    const child = join(root.path, "foreign"); await writeFile(child, "preserve");
+    await assert.rejects(root.dispose(), { code: "ENOTEMPTY" }); assert.equal(await readFile(child, "utf8"), "preserve"); await unlink(child);
+    const saved = join(parent, "saved"); await rename(root.path, saved); await mkdir(root.path, { mode: 0o700 });
+    await assert.rejects(root.verify(), /custody/); await assert.rejects(root.dispose(), /custody/);
+    await rm(root.path, { recursive: true }); await rename(saved, root.path);
+    const savedParent = parent + "-saved"; await rename(parent, savedParent); await mkdir(parent);
+    await assert.rejects(root.verify(), /custody/); await assert.rejects(root.dispose(), /custody/);
+    await rm(parent, { recursive: true }); await rename(savedParent, parent);
+    await root.dispose(); await root.dispose(); await assert.rejects(root.verify(), /disposed/);
+    assert.deepEqual(await readdir(parent), []);
+  } finally { await rm(parent, { recursive: true, force: true }); }
+});
+
+test("real native resource preparation records bounded capacity and drains its owned monitor", async () => {
+  const resources = await prepareNativeValidationResources();
+  try {
+    assert.ok(resources.capacity >= 1 && resources.capacity <= 8 && resources.capacity <= resources.provenance.host.cpus);
+    assert.ok(Object.isFrozen(resources.provenance)); let degraded;
+    const stop = resources.startMonitor(error => { degraded = error; });
+    await stop(); assert.equal(degraded, undefined); assert.equal(await resources.verify(), true);
+  } finally { await resources.dispose(); await resources.dispose(); }
 });
