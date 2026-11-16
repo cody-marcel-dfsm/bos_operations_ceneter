@@ -97,8 +97,10 @@ function verifyPublishedProvenance(revision, root, verifyCommand, publishedComma
     try {
       execFileSync(publishedCommand[0], [...publishedCommand.slice(1), revision], { cwd: root, stdio: "pipe" });
     } catch (deterministicError) {
-      throw new Error(`Published commit ${revision} has neither Oracle nor deterministic CI provenance`,
-        { cause: deterministicError });
+      // Surface the Oracle judge's own failure (its stderr names the reason); the
+      // deterministic CI evidence failure rides along as the secondary cause.
+      oracleError.deterministicCause = deterministicError;
+      throw oracleError;
     }
   }
 }
