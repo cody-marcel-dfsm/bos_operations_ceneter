@@ -266,6 +266,10 @@ def _prepared_record(root: Path, prepared: Path) -> tuple[dict, str, list[str]]:
         command = ["git", "push", record["remote_url"], record["source_commit"] + ":" + record["target_ref"]]
     if record.get("command") != command:
         raise o.OracleApprovalError("Prepared publication Git command changed")
+    # This parser is also the released-checkpoint consumer. Bind its live
+    # canonical readback and exact literal mutation URL before either consumer.
+    public_status.fetch_url(root)
+    public_status.require_owned_transport(root, record.get("push_url", record["remote_url"]), push=True)
     return record, digest, command
 
 
@@ -301,6 +305,7 @@ def publish_prepared(root: Path, prepared: Path, *, execute=subprocess.run) -> d
         return dict(outcome, attempt_file=str(attempt))
     if "push_url" in record and public_status.push_url(root) != record["push_url"]:
         raise o.OracleApprovalError("Publication push destination changed after preparation")
+    public_status.require_owned_transport(root, record.get("push_url", record["remote_url"]), push=True)
     try:
         execute(command, cwd=root, check=True)
     except (subprocess.CalledProcessError, OSError) as exc:
@@ -327,8 +332,7 @@ def plan(root: Path, candidate: str, release_ref: str, operation: str, *, refres
         raise o.OracleApprovalError("Unknown publication operation")
     if not re.fullmatch(r"codex/release-v[0-9]+\.[0-9]+\.[0-9]+", release_ref):
         raise o.OracleApprovalError("Publication requires the resolved release review ref")
-    if o._git(root, "remote", "get-url", "origin").strip() != o.PUBLICATION_REMOTE:
-        raise o.OracleApprovalError("Publication destination is outside this owned repository")
+    public_status.fetch_url(root)
     if refresh:
         o._git(root, "fetch", "origin")
     commit = o._git(root, "rev-parse", candidate + "^{commit}").strip()
@@ -352,7 +356,7 @@ def plan(root: Path, candidate: str, release_ref: str, operation: str, *, refres
     # The just-committed receipt itself is outside the earlier HEAD range; it
     # adds no earlier effect. Preserve every earlier effective origin exactly.
     current = dict(current, prior_effects=[row for row in current["prior_effects"] if row["origin"] != o._sha(raw)])
-    if current != receipt["publication_scope"] or current["remote_url"] != o.PUBLICATION_REMOTE:
+    if current != receipt["publication_scope"] or current["remote_url"] not in public_status.OWNED_REMOTES:
         raise o.OracleApprovalError("Publication source range or target changed; obtain current technical review")
     o._protected_effects({"protected_effects": receipt["protected_effects"]}, current)
     result = {"kind": "boc-publication-plan-v1", "candidate_commit": commit,

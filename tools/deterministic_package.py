@@ -33,7 +33,7 @@ except ImportError:
     import oracle_spec_seal as spec_seal
 
 KIND = 'boc-deterministic-package/1'
-PROFILE = 'feedback-discovery-and-release-tool/17'
+PROFILE = 'feedback-discovery-and-release-tool/18'
 _OUTPUT_LOCK = threading.Lock()
 WS_LOCK_RECORD = {
     'version': '8.23.0', 'resolved': 'https://registry.npmjs.org/ws/-/ws-8.23.0.tgz',
@@ -84,7 +84,7 @@ CHECKS = [
     ['npm', 'run', 'build:packages'], ['git', 'diff', '--exit-code', 'HEAD', '--'],
     ['npm', 'run', 'check'], ['node', 'scripts/check-customer-data.mjs'],
     ['npm', 'run', 'check:publication'],
-    ['node', '--test', '--test-reporter=tap', *TESTS],
+    ['node', '--test', '--test-reporter=tap', '--test-concurrency=1', *TESTS],
     PYTHON_CHECK,
     ['node', 'scripts/check-publication-history.mjs'],
 ]
@@ -911,6 +911,7 @@ def read_receipt(root):
         raise ValueError('Fixed scheduling contract changed')
     if [row['command'] for row in value['runs']] != CHECKS:
         raise ValueError('Fixed command category changed')
+    require_node_file_bounds(native.selected_commands(root, value['base'], current['source']))
     check_combined_schedule(root, current, value['runs'], value.get('spec_runs'), value.get('selected_scheduling'), ci=value.get('spec_mode') == 'ci')
     native.check_spec_runs(root, value['base'], current['source'], value.get('spec_runs'), directory(root),
                            receipt_completed=native._completed(value), mode=value.get('spec_mode'))
@@ -1086,6 +1087,15 @@ def run_category(root, commands, before, base=None, *, before_privacy=None, afte
 COMBINED_SCHEDULING = 'prepared-sanity-complete-privacy-ready-selected-parallel/1'
 
 
+def require_node_file_bounds(selected):
+    """Current package admission requires the actual newly sealed Node vector."""
+    for row in selected:
+        if row['category'] == 'sanity': continue
+        expected = ['node','--test','--test-reporter=tap','--test-concurrency=1',*row['tests']]
+        if row['argv'] != expected:
+            raise ValueError('Current selected Node commands require explicit file concurrency one')
+
+
 def run_complete_category(root, base, before, selected, *, ci=False):
     """Actual sanity is complete before the existing readiness-gated parallel tail."""
     spec_runs = []; futures = []; errors = []; schedule = None
@@ -1231,6 +1241,7 @@ def validate(root, base, requested_at, *, ci=False):
     if not CHECKS:
         raise ValueError('Fixed package check category is empty')
     selected_commands = native.selected_commands(root, base, before['source'])
+    require_node_file_bounds(selected_commands)
     runs, selected, selected_schedule, execution_errors = run_complete_category(root, base, before, selected_commands, ci=ci)
     if execution_errors or [row['command'] for row in runs] != CHECKS or any(not complete(row['command'], (directory(root) / (row['output_sha256'] + '.log')).read_bytes(), row['exit_code']) for row in runs):
         native.private_write(directory(root) / (str(time.time_ns()) + '.failure.json'),

@@ -329,7 +329,8 @@ def verify_binding(root,contract,tree):
     for name,key in ((binding['design'],'design_sha256'),(binding['plan'],'plan_sha256')):
         if (root/name).is_file() and sha256((root/name).read_bytes())!=binding[key]: raise ValueError('Design or test plan changed after approval; obtain explicit Oracle revision: '+name)
 
-def commands(selection,catalog):
+def commands(selection,catalog,*,legacy=False):
+    if type(legacy) is not bool: raise ValueError('Closed command generation mode required')
     result=[]
     for row in selection['categories']:
         name=row['name']; tests=row['tests']; fixtures=row['fixtures']
@@ -338,7 +339,7 @@ def commands(selection,catalog):
         if name=='sanity': argv=['python3','tools/validation_contract.py','sanity']
         else:
             if name=='regression': tests=[r['test'] for r in catalog['regression']]
-            argv=['node','--test','--test-reporter=tap',*tests]
+            argv=['node','--test','--test-reporter=tap',*([] if legacy else ['--test-concurrency=1']),*tests]
         result.append({'category':name,'argv':argv,'tests':tests,'fixtures':row['fixtures']})
     return result
 
@@ -376,7 +377,11 @@ def verify(root,tree='HEAD',proposal=None):
     stamp_check(contract.get('stamp'))
     selection=validate_selection(contract['selection'],catalog)
     if contract.get('delivery_policy')!=delivery_policy(selection['change_class']): raise ValueError('Delivery policy changed; original host clock must survive revision')
-    if contract['catalog_sha256']!=digest(catalog) or contract['commands']!=commands(selection,catalog): raise ValueError('Catalog or selected commands changed; obtain explicit Oracle revision')
+    # Historical genuine seals keep their original complete vector. A new seal
+    # always declares the bounded vector; mixed or caller-chosen options reject.
+    if contract['catalog_sha256']!=digest(catalog) or contract['commands'] not in (
+            commands(selection,catalog),commands(selection,catalog,legacy=True)):
+        raise ValueError('Catalog or selected commands changed; obtain explicit Oracle revision')
     verify_binding(root,contract,tree)
     if proposal is not None and proposal.get('validation_contract')!=contract: raise ValueError('Candidate selection lacks its exact original Oracle proposal')
     if git(root,'rev-parse',contract['base_commit']+'^{tree}')!=contract['base_tree']: raise ValueError('Baseline tree differs')

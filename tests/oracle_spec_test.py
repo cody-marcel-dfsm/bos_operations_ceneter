@@ -983,7 +983,8 @@ class NativeValidationFixtureInputs(unittest.TestCase):
             git('commit','-qm','Synthetic validation inputs')
             schema=root/'.agents/skills/oracle/review-output.schema.json'
             schema.write_bytes(schema.read_bytes()+b'\n')
-            result=subprocess.run(['node','--test','tests/oracle-review-series.test.mjs'],cwd=root,
+            environment={key:value for key,value in os.environ.items() if key!='NODE_TEST_CONTEXT'}
+            result=subprocess.run(['node','--test','tests/oracle-review-series.test.mjs'],cwd=root,env=environment,
                                   stdout=subprocess.PIPE,stderr=subprocess.PIPE,timeout=30)
             self.assertNotEqual(result.returncode,0)
             self.assertIn(b'Discovery differs from committed source',result.stdout+result.stderr)

@@ -56,16 +56,70 @@ def _target(commit: str) -> str:
     return "https://github.com/" + REPOSITORY + "/commit/" + commit
 
 
-def push_url(root: Path) -> str:
-    """The raw configured origin push destination, exactly one owned repository URL."""
-    values = subprocess.run(["git", "config", "--get-all", "remote.origin.pushurl"], cwd=root,
-                            capture_output=True, text=True).stdout.split()
-    if not values:
-        values = subprocess.run(["git", "config", "--get-all", "remote.origin.url"], cwd=root,
-                                capture_output=True, text=True).stdout.split()
-    if len(values) != 1 or values[0] not in OWNED_REMOTES:
+def _one_owned_url(root: Path, arguments: list[str]) -> str:
+    result = subprocess.run(["git", *arguments], cwd=root, capture_output=True, text=True, timeout=5)
+    values = result.stdout.split()
+    if result.returncode or len(result.stdout) > 4096 or len(values) != 1 or values[0] not in OWNED_REMOTES:
         raise o.OracleApprovalError("Publication requires exactly one owned repository push destination")
     return values[0]
+
+
+def require_owned_transport(root: Path, url: str, *, push: bool) -> str:
+    """Resolve the actual literal command URL without fetching or writing config."""
+    if type(push) is not bool or url not in OWNED_REMOTES:
+        raise o.OracleApprovalError("Publication requires an owned repository transport")
+    # This is the same literal URL used by readback. Git performs insteadOf
+    # resolution here without connecting to a remote.
+    resolved = _one_owned_url(root, ["ls-remote", "--get-url", url])
+    if not push: return resolved
+    # Literal pushes additionally use the longest matching pushInsteadOf
+    # prefix on the original URL. Explicit per-remote pushurl resolution is
+    # checked separately; it must not conceal a rewrite of the literal command.
+    result = subprocess.run(["git", "config", "--null", "--get-regexp", r"^url\..*\.pushinsteadof$"],
+                            cwd=root, capture_output=True, timeout=5)
+    if result.returncode not in (0, 1) or len(result.stdout) > 32768:
+        raise o.OracleApprovalError("Publication transport rules are unavailable")
+    matches = []
+    try:
+        if result.stdout and not result.stdout.endswith(b'\0'): raise ValueError()
+        rows = result.stdout[:-1].split(b'\0') if result.stdout else []
+        if len(rows) > 128: raise ValueError()
+        for row in rows:
+            key, prefix = row.decode('utf-8').split('\n', 1)
+            if not key.startswith('url.') or not key.endswith('.pushinsteadof'): raise ValueError()
+            if url.startswith(prefix): matches.append((len(prefix), key[4:-14] + url[len(prefix):]))
+    except (ValueError, UnicodeError):
+        raise o.OracleApprovalError("Publication transport rules are malformed") from None
+    if matches:
+        longest = max(length for length, _ in matches)
+        destinations = {target for length, target in matches if length == longest}
+        if len(destinations) != 1 or next(iter(destinations)) not in OWNED_REMOTES:
+            raise o.OracleApprovalError("Publication requires exactly one owned repository push destination")
+        resolved = next(iter(destinations))
+    return resolved
+
+
+def fetch_url(root: Path) -> str:
+    raw = _one_owned_url(root, ["config", "--get-all", "remote.origin.url"])
+    _one_owned_url(root, ["remote", "get-url", "--all", "origin"])
+    require_owned_transport(root, raw, push=False)
+    # Publication scope and released-checkpoint readback retain this canonical
+    # logical identity even when origin itself uses the owned SSH spelling.
+    require_owned_transport(root, o.PUBLICATION_REMOTE, push=False)
+    return raw
+
+
+def push_url(root: Path) -> str:
+    """Bind both configured origin and resolved transport to the fixed owner."""
+    configured = subprocess.run(["git", "config", "--get-all", "remote.origin.pushurl"], cwd=root,
+                                capture_output=True, text=True, timeout=5)
+    if configured.returncode not in (0, 1):
+        raise o.OracleApprovalError("Publication push destination is unavailable")
+    raw = _one_owned_url(root, ["config", "--get-all",
+                              "remote.origin.pushurl" if configured.returncode == 0 else "remote.origin.url"])
+    _one_owned_url(root, ["remote", "get-url", "--all", "--push", "origin"])
+    require_owned_transport(root, raw, push=True)
+    return raw
 
 
 def github_read(path: str):
@@ -101,6 +155,7 @@ def lease_command(url: str, commit: str, ref: str, expected: str | None) -> list
 
 
 def push_ref(root: Path, url: str, commit: str, ref: str, expected: str | None, *, execute=subprocess.run) -> dict:
+    require_owned_transport(root, url, push=True)
     """Fast-forward ``ref`` from ``expected`` (None: absent) to ``commit`` and read it back."""
     if expected is not None and not is_ancestor(root, expected, commit):
         raise o.OracleApprovalError("Remote " + ref + " is not an ancestor of the published commit")

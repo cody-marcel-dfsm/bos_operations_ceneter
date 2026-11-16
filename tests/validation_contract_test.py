@@ -17,7 +17,8 @@ class Contracts(unittest.TestCase):
  def setUp(self):
   environment=patch.dict(os.environ,{'BOC_ORACLE_ENGINE':'codex'});environment.start();self.addCleanup(environment.stop)
   origin=patch.object(oracle,'_fresh_origin',return_value='b'*40);origin.start();self.addCleanup(origin.stop)
-  self.temp=tempfile.TemporaryDirectory();self.addCleanup(self.temp.cleanup);self.root=Path(self.temp.name)
+  scratch=Path(__file__).resolve().parents[1]/'Vault/tmp';scratch.mkdir(parents=True,exist_ok=True)
+  self.temp=tempfile.TemporaryDirectory(dir=scratch,prefix='contract-');self.addCleanup(self.temp.cleanup);self.root=Path(self.temp.name).resolve()
   self.catalog={'schema':'boc.validation-catalog/v1','classes':copy.deepcopy(v.CLASSES),'sla_seconds':copy.deepcopy(v.SLA_SECONDS),'maximum_reasoning_effort':'medium','regression':[{'test':'tests/regression.test.mjs','recurrence':'Synthetic recurrence','boundary':'Synthetic boundary'}]}
   for d in ['tools','tests']: (self.root/d).mkdir()
   (self.root/v.CATALOG).write_text(json.dumps(self.catalog));(self.root/'package.json').write_text(json.dumps({'scripts':{'check:privacy':'node -e "process.exit(0)"','check:publication':'node -e "process.exit(0)"'}}))
@@ -105,7 +106,8 @@ class Contracts(unittest.TestCase):
    with patch.object(oracle,'_atomic_write',side_effect=lambda p,b:p.write_bytes(b)),patch.object(oracle,'_review_process',return_value={'synthetic':'independent response'}) as dispatch:
     self.assertEqual(oracle._proposal_oracle(self.root,'Synthetic requirement',{},None),{'synthetic':'independent response'})
    selected=json.loads(dispatch.call_args.kwargs['schema_path'].read_text())
-   self.assertIn('validation_selection',selected['required']);self.assertEqual(selected['properties']['validation_selection'],v.selection_schema())
+   expected=v.selection_schema();expected['properties']['revision_of']={'const':None}
+   self.assertIn('validation_selection',selected['required']);self.assertEqual(selected['properties']['validation_selection'],expected)
    self.assertEqual(schema_path.read_text(),original)
   finally:oracle._RUN.reset(token)
  def test_actual_native_launch_caps_effort_and_preserves_model(self):

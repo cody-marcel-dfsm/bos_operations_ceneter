@@ -1,6 +1,9 @@
 """Behavioral publication tests use only an owned synthetic Git repository."""
 from pathlib import Path
 import json
+import os
+import shutil
+import sys
 import re
 import subprocess
 import tempfile
@@ -13,6 +16,7 @@ import oracle_review_series as fixtures
 o = fixtures.o
 from tools import publication_admission as publication
 SSH = publication.public_status.SSH_REMOTE
+_REAL_GIT = shutil.which("git")
 
 
 class ClaudeCodeAuthorityFixture:
@@ -903,16 +907,109 @@ class PublicationAdmission(unittest.TestCase, ClaudeCodeAuthorityFixture):
 
 
 def owned_remote(test, root, commit):
-    """A local bare repository standing in for the owned GitHub repository over both URLs."""
-    directory = tempfile.TemporaryDirectory()
+    """Real local Git objects behind a closed, test-only transport stand-in."""
+    scratch=root/'Vault/tmp';scratch.mkdir(parents=True,exist_ok=True)
+    directory=tempfile.TemporaryDirectory(dir=scratch,prefix='owned-git-')
     test.addCleanup(directory.cleanup)
-    remote = Path(directory.name) / "owned.git"
-    subprocess.run(["git", "init", "-q", "--bare", str(remote)], check=True)
-    subprocess.run(["git", "push", "-q", str(remote), commit + ":refs/heads/main"], cwd=root, check=True)
-    # Publication uses the owned SSH push URL; only it resolves to the synthetic remote.
-    subprocess.run(["git", "config", "remote.origin.pushurl", publication.public_status.SSH_REMOTE], cwd=root, check=True)
-    subprocess.run(["git", "config", "url." + str(remote) + ".insteadOf", publication.public_status.SSH_REMOTE], cwd=root, check=True)
+    remote=Path(directory.name)/'owned.git'
+    subprocess.run([_REAL_GIT,'init','-q','--bare',str(remote)],check=True)
+    subprocess.run([_REAL_GIT,'push','-q',str(remote),commit+':refs/heads/main'],cwd=root,check=True)
+    subprocess.run([_REAL_GIT,'config','remote.origin.pushurl',SSH],cwd=root,check=True)
+    executable=Path(directory.name)/'git'
+    identity=remote.stat()
+    script = "#!"+sys.executable+"\n"+"\n".join([
+        'import json,os,pathlib,subprocess,sys',
+        'REAL='+repr(_REAL_GIT), 'BARE='+repr(str(remote)),
+        'ALIASES='+repr(tuple(publication.public_status.OWNED_REMOTES)),
+        'EXPECTED='+repr((identity.st_dev,identity.st_ino,identity.st_uid)),
+        'JOURNAL='+repr(str(Path(directory.name)/'transport.jsonl')),
+        "fact=pathlib.Path(BARE).lstat()",
+        "assert pathlib.Path(BARE).is_dir() and not pathlib.Path(BARE).is_symlink()",
+        "assert (fact.st_dev,fact.st_ino,fact.st_uid)==EXPECTED",
+        'args=sys.argv[1:];offset=0',
+        "while offset<len(args) and args[offset]=='-c':offset+=2",
+        "assert offset<len(args),'Missing synthetic Git command'",
+        'action=args[offset]',
+        "if action in ('clone','pull','submodule','maintenance'):raise SystemExit('Unsupported synthetic network operation')",
+        "if action=='remote' and offset+1<len(args) and args[offset+1] in ('update','prune'):raise SystemExit('Unsupported synthetic remote operation')",
+        "if action in ('push','fetch','ls-remote') and '--get-url' not in args[offset+1:]:",
+        ' indexes=[i for i in range(offset+1,len(args)) if args[i] in ALIASES or args[i] in (BARE,"origin")]',
+        " if len(indexes)!=1:raise SystemExit('Unknown synthetic Git transport target')",
+        ' index=indexes[0]',
+        " if args[index]=='origin':",
+        '  configured=subprocess.check_output([REAL,"config","--get-all","remote.origin.url"],text=True).split()',
+        "  if len(configured)!=1 or configured[0] not in ALIASES:raise SystemExit('Unknown synthetic origin')",
+        ' args[index]=BARE',
+        ' fd=os.open(JOURNAL,os.O_WRONLY|os.O_CREAT|os.O_APPEND|os.O_NOFOLLOW,0o600)',
+        ' with os.fdopen(fd,"w") as stream:stream.write(json.dumps({"action":action,"target":"owned_fixture_bare"})+"\\n")',
+        'os.execv(REAL,[REAL,*args])',
+    ])+"\n"
+    executable.write_text(script);executable.chmod(0o700)
+    environment=patch.dict(os.environ,{'PATH':str(directory.name)+os.pathsep+os.environ.get('PATH','')})
+    environment.start();test.addCleanup(environment.stop)
+    test.transport_journal=Path(directory.name)/'transport.jsonl'
     return remote
+
+
+class OwnedDestinationResolution(unittest.TestCase):
+    def setUp(self):
+        scratch=Path(__file__).resolve().parents[1]/'Vault/tmp';scratch.mkdir(parents=True,exist_ok=True)
+        self.directory=tempfile.TemporaryDirectory(dir=scratch,prefix='owned-url-');self.addCleanup(self.directory.cleanup)
+        self.root=Path(self.directory.name).resolve()
+        self.git('init','-q');self.git('remote','add','origin',o.PUBLICATION_REMOTE)
+
+    def git(self,*args):
+        return subprocess.check_output([_REAL_GIT,*args],cwd=self.root,text=True,stderr=subprocess.PIPE).strip()
+
+    def test_owned_https_to_ssh_and_literal_push_rules_match_real_git(self):
+        status=publication.public_status
+        self.git('config','url.'+SSH+'.insteadOf',o.PUBLICATION_REMOTE)
+        self.assertEqual(self.git('remote','get-url','origin'),SSH)
+        self.assertEqual(status.fetch_url(self.root),o.PUBLICATION_REMOTE)
+        self.assertEqual(status.push_url(self.root),o.PUBLICATION_REMOTE)
+        self.git('config','url.'+SSH+'.pushInsteadOf',o.PUBLICATION_REMOTE)
+        self.assertEqual(status.require_owned_transport(self.root,o.PUBLICATION_REMOTE,push=True),
+                         self.git('remote','get-url','--push','origin'))
+
+    def test_unknown_generic_rewrite_and_unowned_raw_alias_are_rejected(self):
+        status=publication.public_status;foreign='https://foreign.example.invalid/repository.git'
+        self.git('config','url.'+foreign+'.insteadOf',o.PUBLICATION_REMOTE)
+        with self.assertRaises(o.OracleApprovalError):status.fetch_url(self.root)
+        with self.assertRaises(o.OracleApprovalError):status.push_url(self.root)
+        self.git('config','--unset-all','url.'+foreign+'.insteadOf')
+        self.git('remote','set-url','origin',foreign)
+        self.git('config','url.'+SSH+'.insteadOf',foreign)
+        self.assertEqual(self.git('remote','get-url','origin'),SSH)
+        with self.assertRaises(o.OracleApprovalError):status.fetch_url(self.root)
+
+    def test_explicit_pushurl_cannot_hide_literal_unknown_push_rewrite(self):
+        status=publication.public_status;foreign='https://foreign.example.invalid/repository.git'
+        self.git('config','remote.origin.pushurl',o.PUBLICATION_REMOTE)
+        self.git('config','url.'+foreign+'.pushInsteadOf',o.PUBLICATION_REMOTE)
+        self.assertIn(self.git('remote','get-url','--push','origin'),status.OWNED_REMOTES)
+        with self.assertRaises(o.OracleApprovalError):status.push_url(self.root)
+        with self.assertRaises(o.OracleApprovalError):status.require_owned_transport(self.root,o.PUBLICATION_REMOTE,push=True)
+
+    def test_per_remote_multiple_override_and_canonical_readback_are_rejected(self):
+        status=publication.public_status;foreign='https://foreign.example.invalid/repository.git'
+        self.git('config','remote.origin.pushurl',foreign)
+        with self.assertRaises(o.OracleApprovalError):status.push_url(self.root)
+        self.git('config','remote.origin.pushurl',SSH)
+        self.git('config','--add','remote.origin.pushurl',o.PUBLICATION_REMOTE)
+        with self.assertRaises(o.OracleApprovalError):status.push_url(self.root)
+        self.git('remote','set-url','origin',SSH)
+        self.git('config','url.'+foreign+'.insteadOf',o.PUBLICATION_REMOTE)
+        self.assertEqual(self.git('remote','get-url','origin'),SSH)
+        with self.assertRaises(o.OracleApprovalError):status.fetch_url(self.root)
+
+    def test_longest_push_prefix_and_ambiguous_foreign_rule_fail_closed(self):
+        status=publication.public_status;foreign='https://foreign.example.invalid/'
+        self.git('config','url.'+foreign+'.pushInsteadOf','https://github.com/')
+        self.git('config','url.'+SSH+'.pushInsteadOf',o.PUBLICATION_REMOTE)
+        self.assertEqual(status.require_owned_transport(self.root,o.PUBLICATION_REMOTE,push=True),SSH)
+        self.git('config','url.https://another.example.invalid/.pushInsteadOf',o.PUBLICATION_REMOTE)
+        with self.assertRaises(o.OracleApprovalError):status.require_owned_transport(self.root,o.PUBLICATION_REMOTE,push=True)
+        with self.assertRaises(o.OracleApprovalError):status.require_owned_transport(self.root,SSH,push='yes')
 
 
 if __name__ == "__main__":

@@ -807,17 +807,8 @@ class ShipmentWorkflow(unittest.TestCase):
 
 
 def owned_remote(test, root, commit):
-    """A local bare repository standing in for the owned GitHub repository over both URLs."""
-    import tempfile
-    directory = tempfile.TemporaryDirectory()
-    test.addCleanup(directory.cleanup)
-    remote = Path(directory.name) / "owned.git"
-    subprocess.run(["git", "init", "-q", "--bare", str(remote)], check=True)
-    subprocess.run(["git", "push", "-q", str(remote), commit + ":refs/heads/main"], cwd=root, check=True)
-    # Publication uses the owned SSH push URL; only it resolves to the synthetic remote.
-    subprocess.run(["git", "config", "remote.origin.pushurl", status.SSH_REMOTE], cwd=root, check=True)
-    subprocess.run(["git", "config", "url." + str(remote) + ".insteadOf", status.SSH_REMOTE], cwd=root, check=True)
-    return remote
+    from publication_admission_test import owned_remote as transport_fixture
+    return transport_fixture(test,root,commit)
 
 
 if __name__ == "__main__":

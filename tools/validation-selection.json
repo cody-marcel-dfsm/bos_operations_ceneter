@@ -6,10 +6,10 @@
     "model": "gpt-6.1-sol",
     "oracle_sha256": "9e1a36bf3e4dc5ed8e303b3ec8de515abbf060c356a6870f02a621dddd0435df",
     "host": "Codys-MacBook-Pro.local",
-    "time": "2026-11-16T08:57:26Z",
+    "time": "2026-11-16T10:04:58Z",
     "origin_main": "b16128819f56e81b2cb794c07506da056d073535",
-    "request_sha256": "a83883f328b78fb2f78627eaae8256615a80d311226a6150299414be4025dd10",
-    "proposal_sha256": "7732fffc27ac353a533ef8e18f37fc5cbc2fc93369eeaabc4ece4d452d259fb5"
+    "request_sha256": "0abe35d4e4af098ec0d585fdf727bf7c29b7f418ca18ab83522690b98c332d8a",
+    "proposal_sha256": "bbd26579abbe18e7f30d81604d6918c31ba14241dbcb9389988775e70a0f78d4"
   },
   "selection": {
     "acceptance": [
@@ -74,7 +74,17 @@
       "Treat before-and-after commits as provenance while comparing exact required source bytes, executable modes, case membership, schema, helpers, runtimes, tools and environments. Permit bookkeeping-only commit movement, retain committed/live equivalence, and reject changed consumed content, modes, symlinks, unknown inputs or runtime identities.",
       "Bind discovery and every independent review-series fixture to the exact constructor inventory of copied control sources, literal metadata, governance and synthetic data. Verify immutable bytes and modes and reject missing, extra, substituted or modified entries without treating temporary locations or commit timestamps as source identity.",
       "Establish verified ownership immediately after creating each lifetime resource and cover preparation, discovery, job construction, execution, verification and disposal. Preserve foreign replacements and original failures, settle owned work, retain every actual result and raw stream, and complete verified-owned cleanup before aggregate success; exercise real wrapper startup rejection and cancellation failures.",
-      "Extend deterministic profile admission only through finite exact paths and corresponding tests for the new test helper and necessary wrapper composition. Preserve every existing criterion, selected module, case inventory, deadline, privacy, credential, history, packaging and publication check, and require complete current native verification without replacing historical results or resetting lifecycle clocks."
+      "Extend deterministic profile admission only through finite exact paths and corresponding tests for the new test helper and necessary wrapper composition. Preserve every existing criterion, selected module, case inventory, deadline, privacy, credential, history, packaging and publication check, and require complete current native verification without replacing historical results or resetting lifecycle clocks.",
+      "Validate exactly one configured and resolved fetch and push destination against the existing fixed owned repository aliases before preparation, consumption and Git effects; reject foreign rewrites, ambiguous destinations and changed overrides while preserving existing publication checks.",
+      "Exercise publication and shipment with finite process-local synthetic Git transport routing that preserves owned logical identities, real Git objects, leases and remote readback, refuses unknown network effects and introduces no production bypass.",
+      "Clear only the inherited internal Node test-context variable for the nested startup-rejection fixture, preserving other environment values and proving actual source rejection and owned-resource cleanup.",
+      "Create validation-contract fixtures beneath the canonical owned ignored temporary root and assert the exact current revision schema constant, including rejection of altered bindings.",
+      "Select exactly one correctly formed reviewer registration and reject missing, ambiguous or malformed matches while retaining actual timeout, original-output and process-group cleanup assertions.",
+      "Exercise notification expiry through the actual unchanged logical deadline callback after a verified pending-read barrier, restoring test mocks and retaining durable retired queue assertions.",
+      "Observe installed notification-host readiness through started, child-exit or error events within the existing startup bound and guarantee cleanup of the owned child while preserving installed closure, IPC and retirement checks.",
+      "Coordinate subscriber bursts with verified committed progress while retaining one connection, 130 unique events, five committed own comments, final cursor 131, duplicate-wake rejection and existing waits.",
+      "Partition only the two identified heavy test classes into independently executable test IDs after checking fixture hooks; preserve the exact discovered unique case union, actual executed identities, raw outcomes, existing concurrency limits and unit/category deadlines, rejecting missing, extra, empty, skipped or timed-out execution.",
+      "Generate newly sealed selected and fixed Node command vectors with explicit per-file concurrency one; accept historical commands only as complete exact vectors in genuine immutable historical seals, reject mixed or arbitrary vectors, and require the bounded vector for the new current deterministic profile through a genuine native replacement seal."
     ],
     "acceptance_tests": [
       {
@@ -94,7 +104,9 @@
           46,
           48,
           54,
-          59
+          59,
+          64,
+          70
         ],
         "module": "tests/oracle-implementation-spec.test.mjs",
         "purpose": "Verify sealed spec production, privacy, engine invocation, external input custody, native migration, publication-range scope, configured interpreter preservation, CI admission and historical provenance refusal."
@@ -103,7 +115,9 @@
         "covers": [
           0,
           7,
-          10
+          10,
+          65,
+          71
         ],
         "module": "tests/validation-contract.test.mjs",
         "purpose": "Preserve contract recording, native revisions, selected execution and exact feature-design binding."
@@ -122,7 +136,8 @@
           52,
           53,
           56,
-          61
+          61,
+          71
         ],
         "module": "tests/deterministic-lanes.test.mjs",
         "purpose": "Verify finite profile membership, neighboring-path refusal, mandatory conformance modules, complete selected execution and exact-source leased publication."
@@ -152,7 +167,8 @@
           20,
           26,
           35,
-          47
+          47,
+          66
         ],
         "module": "tests/oracle-lifecycle.test.mjs",
         "purpose": "Verify process identity, launcher isolation, attached-observer failure propagation, checkpoint preservation and deterministic completion rechecking before orphan recovery."
@@ -275,7 +291,9 @@
           34,
           36,
           37,
-          50
+          50,
+          62,
+          63
         ],
         "module": "tests/publication-admission.test.mjs",
         "purpose": "Verify attestation custody, reuse, replacement, revocation, exact remote admission and leased promotion; exercise named verbatim questions, adjacent genuine human answers, exact effect scope, journal provenance, byte custody, append safety and unchanged Codex admission."
@@ -287,7 +305,9 @@
           31,
           32,
           33,
-          34
+          34,
+          62,
+          63
         ],
         "module": "tests/shipment-workflow.test.mjs",
         "purpose": "Verify SSH shipment, attestation consumption, immutable checkpoint reuse, revocation and confirmed delivery during concurrent authoring."
@@ -296,7 +316,8 @@
         "covers": [
           39,
           40,
-          41
+          41,
+          69
         ],
         "module": "tests/feedback-event-subscriber.test.mjs",
         "purpose": "Verify committed metadata-only stdout, current-task bridge, idle behavior, rolling-window longevity, replay, deduplication, terminal retirement and subscriber installation without a hook."
@@ -319,7 +340,8 @@
       },
       {
         "covers": [
-          41
+          41,
+          67
         ],
         "module": "tests/notification-host.test.mjs",
         "purpose": "Preserve protected host lifecycle, fixed local bridge, socket bounds, custody and retirement."
@@ -327,7 +349,8 @@
       {
         "covers": [
           39,
-          41
+          41,
+          68
         ],
         "module": "tests/notification-host-installer.test.mjs",
         "purpose": "Verify immutable installation inventories, explicit modes, subscriber hook absence and protected upgrade and retirement behavior."
@@ -544,9 +567,9 @@
       }
     ],
     "change_class": "feature",
-    "design": "Vault/tmp/feedback-development/aio-integration/validation-state-design-v3.md",
-    "reason": "Add bounded resource admission, exact fixture continuity and whole-lifetime cleanup coverage using retained modules. Preserve the complete prior contract, original timing evidence and complete native verification requirements.",
-    "revision_of": "b54e59946e53f60ce9fbfba0357131893ec65de917302f5a035310a6faebb708",
+    "design": "Vault/tmp/feedback-development/aio-integration/integrated-native-repair-design.md",
+    "reason": "Extend the retained feature contract with bounded destination-validation, fixture, lifecycle, scheduling and command-vector repairs. Existing selected modules cover every added criterion; preserve all prior criteria, cases, fixtures, mappings, evidence, deadlines and original delivery clocks.",
+    "revision_of": "4a0b6d242256dbef9ecb3d40db0d99775a6e00d07482ebb5644b88b84c7255e5",
     "scope_paths": [
       ".agents/skills/operations-center-implementation/SKILL.md",
       ".agents/skills/oracle/review-output.schema.json",
@@ -1174,8 +1197,8 @@
       "tools/vault_index.py"
     ]
   },
-  "base_commit": "9d41b03cc9fd6378d5c576af358fadf226f7c1cd",
-  "base_tree": "ebdf4e36ccdca7a54bbb84ceae49ba850b631e3c",
+  "base_commit": "4fcb250463b86bd3d1b78d531afe14f084e1ad74",
+  "base_tree": "215d07491e6ff83350f543e6cc225b218039d453",
   "catalog_sha256": "9a96f1cd2a973457f9da681dddcc5161aa8ffda188b092d849e5bc83999391c8",
   "runtime": {
     "node": "v22.11.0",
@@ -1185,8 +1208,8 @@
     "architecture": "arm64",
     "options_sha256": "ebc442c160f8629073a82976daadaba1d95a60a38d768c81c8eb06598aedcac5"
   },
-  "proposal_sha256": "7732fffc27ac353a533ef8e18f37fc5cbc2fc93369eeaabc4ece4d452d259fb5",
-  "review_sha256": "9e2da18f6dca2dc69e6b85158328b112878b0364a77188ed7d2a500970d9878d",
+  "proposal_sha256": "bbd26579abbe18e7f30d81604d6918c31ba14241dbcb9389988775e70a0f78d4",
+  "review_sha256": "663370fd75ff0c1f008968ca83837c837222f77e9e58a848f4b6a4ffcbb0c94a",
   "commands": [
     {
       "category": "sanity",
@@ -1339,18 +1362,22 @@
     "maximum_reasoning_effort": "medium"
   },
   "design_binding": {
-    "design": "Vault/tmp/feedback-development/aio-integration/validation-state-design-v3.md",
-    "design_sha256": "20896f3538e5886d516e3dd35a7eb507a2fccd004d86733b2815f17ca0f3afbe",
-    "plan": "Vault/tmp/feedback-development/aio-integration/validation-state-design-v3.test-plan.json",
-    "plan_sha256": "9600303ac2ceed6f62b6edd1fa3778bf667bf4534b4c46ace37858f21eb8f17c",
+    "design": "Vault/tmp/feedback-development/aio-integration/integrated-native-repair-design.md",
+    "design_sha256": "55c61d6ddbb884e5c02fe747ce97b6d157a93ffc6351a3dad39c2416bb732769",
+    "plan": "Vault/tmp/feedback-development/aio-integration/integrated-native-repair-design.test-plan.json",
+    "plan_sha256": "e524cfb902589946e8952e7c76c45ab0b4f795754219c61d508cf034fc90d5b4",
     "tests": [
       "tests/deterministic-lanes.test.mjs",
-      "tests/isolated-test-cohort.test.mjs",
+      "tests/feedback-event-subscriber.test.mjs",
+      "tests/notification-host-installer.test.mjs",
+      "tests/notification-host.test.mjs",
       "tests/oracle-implementation-spec.test.mjs",
-      "tests/oracle-parallel.test.mjs",
-      "tests/oracle-review-series.test.mjs"
+      "tests/oracle-lifecycle.test.mjs",
+      "tests/publication-admission.test.mjs",
+      "tests/shipment-workflow.test.mjs",
+      "tests/validation-contract.test.mjs"
     ]
   },
-  "contract_sha256": "4a0b6d242256dbef9ecb3d40db0d99775a6e00d07482ebb5644b88b84c7255e5",
-  "seal": "18ca804f9a1362df5b8932aa5bffdb3d4c6524ed61158ec530a9ffebc695f972"
+  "contract_sha256": "5e32075b6bbf88f7b857082b6a8f4e8fe768eed45f88a060cb1b841fc78168b3",
+  "seal": "0cd4bc89875e312154011ccff16a57b4d85b96faa70828b56846459800a44225"
 }
