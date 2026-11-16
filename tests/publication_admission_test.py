@@ -101,9 +101,9 @@ class PublicationAdmission(unittest.TestCase, ClaudeCodeAuthorityFixture):
                 "description": "Read a newly selected existing credential source",
                 "paths": ["source.py"], "inputs": self.fixture.inputs(context, "source.py")}
 
-    def submit(self, protected=False, *, authentication=False, dispositions=None):
+    def submit(self, protected=False, *, authentication=False, dispositions=None, validation=False):
         def build(context):
-            result = self.fixture.result(context)
+            result = self.fixture.result(context, validation=validation)
             result["protected_effects"] = {"active": ([self.effect(context), dict(self.effect(context), id="second-tenant-boundary", kind="tenant-isolation")]
                                                        if protected == "two" else [self.effect(context)] if protected else []),
                                            "dispositions": dispositions(context) if dispositions else []}
@@ -521,8 +521,10 @@ class PublicationAdmission(unittest.TestCase, ClaudeCodeAuthorityFixture):
         self.assertEqual(preserved.read_bytes(), original)
 
     def test_publication_rechecks_consumed_validation_custody_after_commit(self):
-        self.submit()
+        self.fixture.record_check()
+        self.submit(validation=True)
         publication.plan(self.root, "HEAD", self.ref, "main-promotion", refresh=False)
+        self.release_ready()
         validation = json.loads(self.fixture.evidence.read_bytes())
         output = self.root / next(iter(validation["output_hashes"]))
         mode = output.stat().st_mode & 0o777
