@@ -23,13 +23,16 @@ async function body(reply){
 }
 
 export async function createFeedbackDiscussionHost({enabled=false,root,credentialPath,origin,contextHandle,discovery,itemRef,
-  taskIntent,lifetimeMs,assertCurrent,assertSourceCurrent=async()=>true,fetchImpl=fetch,socketFactory=openFeedbackSocket}){
+  taskIntent,lifetimeMs,assertCurrent,assertSourceCurrent=async()=>true,fetchImpl=fetch,socketFactory=openFeedbackSocket,
+  custodyIntervalMs=5000,onQueueCommitted,onDiscussionStopped,policy}){
   // Disabled is the default even when this source is present in an installation.
   if(enabled!==true)return Object.freeze({enabled:false});
   if(new URL(origin).origin!==origin||new URL(origin).protocol!=="https:"||!/^bos_ctx_v2_[a-f0-9]{64}$/u.test(contextHandle)||
     typeof itemRef!=="string"||!itemRef||itemRef.length>160||/[\p{Cc}\p{Cf}]/u.test(itemRef)||
     typeof taskIntent!=="string"||!taskIntent.trim()||Buffer.byteLength(taskIntent)>4000||
-    !Number.isSafeInteger(lifetimeMs)||lifetimeMs<1000||lifetimeMs>900000||typeof assertCurrent!=="function")fail();
+    !Number.isSafeInteger(lifetimeMs)||lifetimeMs<1000||lifetimeMs>900000||typeof assertCurrent!=="function"||
+    !Number.isSafeInteger(custodyIntervalMs)||custodyIntervalMs<0||custodyIntervalMs>60000||
+    (onQueueCommitted!==undefined&&typeof onQueueCommitted!=="function")||(onDiscussionStopped!==undefined&&typeof onDiscussionStopped!=="function"))fail();
   discovery=structuredClone(discovery);
   const describeUri=sameOrigin(discovery?.describe_uri,origin);
   if(describeUri.pathname!=="/api/v1/feedback/describe")fail();
@@ -41,10 +44,10 @@ export async function createFeedbackDiscussionHost({enabled=false,root,credentia
   const queueRoot=join(root,"q-"+opaque());await privateDirectory(queueRoot,{create:true});
   const queuePath=join(queueRoot,"pending.json"),outboxPath=join(queueRoot,"outbox.json"),recordPath=join(root,registrationRef+".json");
   const signingKey=randomBytes(32),controller=new AbortController(),tickets=new Map();
-  let retired=false,retirement=null,lastRefresh=0,refreshing=null,facade,reading=false,commentSending=false,workerLeaseUntil=0,consuming=null,resyncAttested=false;
+  let retired=false,retirement=null,retiredBy=null,lastRefresh=0,refreshing=null,facade,reading=false,commentSending=false,workerLeaseUntil=0,consuming=null,resyncAttested=false;
   const fingerprint=contractFingerprint(discovery);
-  const retire=()=>{
-    if(retirement)return retirement;retired=true;secret="";signingKey.fill(0);tickets.clear();controller.abort();
+  const retire=(reason="failed")=>{
+    if(retirement)return retirement;retired=true;retiredBy=reason;secret="";signingKey.fill(0);tickets.clear();controller.abort();
     retirement=atomicPrivateJson(recordPath,{version:1,...binding,mode:"feedback",status:"retired"});return retirement;
   };
   const localGuard=async()=>{
@@ -53,7 +56,7 @@ export async function createFeedbackDiscussionHost({enabled=false,root,credentia
       const current=await protectedRead(credentialPath,{maximum:4096});
       const valid=current.identity===credentialIdentity&&hash(current.bytes.toString("utf8").trim())===credentialHash;current.bytes.fill(0);if(!valid)fail();
       return true;
-    }catch{await retire();fail();}
+    }catch{await retire("authority_ended");fail();}
   };
   const http=async(uri,method="GET",payload)=>{
     await localGuard();const target=sameOrigin(uri,origin);
@@ -116,7 +119,11 @@ export async function createFeedbackDiscussionHost({enabled=false,root,credentia
     await localGuard();const before=await load();if(before.version!==expected)return false;
     if(next.itemRef!==itemRef||next.taskRef!==binding.taskRef||next.version!==expected+1)fail();
     if(Buffer.byteLength(JSON.stringify({state:next,mac:mac(next)}))>4194304)fail();
-    await atomicPrivateJson(queuePath,{state:next,mac:mac(next)});await localGuard();return true;
+    await atomicPrivateJson(queuePath,{state:next,mac:mac(next)});await localGuard();
+    // Event-driven observers see only the durable committed state, never a
+    // speculative frame. An observer failure ends this registration.
+    if(onQueueCommitted){try{await onQueueCommitted(structuredClone(next));}catch{await retire();fail();}}
+    return true;
   })};
   const sameBinding=value=>value.itemRef===itemRef&&value.taskRef===binding.taskRef;
   const host={
@@ -139,17 +146,21 @@ export async function createFeedbackDiscussionHost({enabled=false,root,credentia
         signal:AbortSignal.any([controller.signal,value.signal]),maxPayload:discovery.discussion.limits.max_delivery_bytes,guard:localGuard});
     }
   };
-  facade=await createFeedbackDiscussion({host,discovery,itemRef,taskRef:binding.taskRef,signal:controller.signal});
+  facade=await createFeedbackDiscussion({host,discovery,itemRef,taskRef:binding.taskRef,signal:controller.signal,...(policy===undefined?{}:{policy})});
   if(!facade.available){await retire();fail();}
   await atomicPrivateJson(recordPath,{version:1,...binding,mode:"feedback",status:"active"},{replace:false});
-  const timeout=setTimeout(()=>{void retire().catch(()=>{});},lifetimeMs);timeout.unref?.();
-  const custodyTimer=setInterval(()=>{void refresh().catch(()=>retire());},Math.min(5000,lifetimeMs));custodyTimer.unref?.();
+  const timeout=setTimeout(()=>{void retire("lifetime_ended").catch(()=>{});},lifetimeMs);timeout.unref?.();
+  // Interval custody is the Muse default. Zero selects event-driven custody: every
+  // frame, read, send and operation rechecks it, and the service revalidates reads.
+  const custodyTimer=custodyIntervalMs===0?null:setInterval(()=>{void refresh().catch(()=>retire());},Math.min(custodyIntervalMs,lifetimeMs));custodyTimer?.unref?.();
   return Object.freeze({
     enabled:true,binding,
     assertCurrent:refresh,
     async run(){try{while(!retired){const result=await facade.run();if(result.next==="resync_current_item"){
       await readCurrent({allPages:true});resyncAttested=true;await facade.resumeAfterCurrentRead();continue;}
       if(result.next!=="reconnect"){
+        // A retirement (lifetime, custody, explicit) owns its own reason.
+        if(onDiscussionStopped&&!retired){try{await onDiscussionStopped({reason:result.reason??"stopped",...(result.code===undefined?{}:{code:result.code})});}catch{}}
         await facade.pending();
         // A bounded connection budget may end before the registration lifetime.
         // Keep queued work available to the already admitted native worker.
@@ -180,6 +191,7 @@ export async function createFeedbackDiscussionHost({enabled=false,root,credentia
       }finally{commentSending=false;}
     },
     commentStatus:()=>facade.commentStatus(),
-    async retire(){clearTimeout(timeout);clearInterval(custodyTimer);if(!retired)await syncOutbox();await retire();}
+    retirementReason:()=>retiredBy,
+    async retire(){clearTimeout(timeout);clearInterval(custodyTimer);if(!retired)await syncOutbox();await retire("retired");}
   });
 }

@@ -472,3 +472,15 @@ The /10 exact editable inventory additionally admits `tests/notification-host.te
 for the portable-socket conformance repair above. It was already a complete fixed
 category module; its new cases now remain both editable and mandatory. No other
 notification file or test path becomes admitted.
+
+Amendment `/11` (owner-directed Ada C1 host binding, 2026-11-15) admits exactly
+`source/host-runtime/bos-journey-notifications/event-wake-subscriber.mjs`,
+`tests/feedback-event-subscriber.test.mjs` and
+`tests/helpers/feedback-socket-stand-in.mjs`, and adds that test module to the
+fixed category. It covers the `discussion-subscribe` stdout event wake for Claude
+Code, the installer `subscriber` mode with no native hook, and the facade's
+conformance to the current producer descriptor (rolling `max_commands_per_minute`,
+no connection deadline, consecutive-failure reconnect budget). The stand-in is a
+repository-owned synthetic TLS WebSocket service, not BOS. All prior checks remain.
+No installed host change, enabled hook, live connection, credential trust change or
+publication exemption follows from source validation.

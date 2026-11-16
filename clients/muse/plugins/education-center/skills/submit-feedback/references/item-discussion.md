@@ -39,9 +39,18 @@ semantic checks enforce item isolation, bounded UUID events, cursors and committ
 comment acknowledgements. Binary, oversized and duplicate-key JSON frames fail.
 
 The descriptor supplies limits; the facade admits only bounded supported values.
-Default policy caps one registration at three connections and 200 pending events
-(maximum five connections/500 events). `run()` opens **one** bounded connection,
-subscribes once with the durable cursor, consumes frames and returns `next`.
+The current producer advertises a rolling per-socket `max_commands_per_minute`
+(comment and ping frames in the last 60 seconds; subscribe is not counted) and no
+connection deadline. The facade refuses a comment that would exceed that window
+before sending it, so the comment stays unsent rather than uncertain. A legacy
+producer's lifetime `max_commands` and `max_connection_seconds` are honored only
+when advertised; exactly one command policy must be present. No other timer closes
+a connection. Default policy allows three consecutive connections that end before
+a journal and 200 pending events (maximum five/500); a subscribed connection resets
+that budget, so a long-lived subscription survives ordinary drops while a tight
+failure loop stops. `run()` opens **one** connection, subscribes once with the
+durable cursor, consumes frames and returns `next`, with `reason` (and the error
+`code` when the server sent one) when it stops.
 Only an explicitly classified `FeedbackDiscussionTransportError` or advertised
 retryable error permits reconnect. Backoff is bounded; the existing host supervisor
 owns scheduling and task lifetime. A reconnect hint never advances the cursor.

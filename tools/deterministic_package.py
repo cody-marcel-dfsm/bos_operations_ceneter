@@ -33,7 +33,7 @@ except ImportError:
     import oracle_spec_seal as spec_seal
 
 KIND = 'boc-deterministic-package/1'
-PROFILE = 'feedback-discovery-and-release-tool/10'
+PROFILE = 'feedback-discovery-and-release-tool/11'
 _OUTPUT_LOCK = threading.Lock()
 WS_LOCK_RECORD = {
     'version': '8.23.0', 'resolved': 'https://registry.npmjs.org/ws/-/ws-8.23.0.tgz',
@@ -63,7 +63,7 @@ TESTS = [
     'tests/journey-notifications.test.mjs', 'tests/oracle-api-version-request.test.mjs',
     'tests/oracle-performance.test.mjs', 'tests/isolated-test-cohort.test.mjs',
     'tests/publication-history.test.mjs',
-    'tests/feedback-socket-host.test.mjs',
+    'tests/feedback-socket-host.test.mjs', 'tests/feedback-event-subscriber.test.mjs',
     'tests/customer-data-privacy.test.mjs', 'tests/privacy-coverage.test.mjs',
 ]
 PYTHON_MODULES = ('deterministic_package_test', 'command_coverage_test', 'oracle_parallel_test')
@@ -136,6 +136,9 @@ ADA_CLIENT = {
     'source/host-runtime/bos-journey-notifications/muse-companion-cli.mjs',
     'source/host-runtime/bos-journey-notifications/muse-companion-host.mjs',
     'tests/notification-host.test.mjs',  # /10 exact portable-socket conformance repair
+    # /11 exact Claude Code event-wake subscriber (Ada C1 host binding).
+    'source/host-runtime/bos-journey-notifications/event-wake-subscriber.mjs',
+    'tests/feedback-event-subscriber.test.mjs', 'tests/helpers/feedback-socket-stand-in.mjs',
     'source/host-runtime/bos-journey-notifications/muse-hook.sh',
     'source/host-runtime/bos-journey-notifications/README.md',
     'source/host-runtime/bos-journey-notifications/vendor/ws.bundle.mjs',

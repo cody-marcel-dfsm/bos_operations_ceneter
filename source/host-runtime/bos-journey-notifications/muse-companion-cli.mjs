@@ -6,6 +6,7 @@ import {createCustomerOnboardingMetadataHost} from "./customer-onboarding-host.m
 import {createNotificationHost} from "./notification-host.mjs";
 import {createFeedbackDiscussionHost} from "./feedback-discussion-host.mjs";
 import {createCompanionBridge, callCompanion, acquireCompanionLease} from "./muse-companion-host.mjs";
+import {createEventWakeWriter} from "./event-wake-subscriber.mjs";
 import {NotificationHostError, fail, exact, hash, fileIdentity, privateDirectory, protectedRead} from "./protected-files.mjs";
 import {verifyNotificationHost} from "../../../scripts/install-notification-host.mjs";
 
@@ -21,7 +22,9 @@ async function installedSourceGuard(root, mode="journey") {
   await privateDirectory(root);
   const activePath = join(root, "active.json");
   const activeBytes = await protectedRead(activePath), active = JSON.parse(activeBytes.bytes.toString("utf8"));
-  if (active.status !== "installed" || (active.mode??"journey")!==mode || !/^[a-f0-9]{40}$/u.test(active.revision) || active.hook?.enabled !== true) fail();
+  // Subscriber mode has no native hook: its wake is the host's own stdout-line facility.
+  if (active.status !== "installed" || (active.mode??"journey")!==mode || !/^[a-f0-9]{40}$/u.test(active.revision) ||
+      (mode === "subscriber" ? active.hook !== null : active.hook?.enabled !== true)) fail();
   const installation = join(root, "releases", active.revision), manifest = await verifyNotificationHost(installation);
   if (active.manifest_sha256 !== hash(JSON.stringify(manifest)) ||
       fileURLToPath(import.meta.url) !== join(installation, "source/host-runtime/bos-journey-notifications/muse-companion-cli.mjs")) fail();
@@ -50,6 +53,34 @@ export async function main(args = process.argv.slice(2), input = process.stdin) 
   for (let index = 0; index < rest.length; index += 2) {
     if (!["--root", "--control", "--credential-file", "--ticket"].includes(rest[index]) || !rest[index + 1] || Object.hasOwn(options, rest[index])) fail();
     options[rest[index]] = rest[index + 1];
+  }
+  if (operation === "discussion-subscribe") {
+    if (!exact(options, ["--root", "--credential-file"])) fail();
+    const root = resolve(options["--root"]), runtime = join(root, "run");
+    const assertSourceCurrent = await installedSourceGuard(root, "subscriber");
+    await privateDirectory(runtime);
+    const releaseLease = await acquireCompanionLease(runtime);
+    let host, bridge, writer, active = true;
+    const write = text => { process.stdout.write(text); };
+    try {
+      const value = await volatileInput(input);
+      if (!exact(value, ["origin", "contextHandle", "discovery", "itemRef", "taskIntent", "lifetimeMs", "intentConfirmed"]) ||
+          value.intentConfirmed !== true) fail();
+      host = await createFeedbackDiscussionHost({...value, enabled: true, root: runtime, credentialPath: resolve(options["--credential-file"]),
+        assertCurrent: async () => active, assertSourceCurrent, custodyIntervalMs: 0,
+        onQueueCommitted: state => writer?.committed(state),
+        onDiscussionStopped: ({reason, code}) => writer?.stopped(reason, code)});
+      bridge = await createCompanionBridge({root: runtime, host});
+      writer = createEventWakeWriter({binding: host.binding, controlPath: bridge.controlPath, write});
+      writer.started();
+      const stop = () => { active = false; void host.retire().catch(() => {}); };
+      process.once("SIGTERM", stop); process.once("SIGINT", stop);
+      try { await host.run(); } catch {} finally { process.removeListener("SIGTERM", stop); process.removeListener("SIGINT", stop); }
+      writer.stopped(host.retirementReason() ?? "retired");
+    } finally {
+      active = false; await host?.retire(); await bridge?.close(); await releaseLease();
+    }
+    return;
   }
   if (operation === "monitor" || operation === "discussion-monitor" || operation === "onboarding-monitor") {
     if (!exact(options, ["--root", "--credential-file"])) fail();

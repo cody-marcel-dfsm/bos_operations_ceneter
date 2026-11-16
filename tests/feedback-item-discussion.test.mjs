@@ -95,11 +95,20 @@ test("only canonical committed ack reports saved comment; missing ack stays unce
   await missing.session.run(); assert.equal(missing.sends().filter(row => row.type === "comment").length, 1);
 });
 test("bounded transient reconnect resumes committed cursor; reconnect hints cannot advance it", async () => {
-  const f = await setup([journal("saved", [id(1)]), new FeedbackDiscussionTransportError()], {policy: {maxConnections: 2, maxPending: 20}});
+  // Each open replays these frames; after the first, the connection drops before any journal.
+  let opened = 0;
+  const f = await setup([async () => {opened++; if (opened > 1) throw new FeedbackDiscussionTransportError();},
+    journal("saved", [id(1)]), new FeedbackDiscussionTransportError()], {policy: {maxConnections: 2, maxPending: 20}});
   assert.deepEqual(await f.session.run(), {next: "reconnect", comment: "none", delayMs: 500});
-  assert.equal((await f.session.run()).next, "stop"); assert.equal(f.sends()[1].cursor, "saved");
-  assert.equal((await f.session.run()).next, "stop"); assert.equal(f.opens(), 2);
+  assert.deepEqual(await f.session.run(), {next: "reconnect", comment: "none", delayMs: 500}); assert.equal(f.sends()[1].cursor, "saved");
+  assert.deepEqual(await f.session.run(), {next: "stop", comment: "none", reason: "connection_budget_exhausted"});
+  assert.deepEqual(await f.session.run(), {next: "stop", reason: "connection_budget_exhausted"}); assert.equal(f.opens(), 3);
   const hint = await setup([{type: "reconnect", cursor: "not_committed"}]); await hint.session.run(); assert.equal(hint.state().cursor, null);
+});
+test("a subscribed connection resets the consecutive-failure budget so long-lived push survives ordinary drops", async () => {
+  const f = await setup([journal("c", []), new FeedbackDiscussionTransportError()], {policy: {maxConnections: 1, maxPending: 20}});
+  for (let n = 0; n < 6; n++) assert.equal((await f.session.run()).next, "reconnect");
+  assert.equal(f.opens(), 6);
 });
 test("duplicate-key, binary, malformed and oversized frames fail without accepting data", async () => {
   for (const raw of ['{"type":"pong","ty\\u0070e":"pong"}', new Uint8Array([123]), '{', 'x'.repeat(1048577)]) {
@@ -125,4 +134,87 @@ test("all generated BOS consumers package the identical discussion facade", asyn
     const runtime = await import(pathToFileURL(join(base, "scripts/item-discussion.mjs")));
     assert.equal((await runtime.createFeedbackDiscussion({host: {}})).available, false);
   }
+});
+
+// BOC-authored consumer fixture in the shape the current producer advertises: a rolling
+// per-socket max_commands_per_minute with no lifetime command count or connection deadline.
+function currentDiscovery() {
+  const value = discovery();
+  value.discussion.input_schema.oneOf.push({type: "object", additionalProperties: false, required: ["type"], properties: {type: {const: "ping"}}});
+  value.discussion.limits = {max_frame_bytes: 16384, page_size: 50, subscribe_seconds: 10, max_commands_per_minute: 120,
+    max_connections_per_process: 32, max_delivery_bytes: 1048576, max_connections_per_actor: 4, max_connections_per_context: 2,
+    read_seconds: 15, send_seconds: 10};
+  return value;
+}
+// A long-lived channel whose frames arrive only when the stand-in pushes them.
+async function liveSetup({discovery: supplied = currentDiscovery(), clock} = {}) {
+  let state = {itemRef: "item_demo", taskRef: "task_demo", version: 0, cursor: null, pending: [], seen: []};
+  const queue = [], sends = []; let wake = () => {}, opens = 0, ended = false;
+  const push = frame => {queue.push(frame); const prior = wake; wake = () => {}; prior();};
+  const host = {getFeedbackDiscussionCapabilities: async () => ({authenticatedItemSocket: true, protectedAtomicQueue: true}),
+    captureExecutionScope: async () => async () => true, verifyFeedbackDiscussionIntent: async () => true,
+    getFeedbackDiscussionStore: async () => ({load: async () => structuredClone(state), commit: async (expected, next) => {
+      if (state.version !== expected) return false; state = structuredClone(next); return true;}}),
+    openAuthenticatedFeedbackDiscussion: async request => {opens++; return {
+      send: async text => {const frame = JSON.parse(text); sends.push(frame);
+        if (frame.type === "subscribe") push(journal("c0"));
+        if (frame.type === "comment") push({type: "ack", operation: "comments.create", feedback_id: "item_demo", status: "committed"});},
+      close: async () => {ended = true; push(null);},
+      messages: (async function* () {while (!request.signal.aborted) {
+        if (queue.length) {const frame = queue.shift(); if (frame === null) return; if (frame instanceof Error) throw frame; yield JSON.stringify(frame);}
+        else await new Promise(resolve => {wake = resolve;});}})()};}};
+  const session = await createFeedbackDiscussion({host, discovery: supplied, itemRef: "item_demo", taskRef: "task_demo",
+    policy: {maxConnections: 3, maxPending: 500, ...(clock ? {clock} : {})}});
+  return {session, push, sends: () => sends, state: () => structuredClone(state), opens: () => opens, ended: () => ended};
+}
+const settle = async predicate => {for (let n = 0; n < 500 && !predicate(); n++) await new Promise(resolve => setTimeout(resolve, 2));
+  assert(predicate(), "synthetic condition not reached");};
+
+test("current producer descriptor is accepted; legacy-only limits are no longer required", async () => {
+  const f = await liveSetup(); assert.equal(f.session.available, true);
+  for (const mutate of [d => {delete d.discussion.limits.max_commands_per_minute;},
+    d => {d.discussion.limits.max_commands = 120;}, d => {d.discussion.limits.max_commands_per_minute = 601;},
+    d => {d.discussion.limits.max_connection_seconds = 0;}]) {
+    const changed = currentDiscovery(); mutate(changed);
+    await assert.rejects(liveSetup({discovery: changed}));
+  }
+});
+test("more than 120 comments across admitted rolling windows on one idle-timer-free connection", async () => {
+  let now = 0; const f = await liveSetup({clock: () => now});
+  const running = f.session.run(); await settle(() => f.state().cursor === "c0");
+  let committed = 0;
+  for (let window = 0; window < 3; window++) {
+    for (let n = 0; n < 50; n++) {
+      await f.session.submitComment({body: `window ${window} comment ${n}`});
+      await settle(() => f.session.commentStatus().status === "committed"); committed++;
+      if (n % 10 === 0) f.push(journal(`c${window}.${n}`, [id(10000 + window * 100 + n)]));
+    }
+    now += 60001; // Earlier commands age out of the advertised 60-second window.
+  }
+  assert(committed > 120); assert.equal(f.opens(), 1); assert.equal(f.ended(), false);
+  assert.equal(f.sends().filter(frame => frame.type === "subscribe").length, 1);
+  assert.equal(f.state().pending.length, 15);
+  await f.session.close(); await running;
+});
+test("a comment beyond the advertised rate is refused before dispatch and is not uncertain", async () => {
+  const f = await liveSetup({clock: () => 0});
+  const running = f.session.run(); await settle(() => f.state().cursor === "c0");
+  for (let n = 0; n < 120; n++) {await f.session.submitComment({body: `burst ${n}`}); await settle(() => f.session.commentStatus().status === "committed");}
+  await assert.rejects(f.session.submitComment({body: "one too many"}), /nothing was sent/u);
+  assert.equal(f.session.commentStatus().status, "committed"); assert.equal(f.sends().filter(frame => frame.type === "comment").length, 120);
+  await f.session.close(); await running;
+});
+test("no connection deadline exists when none is advertised; a legacy advertised deadline is honored", async () => {
+  const current = await liveSetup(); const running = current.session.run(); await settle(() => current.state().cursor === "c0");
+  await new Promise(resolve => setTimeout(resolve, 1300));
+  assert.equal(current.ended(), false); current.push(journal("late", [id(77)]));
+  await settle(() => current.state().cursor === "late"); await current.session.close(); await running;
+  const legacy = discovery(); const old = await liveSetup({discovery: legacy}); const ended = old.session.run();
+  await settle(() => old.state().cursor === "c0"); await ended; assert.equal(old.ended(), true);
+});
+test("legacy lifetime max_commands still bounds a legacy producer's socket", async () => {
+  const legacy = discovery(); legacy.discussion.limits.max_commands = 3; legacy.discussion.limits.max_connection_seconds = 300;
+  const f = await liveSetup({discovery: legacy}); const running = f.session.run(); await settle(() => f.state().cursor === "c0");
+  for (let n = 0; n < 2; n++) {await f.session.submitComment({body: `legacy ${n}`}); await settle(() => f.session.commentStatus().status === "committed");}
+  await assert.rejects(f.session.submitComment({body: "legacy over"})); await f.session.close(); await running;
 });

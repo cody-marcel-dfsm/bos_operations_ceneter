@@ -61,7 +61,10 @@ export async function getFeedbackDiscussionCapabilities(host) {
 export async function createFeedbackDiscussion({host, discovery, itemRef, taskRef, signal, policy = {maxConnections: 3, maxPending: 200}}) {
   if (!(await getFeedbackDiscussionCapabilities(host)).available) return Object.freeze({available: false});
   if (!safe(itemRef) || !safe(taskRef) || !Number.isSafeInteger(policy.maxConnections) || policy.maxConnections < 1 || policy.maxConnections > 5 ||
-      !Number.isSafeInteger(policy.maxPending) || policy.maxPending < 1 || policy.maxPending > 500) fail();
+      !Number.isSafeInteger(policy.maxPending) || policy.maxPending < 1 || policy.maxPending > 500 ||
+      (policy.clock !== undefined && typeof policy.clock !== "function")) fail();
+  // Monotonic milliseconds for the advertised rolling command window only; it never schedules work.
+  const clock = policy.clock ?? (() => performance.now());
   discovery = clone(discovery);
   const contract = discovery?.discussion;
   if (!contract || !Array.isArray(discovery.operations) || !["feedback.get", "comments.create"].every(operation => discovery.operations.some(row => row.operation_id === operation))) return Object.freeze({available: false});
@@ -71,11 +74,29 @@ export async function createFeedbackDiscussion({host, discovery, itemRef, taskRe
   // current discovery provenance and owns origin/header binding atomically.
   if (typeof contract.uri_template !== "string" || /[?#@]/u.test(contract.uri_template)) fail();
   const limits = contract.limits;
-  for (const [key, maximum] of Object.entries({max_frame_bytes: 16384, page_size: 50, max_delivery_bytes: 1048576, max_connection_seconds: 300, max_commands: 120})) {
+  for (const [key, maximum] of Object.entries({max_frame_bytes: 16384, page_size: 50, max_delivery_bytes: 1048576})) {
     if (!Number.isSafeInteger(limits?.[key]) || limits[key] < 1 || limits[key] > maximum) fail();
   }
+  // Current producers advertise a rolling per-socket max_commands_per_minute and no
+  // session deadline. Legacy producers advertised a lifetime max_commands and a
+  // max_connection_seconds deadline; those are honored only when advertised.
+  const optional = (key, maximum) => limits[key] === undefined || Number.isSafeInteger(limits[key]) && limits[key] >= 1 && limits[key] <= maximum;
+  if (!optional("max_commands_per_minute", 600) || !optional("max_commands", 120) || !optional("max_connection_seconds", 300) ||
+      (limits.max_commands_per_minute === undefined) === (limits.max_commands === undefined)) fail();
   const scope = await host.captureExecutionScope(); if (typeof scope !== "function") fail();
-  let stopped = false, channel = null, subscribed = false, connections = 0, commands = 0, comment = "none", resyncRequired = false;
+  let stopped = false, channel = null, subscribed = false, connections = 0, commands = 0, comment = "none", resyncRequired = false, admitted = [];
+  // The server counts comment and ping frames per socket; subscribe is not counted.
+  // A legacy lifetime cap counts every frame on the socket, as that producer did.
+  const commandAdmissible = frame => {
+    if (limits.max_commands !== undefined) return commands < limits.max_commands;
+    if (frame.type === "subscribe") return true;
+    const now = clock(); while (admitted.length && admitted[0] <= now - 60000) admitted.shift();
+    return admitted.length < limits.max_commands_per_minute;
+  };
+  const admitCommand = frame => {
+    if (limits.max_commands !== undefined) commands++;
+    else if (frame.type !== "subscribe") admitted.push(clock());
+  };
   const guard = async () => {if (stopped || signal?.aborted || await scope() !== true) {stopped = true; await channel?.close(); fail();}};
   const verify = async (kind, payload) => {
     await guard();
@@ -104,7 +125,7 @@ export async function createFeedbackDiscussion({host, discovery, itemRef, taskRe
   };
   const send = async frame => {
     if (!input(frame)) fail(); await verify(frame.type === "comment" ? "comments.create" : "read", frame);
-    if (!channel || commands >= limits.max_commands) fail(); commands++;
+    if (!channel || !commandAdmissible(frame)) fail(); admitCommand(frame);
     const bytes = JSON.stringify(frame); if (new TextEncoder().encode(bytes).length > limits.max_frame_bytes) fail();
     await channel.send(bytes); await guard();
   };
@@ -113,6 +134,8 @@ export async function createFeedbackDiscussion({host, discovery, itemRef, taskRe
     async submitComment({body, parent_comment_id} = {}) {
       if (!["none", "committed"].includes(comment) || !subscribed || resyncRequired || !channel || typeof body !== "string" || body.length < 1 || body.length > 4000 ||
           (parent_comment_id !== undefined && parent_comment_id !== null && !uuid.test(parent_comment_id))) fail();
+      // Refuse before dispatch: the comment was never sent, so nothing is uncertain.
+      if (!commandAdmissible({type: "comment"})) throw new Error("Discussion command rate reached; nothing was sent. Retry after the advertised window.");
       comment = "awaiting_commit";
       try {await send({type: "comment", body, ...(parent_comment_id === undefined ? {} : {parent_comment_id})});}
       catch {comment = "uncertain"; throw new Error("Comment outcome uncertain; read current item before any retry.");}
@@ -134,16 +157,19 @@ export async function createFeedbackDiscussion({host, discovery, itemRef, taskRe
     async close() {stopped = true; await channel?.close();},
     async run() {
       await verify("read");
-      if (channel || resyncRequired || connections >= policy.maxConnections) return {next: resyncRequired ? "resync_current_item" : "stop"};
+      if (channel || resyncRequired || connections >= policy.maxConnections) return resyncRequired ? {next: "resync_current_item"} : {next: "stop", reason: "connection_budget_exhausted"};
+      // The budget counts consecutive connections that end before a journal; a
+      // subscribed connection resets it, so long-lived push survives ordinary drops.
       connections++;
       const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), limits.max_connection_seconds * 1000); timer.unref?.();
+      // Only a producer-advertised deadline closes a connection; none exists otherwise.
+      const timer = limits.max_connection_seconds === undefined ? null : setTimeout(() => controller.abort(), limits.max_connection_seconds * 1000); timer?.unref?.();
       const stop = () => controller.abort(); signal?.addEventListener("abort", stop, {once: true});
-      let next = "reconnect", reconnectCursor;
+      let next = "reconnect", reconnectCursor, stopCode;
       try {
         channel = await host.openAuthenticatedFeedbackDiscussion({discovery: clone(discovery), itemRef, taskRef, signal: controller.signal});
         if (typeof channel?.send !== "function" || typeof channel?.close !== "function" || typeof channel?.messages?.[Symbol.asyncIterator] !== "function") fail();
-        commands = 0; subscribed = false;
+        commands = 0; admitted = []; subscribed = false;
         controller.signal.addEventListener("abort", () => {void channel?.close();}, {once: true});
         const state = await load(); await send({type: "subscribe", ...(state.cursor === null ? {} : {cursor: state.cursor})});
         for await (const raw of channel.messages) {
@@ -165,14 +191,14 @@ export async function createFeedbackDiscussion({host, discovery, itemRef, taskRe
               if (state.pending.length > policy.maxPending) throw new Error("Feedback queue full; cursor and pending work retained.");
               state.seen = state.seen.slice(-1000); state.cursor = frame.cursor; return state;
             });
-            subscribed = true;
+            subscribed = true; connections = 0;
             if (frame.earlier_history) {resyncRequired = true; next = "resync_current_item"; break;}
           } else if (frame.type === "ack") {
             if (frame.operation !== "comments.create" || frame.status !== "committed" || comment !== "awaiting_commit") fail();
             comment = "committed";
           } else if (frame.type === "gap") {resyncRequired = true; next = "resync_current_item"; break;}
           else if (frame.type === "error") {
-            next = ["rate_limited", "service_unavailable"].includes(frame.code) ? "reconnect" : "stop";
+            next = ["rate_limited", "service_unavailable"].includes(frame.code) ? "reconnect" : "stop"; stopCode = frame.code;
             if (next === "stop") stopped = true; break;
           } else if (frame.type === "reconnect") {if (!safe(frame.cursor)) fail(); reconnectCursor = frame.cursor; break;}
           else if (frame.type !== "pong") fail();
@@ -187,8 +213,10 @@ export async function createFeedbackDiscussion({host, discovery, itemRef, taskRe
         await channel?.close(); channel = null; subscribed = false;
         if (comment === "awaiting_commit") comment = "uncertain";
       }
-      return {next: connections >= policy.maxConnections && next === "reconnect" ? "stop" : next,
-        comment: comment, ...(next === "reconnect" ? {delayMs: Math.min(5000, 500 * 2 ** (connections - 1))} : {}),
+      const exhausted = connections >= policy.maxConnections && next === "reconnect";
+      return {next: exhausted ? "stop" : next,
+        comment: comment, ...(next === "reconnect" && !exhausted ? {delayMs: Math.min(5000, 500 * 2 ** Math.max(0, connections - 1))} : {}),
+        ...(exhausted ? {reason: "connection_budget_exhausted"} : next === "stop" ? {reason: "stopped", ...(typeof stopCode === "string" ? {code: stopCode} : {})} : {}),
         ...(reconnectCursor === undefined ? {} : {reconnectHint: true})};
     }
   };

@@ -121,6 +121,41 @@ work for the current native worker until retirement; no auto-restarting daemon
 is installed. Source tests, including a synthetic TLS loopback, establish no real
 Muse hook, service login, external socket, native wake or customer-path acceptance.
 
+## Event-wake subscriber mode (Claude Code)
+
+The disabled `subscriber` installer mode serves hosts whose supported facility
+turns each stdout line of a long-running process into a task wake. Claude Code's
+Monitor/background task is that facility. Installation uses `--mode subscriber`
+and returns `subscriber_plan` (fixed argv, stdin fields and worker prompt); it plans
+no native hook, keeps `hook` null and refuses `record-hook`.
+
+Run `muse-companion-cli.mjs discussion-subscribe --root <private-root>
+--credential-file <existing-protected-file>` as the host's background task. Volatile
+stdin is the same as `discussion-monitor`. The bearer stays in the current-user 0600
+file and is attached only to the same-origin WSS upgrade and advertised HTTPS reads
+with the context header. Custody is event-driven: there is no interval describe
+poll; every frame, read, send and operation rechecks it, and the service revalidates
+each read and closes 1008 on access loss.
+
+Stdout is newline-delimited JSON (`kind: bos.feedback.subscriber`): one `started`
+line with the private control path, one `ready` line for the subscription snapshot
+(pending count and committed cursor), then exactly one `event` line per newly
+committed queued event (stream, event_id, committed cursor, occurred_at,
+author_type), deduplicated on `stream:event_id`. A terminal `stopped` line names
+`stopped` (with the server error code when sent), `authority_ended`,
+`connection_budget_exhausted`, `lifetime_ended`, `retired` or `failed`. Lines never
+contain the credential, context handle, URL or discussion body. The woken worker
+uses the unchanged `worker-read`, `worker-ack` and `worker-comment` controls.
+
+Reconnect happens only after a transport drop, a retryable `rate_limited` or
+`service_unavailable` error, or a server `reconnect` frame, and resumes from the
+committed cursor. The existing 15-minute registration lifetime still applies; its
+end is reported as `lifetime_ended`, never as credential expiry. Codex currently has
+no supported facility to deliver background output into an existing idle task, so
+its subscriber capability is unavailable. Synthetic loopback tests prove protocol
+behavior only; live service socket availability and observed native wake remain
+separate evidence.
+
 ## Identity-only onboarding mode
 
 The disabled `onboarding` installer mode adds fixed metadata discovery and closed
