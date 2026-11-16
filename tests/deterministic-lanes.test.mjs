@@ -86,17 +86,27 @@ for(const module of modules)test('deterministic lane boundaries: '+module,async(
  outcomes.push(witness);console.log('BOC_DETERMINISTIC_LANE_UNIT '+JSON.stringify(witness));
  assert.equal(result.code,0,result.stdout.toString()+result.stderr.toString());assert.equal(result.signal,null);assert.equal(result.error,null);assert.equal(result.cancel_error,null);assert.equal(result.cancelled,false);
  const text=result.stderr.toString('utf8'),name=module.split('/').at(-1).slice(0,-3);
- const rows=[...text.matchAll(/^(test_[^\s]+) \(__main__\.([^\s]+)\) \.\.\. (ok|FAIL|ERROR|skipped[^\n]*|expected failure|unexpected success)$/gmu)];
+ // Child diagnostics may occur between unittest's case header and its final
+ // status. Preserve those bytes and frame each native result by the next case.
+ const rows=[...text.matchAll(/^(test_[^\s]+) \(__main__\.([^\s]+)\) \.\.\. /gmu)];
+ const summaryStart=text.search(/^----------------------------------------------------------------------$/mu);
+ for(const [index,row]of rows.entries()){
+  assert.equal(row[1],row[2].split('.').at(-1));
+  const end=rows[index+1]?.index??summaryStart;assert.ok(end>row.index);
+  row.status=text.slice(row.index+row[0].length,end).trimEnd().split('\n').at(-1);
+ }
  const observed=rows.map(row=>name+'.'+row[2]);
  assert.deepEqual(observed.toSorted(),initial.ids[module]);assert.equal(new Set(observed).size,observed.length);
- assert.ok(rows.every(row=>row[3]==='ok'),'Every actual case must pass without skips');
+ assert.ok(rows.every(row=>row.status==='ok'),'Every actual case must pass without skips');
  const summary=[...text.matchAll(/^Ran ([0-9]+) tests? in [0-9.]+s$/gmu)];assert.equal(summary.length,1);assert.equal(Number(summary[0][1]),observed.length);
  assert.match(text,/\nOK\s*$/u);assert.doesNotMatch(text,/^(?:OK \(|FAILED|ERROR:|FAIL:)/gmu);
  witness.executed=observed;witness.tests_run=observed.length;
 });
 after(async()=>{
  const problems=[];let continuity,cleanupComplete=false;
- try{assert.equal(outcomes.length,2);assert.ok(outcomes.every(row=>row.executed));assert.ok(!interrupted);await prepared.verify();continuity=assertValidationContinuity(initial,inventory());}catch(error){problems.push(error.message);}
+ try{assert.equal(outcomes.length,2);assert.ok(outcomes.every(row=>row.executed));assert.ok(!interrupted);}catch(error){problems.push(error.message);}
+ try{await prepared.verify();}catch(error){problems.push(error.message);}
+ try{continuity=assertValidationContinuity(initial,inventory());}catch(error){problems.push(error.message);}
  try{await cleanup();cleanupComplete=true;}catch(error){problems.push(error.message);}
  console.log('BOC_DETERMINISTIC_LANES_MEMBERSHIP '+JSON.stringify({...initial,executed:outcomes.flatMap(row=>row.executed??[]).toSorted(),native_git:prepared.provenance,node:{executable:process.execPath,version:process.version},continuity,cleanup:cleanupComplete,problems,environment_observation:'Effective environment hash is captured by identical-environment discovery probes before/after unchanged CLI execution; CLI itself remains the native unittest entry point.'}));
  assert.deepEqual(problems,[]);
