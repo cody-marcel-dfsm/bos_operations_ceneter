@@ -332,6 +332,10 @@ HISTORICAL_HEADER_RECORDS = ({'blob': '1951d9696d5e13b3860a3ece69ebdc6c767b323b'
   'span_bytes': 27})
 
 PRODUCT_INCLUDE_ADDITIONS = {'products/bos/product.json': {'platform/bos-customer-initialization', 'platform/ada'}}
+LEGACY_RELEASE_SCRIPT_ALIASES = {
+    'release:instruction':'python3 tools/publication_admission.py instruction',
+    'release:question':'python3 tools/publication_admission.py question',
+}
 MAINTENANCE = {
     'AGENTS.md', '.agents/skills/ship-it/SKILL.md',
     'tools/deterministic_package.py', 'tools/deterministic-package.md',
@@ -544,6 +548,10 @@ def scope(root, base, source):
             for value in (before, after):
                 value.pop('version', None)
                 if path == 'package.json':
+                    for key,expected in LEGACY_RELEASE_SCRIPT_ALIASES.items():
+                        if key in value.get('scripts',{}):
+                            if value['scripts'][key]!=expected:raise ValueError('Unexpected publication instruction alias')
+                            value['scripts'].pop(key)
                     command = value.get('scripts', {}).get('release:check')
                     if command is not None and command not in {'python3 tools/validation_contract.py release',
                                                                'python3 tools/deterministic_package.py validate',

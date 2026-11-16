@@ -517,6 +517,13 @@ published parents, octopus, shallow, replaced and grafted histories still reject
 An ancestry command error supplies no authority. The named controller/history
 regressions cover this topology and hidden side/resolution content.
 
+The preserved publication instruction feature also registers exactly
+`release:question` and `release:instruction` to the existing matching
+`tools/publication_admission.py` commands. Their historical addition/removal and
+restored current entrypoints are mapped by exact command bytes; altered/null
+aliases and unrelated package scripts reject. Existing instruction provenance,
+verbatim human binding and protected-publication behavior stay unchanged.
+
 The existing feedback skill/reference paths clarify conditional item streams,
 bounded Claude Code Monitor watches, absent Codex idle wake and current-task API
 coordination. Ordinary skill-version propagation and the fixed five-host build/

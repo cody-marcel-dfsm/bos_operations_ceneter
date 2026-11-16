@@ -64,6 +64,8 @@
     "release:publish": "python3 tools/publication_admission.py publish",
     "release:push": "python3 tools/publication_admission.py push",
     "release:authorize": "python3 tools/publication_admission.py authorize",
+    "release:question": "python3 tools/publication_admission.py question",
+    "release:instruction": "python3 tools/publication_admission.py instruction",
     "release:merge": "python3 tools/publication_admission.py merge",
     "skill:version": "node scripts/bump-skill-version.mjs",
     "skill:import": "node scripts/import-skill.mjs"

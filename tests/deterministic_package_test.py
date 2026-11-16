@@ -584,6 +584,25 @@ class PackageGateTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError,'public dependency contract'):
             d.scope(self.root,base,self.git('rev-parse','HEAD'))
 
+    def test_preserved_instruction_aliases_bind_only_the_existing_exact_handlers(self):
+        package={'version':'1.0.0','scripts':{'test':'node synthetic.mjs'}}
+        path=self.root/'package.json';path.write_text(json.dumps(package));self.commit();base=self.git('rev-parse','HEAD')
+        package['scripts'].update(d.LEGACY_RELEASE_SCRIPT_ALIASES);path.write_text(json.dumps(package));self.commit()
+        self.assertIn('package.json',d.scope(self.root,base,self.git('rev-parse','HEAD')))
+        package['scripts']['release:instruction']+=' --unapproved';path.write_text(json.dumps(package));self.commit()
+        with self.assertRaisesRegex(ValueError,'instruction alias'):d.scope(self.root,base,self.git('rev-parse','HEAD'))
+
+    def test_null_alias_and_unrelated_package_script_remain_unmapped(self):
+        for changes in ({'release:question':None},{'release:unapproved':'python3 tools/publication_admission.py question'}):
+            with self.subTest(changes=changes):
+                fixture=PackageGateTests();fixture.setUp()
+                try:
+                    package={'version':'1.0.0','scripts':{'test':'node synthetic.mjs'}};path=fixture.root/'package.json'
+                    path.write_text(json.dumps(package));fixture.commit();base=fixture.git('rev-parse','HEAD')
+                    package['scripts'].update(changes);path.write_text(json.dumps(package));fixture.commit()
+                    with self.assertRaisesRegex(ValueError,'instruction alias|configuration'):d.scope(fixture.root,base,fixture.git('rev-parse','HEAD'))
+                finally:fixture.doCleanups()
+
     def python_inventory(self, count=2):
         units={unit:[unit+('.Synthetic' if unit in d.PYTHON_MODULES[:2] else '')+'.test_'+str(index) for index in range(count)] for unit in d.PYTHON_UNITS}
         return {'units':units,'modules':{module:sorted(name for unit,ids in units.items() if unit.split('.')[0]==module for name in ids) for module in d.PYTHON_MODULES},
