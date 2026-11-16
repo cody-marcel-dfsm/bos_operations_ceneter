@@ -144,7 +144,11 @@ const git=(root,...args)=>execFileSync("git",["-C",root,"-c","user.name=Syntheti
 test("installed discussion-subscribe: subscriber mode plans no hook and its stdout wakes once per committed event",async t=>{
   await mkdir(join(project,"Vault/tmp"),{recursive:true});
   const temporary=await realpath(await mkdtemp(join(project,"Vault/tmp/fi-")));t.after(()=>rm(temporary,{recursive:true,force:true}));
-  const source=join(temporary,"source"),root=join(temporary,"host");await mkdir(source,{mode:0o700});
+  // Keep the installed host directly under Vault/tmp: CI checkout prefixes can
+  // otherwise exceed the protected bridge's portable Unix socket path limit.
+  const root=await realpath(await mkdtemp(join(project,"Vault/tmp/h")));t.after(()=>rm(root,{recursive:true,force:true}));
+  assert(Buffer.byteLength(join(root,"run","0".repeat(16)))<=103,"Installed subscriber fixture requires a compact private socket root");
+  const source=join(temporary,"source");await mkdir(source,{mode:0o700});
   for(const name of ["source/host-runtime/bos-journey-notifications","source/host-runtime/bos-shared-cache","source/platform/bos-workflow-orchestrator/scripts",
     "source/platform/bos-app-discovery/scripts","source/platform/bos-external-dependency-adapter/scripts","source/platform/submit-feedback/scripts","source/platform/ada/scripts"]){
     await mkdir(join(source,name,".."),{recursive:true});await cp(join(project,name),join(source,name),{recursive:true});}
