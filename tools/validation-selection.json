@@ -6,10 +6,10 @@
     "model": "gpt-6.1-sol",
     "oracle_sha256": "510903fa8fb0f381928ceead9c80133110bdf24a234eacba9ccad240c6468b4f",
     "host": "Codys-MacBook-Pro.local",
-    "time": "2026-11-16T06:04:19Z",
+    "time": "2026-11-16T06:25:31Z",
     "origin_main": "b16128819f56e81b2cb794c07506da056d073535",
-    "request_sha256": "3d1190f065b810911b4e78183836240d4ad5fb1bfe4f6551f037ddbd453bcb8a",
-    "proposal_sha256": "4ccc32609430a25f069a05dfdaffdfa814d15e55800fbd83528936a5e5d3ff32"
+    "request_sha256": "461e613eb6c2c481eb05f2d8df15dd6cd6faf77545054ecfdde454909ddf1772",
+    "proposal_sha256": "66fe77f4b314c5abafa56469cdeca7b2ffc5615b0450da637c5f9b7ac5dcb83c"
   },
   "selection": {
     "acceptance": [
@@ -64,7 +64,9 @@
       "Independent whole test classes execute through at most four isolated workers with unchanged within-class test semantics. Discovery covers the complete declared test-ID union exactly once, verifies actual executed counts and zero skips, binds committed test bytes and exact raw outcomes, rejects unsafe module-lifetime partitioning, and preserves default helper behavior, output bounds and cancellation cleanup.",
       "Admit a two-parent private integration with unpublished parents only when their unique complete common ancestor descends from the exact publication baseline; retain inspection of every unpublished edge, merge input, resolution and reverted blob, and reject ambiguous, unrelated or incorrectly anchored history and ancestry execution errors.",
       "Restore only the two existing release question and instruction aliases with their exact matching native handler commands; verify their actual help entrypoints and reject null, modified or unrelated script mappings while preserving instruction custody and publication admission.",
-      "Regenerate feedback guidance across all five supported hosts from canonical sources, conditioning discussion availability on current discovery and trusted host support, accurately bounding monitor lifetime and idle-wake capability, and retaining current-task authenticated coordination, exact dependency pins and package/archive parity."
+      "Regenerate feedback guidance across all five supported hosts from canonical sources, conditioning discussion availability on current discovery and trusted host support, accurately bounding monitor lifetime and idle-wake capability, and retaining current-task authenticated coordination, exact dependency pins and package/archive parity.",
+      "After unchanged sequential preparation, complete selected sanity with eight I/O threads confined to the validation child and retain its actual native record and output. Validate the existing fixed privacy readiness source, tree, file count and policy against that completed report before starting independent suites. Then execute fixed checks and remaining selected categories with bounded concurrency and at most two selected-category workers; prove actual overlap, canonical aggregation and retention of every original command, result and failure. Reject readiness or environment mismatches, output tampering and source/runtime/ref movement before exact receipt verification.",
+      "Partition the complete discovered 44-case Oracle membership exactly once, keeping the 34-case class together and splitting only independent cases from the remaining two classes after rejecting module/class lifetime hooks. Use the existing three-process fixed pool and an at-most-three-process selected wrapper cohort. Verify actual executed IDs, counts, zero skips, committed/live test hashes, private temporary directories, original per-case deadlines, raw stdout/stderr byte proofs, canonical ordering, drained pipes and bounded process-group cancellation. Reject omitted or duplicate cases, unsafe fixtures, malformed or incomplete output and result/source/runtime tampering."
     ],
     "acceptance_tests": [
       {
@@ -106,7 +108,9 @@
           34,
           38,
           49,
-          50
+          50,
+          52,
+          53
         ],
         "module": "tests/deterministic-lanes.test.mjs",
         "purpose": "Verify finite profile membership, neighboring-path refusal, mandatory conformance modules, complete selected execution and exact-source leased publication."
@@ -143,7 +147,8 @@
       },
       {
         "covers": [
-          15
+          15,
+          53
         ],
         "module": "tests/oracle-parallel.test.mjs",
         "purpose": "Verify independent parallel custody, capped effort, overlap and failure handling."
@@ -511,9 +516,9 @@
       }
     ],
     "change_class": "feature",
-    "design": "Vault/tmp/feedback-development/aio-integration/sync-skills-design.md",
-    "reason": "Add bounded acceptance for preserved private integration ancestry, exact existing release aliases and truthful regenerated feedback guidance while retaining the entire prior feature contract and complete deterministic verification.",
-    "revision_of": "95fae69282db5ec5373c46c74f589fd329e01a8af4a7204952cac2c0d5da3eb9",
+    "design": "Vault/tmp/feedback-development/aio-integration/selected-sanity-first-design.md",
+    "reason": "Complete selected sanity before existing privacy readiness, then overlap independent validation with finite workers and exact case membership while preserving the complete prior contract, native evidence custody and original lifecycle clocks.",
+    "revision_of": "e42d811fdc07edb4e84adcd982d52cd41f156ff665d7fc26f04181be3a397520",
     "scope_paths": [
       ".agents/skills/operations-center-implementation/SKILL.md",
       ".agents/skills/oracle/review-output.schema.json",
@@ -1139,8 +1144,8 @@
       "tools/vault_index.py"
     ]
   },
-  "base_commit": "d4c837ddbd7300b6521a256fb4ff5a949cc7c9e0",
-  "base_tree": "59f29b55c35709bb83ec14b7e4aadf26234f122d",
+  "base_commit": "e4c48b783393aa632e53009186d5348d49c4dde6",
+  "base_tree": "f6e02aec5a101bc5cea0ed37929ae0c57ae32524",
   "catalog_sha256": "9a96f1cd2a973457f9da681dddcc5161aa8ffda188b092d849e5bc83999391c8",
   "runtime": {
     "node": "v22.11.0",
@@ -1150,8 +1155,8 @@
     "architecture": "arm64",
     "options_sha256": "ebc442c160f8629073a82976daadaba1d95a60a38d768c81c8eb06598aedcac5"
   },
-  "proposal_sha256": "4ccc32609430a25f069a05dfdaffdfa814d15e55800fbd83528936a5e5d3ff32",
-  "review_sha256": "931f6fa89f278b847958f6ee915860d88396a5bd623bcf0b5e700554c6aa9611",
+  "proposal_sha256": "66fe77f4b314c5abafa56469cdeca7b2ffc5615b0450da637c5f9b7ac5dcb83c",
+  "review_sha256": "0127e740c7a8145ec1d1ed093d7b9b886b4f09b6f10e825e92ae403c07e196c7",
   "commands": [
     {
       "category": "sanity",
@@ -1302,21 +1307,15 @@
     "maximum_reasoning_effort": "medium"
   },
   "design_binding": {
-    "design": "Vault/tmp/feedback-development/aio-integration/sync-skills-design.md",
-    "design_sha256": "78ff2d5ec45ec8d05b0089cdec5c0c88cc51946a15d9f0cf22751d270edd3729",
-    "plan": "Vault/tmp/feedback-development/aio-integration/sync-skills-design.test-plan.json",
-    "plan_sha256": "76548b170d98b3e39f07db2f535b1c9d8c8e447e0d2062825aaf861d58e4ece5",
+    "design": "Vault/tmp/feedback-development/aio-integration/selected-sanity-first-design.md",
+    "design_sha256": "e7a0fb1dbedd4f65b944a64f13b91be4cec3b9c6a5b1ff9af91d5a00387a1a0d",
+    "plan": "Vault/tmp/feedback-development/aio-integration/selected-sanity-first-design.test-plan.json",
+    "plan_sha256": "b2023bbf3003b1a87e73aa5181ff74ac31c84949433623ced4b82df8b71c2c3d",
     "tests": [
       "tests/deterministic-lanes.test.mjs",
-      "tests/feedback-event-subscriber.test.mjs",
-      "tests/feedback-item-discussion.test.mjs",
-      "tests/isolated-test-cohort.test.mjs",
-      "tests/oracle-implementation-spec.test.mjs",
-      "tests/oracle-lifecycle.test.mjs",
-      "tests/publication-admission.test.mjs",
-      "tests/publication-history.test.mjs"
+      "tests/oracle-parallel.test.mjs"
     ]
   },
-  "contract_sha256": "e42d811fdc07edb4e84adcd982d52cd41f156ff665d7fc26f04181be3a397520",
-  "seal": "f2f1157f50a51c04f864b2690866a25c10a12d0973b212eb7c3a9496033c03b1"
+  "contract_sha256": "20c19c15b80eb8e9741e767b0de2fcd95e91adc6268608c61eb5a893ae6501b3",
+  "seal": "bf32b14164dcac5b831d28df4dd0fa54cdfc89972300c0c7fbc524024d2614a5"
 }
