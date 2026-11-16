@@ -251,6 +251,13 @@ test("real custom Git wrapper stays selected and executable tampering rejects ve
     await resource.verify(); await writeFile(wrapper, "#!/bin/sh\nprintf changed-wrapper\n");
     await assert.rejects(resource.verify(), /Original tool executable changed/);
     await resource.dispose(); assert.deepEqual(await readdir(directory), ["bin"]);
+    await unlink(wrapper); await symlink("/usr/bin/git", wrapper);
+    resource = await prepareNativeValidationGit({ parentDirectory: directory, environment });
+    assert.equal(resource.provenance.mode, "original");
+    assert.equal(resource.provenance.original_tools.git.kind, "symlink");
+    assert.deepEqual(resource.environment, environment);
+    assert.equal("utility" in resource.provenance, false);
+    await resource.verify(); await resource.dispose();
   } finally { if (resource) await resource.dispose(); await rm(directory, { recursive: true, force: true }); }
 });
 
@@ -262,6 +269,13 @@ test("native resource rejects directory, foreign-entry and link tampering with o
     if (resource.provenance.mode === "direct-system-darwin-git") {
       const privateDirectory = resource.provenance.private_directory;
       await chmod(privateDirectory, 0o755); await assert.rejects(resource.verify(), /directory custody/); await chmod(privateDirectory, 0o700);
+      const savedDirectory = join(directory, "saved-directory");
+      await rename(privateDirectory, savedDirectory); await mkdir(privateDirectory, { mode: 0o700 });
+      const foreignMarker = join(privateDirectory, "foreign-marker"); await writeFile(foreignMarker, "preserve-replaced-directory");
+      await assert.rejects(resource.verify(), /directory custody/); await assert.rejects(resource.dispose(), /directory custody/);
+      assert.equal(await readFile(foreignMarker, "utf8"), "preserve-replaced-directory");
+      await rm(privateDirectory, { recursive: true }); await rename(savedDirectory, privateDirectory);
+      await resource.verify();
       const foreign = join(privateDirectory, "foreign"); await writeFile(foreign, "preserve");
       await assert.rejects(resource.verify(), /only its owned link/); await assert.rejects(resource.dispose(), /only its owned link/);
       assert.equal(await readFile(foreign, "utf8"), "preserve"); await unlink(foreign);
