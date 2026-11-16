@@ -167,3 +167,11 @@ feature test. Each entry names the recurring boundary and reason for retention;
 adding or removing one changes the catalog identity and requires review. Feature
 acceptance remains scoped to the feature and is not automatically promoted into
 regression. Local source validation does not prove live-client acceptance.
+
+New proposal seals declare `--test-concurrency=1` in every selected Node command.
+The file list, supporting fixtures and actual case requirements remain exact.
+Verification recognizes only the complete canonical bounded vector or the exact
+complete legacy vector of an immutable historical seal; mixed or arbitrary
+options reject. Current deterministic package admission requires the bounded
+vector and its genuine proposal origin. Updating the command producer never
+rewrites an old seal or supplies a new decision through manual resealing.

@@ -392,9 +392,9 @@ class PackageGateTests(unittest.TestCase):
         self.assertEqual(summaries[0]['output_sha256'], checksum)
 
     def test_preserved_native_scope_requires_complete_spec_modules_and_rejects_neighboring_paths(self):
-        self.assertEqual(len(d.PRESERVED_SPEC_PATHS),33)
+        self.assertEqual(len(d.PRESERVED_SPEC_PATHS),34)
         self.assertEqual(d.native.digest('\n'.join(sorted(d.PRESERVED_SPEC_PATHS)).encode()),
-                         'cc90c47a1b2711c64d674a161b6e67d75f6395c02c69458c69aa89c903307358')
+                         '5c41dd728671bebad131445959c6b5812287b64b23cddf2dbaa397240aa8169d')
         baseline=self.git('rev-parse','HEAD');path=self.root/'tools/vault_index.py'
         path.parent.mkdir(parents=True,exist_ok=True);path.write_text('bounded preserved implementation\n');self.commit()
         source=self.git('rev-parse','HEAD')
@@ -1291,6 +1291,17 @@ class PackageGateTests(unittest.TestCase):
             self.assertEqual(result['status'], 'RELEASE_PUBLISHED')
             self.assertEqual(written, [['git', 'push', '--force-with-lease=refs/heads/main:' + value['base'], remote,
                                         value['source'] + ':refs/heads/main']])
+
+    def test_current_native_node_bound_rejects_legacy_missing_extra_or_changed_vectors(self):
+        rows=[{'category':'sanity','argv':['python3','tools/validation_contract.py','sanity'],'tests':[]},
+              {'category':'interactions','argv':['node','--test','--test-reporter=tap','--test-concurrency=1','tests/a.test.mjs'],'tests':['tests/a.test.mjs']}]
+        d.require_node_file_bounds(rows)
+        self.assertIn('--test-concurrency=1',self.fixed_commands[6])
+        import copy
+        for transform in [lambda argv:argv.remove('--test-concurrency=1'),lambda argv:argv.__setitem__(3,'--test-concurrency=2'),
+                          lambda argv:argv.append('--test-concurrency=1'),lambda argv:argv.append('tests/unselected.test.mjs')]:
+            changed=copy.deepcopy(rows);transform(changed[1]['argv'])
+            with self.assertRaisesRegex(ValueError,'file concurrency one'):d.require_node_file_bounds(changed)
 
 
 if __name__ == '__main__':

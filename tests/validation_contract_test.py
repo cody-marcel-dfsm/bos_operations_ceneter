@@ -191,4 +191,34 @@ class Contracts(unittest.TestCase):
   c=self.publish('bug_fix');self.assertEqual(v.review_effort('ultra',self.root),'low');self.assertEqual(c['delivery_policy']['sla_seconds'],180)
   self.commit();next_selection=self.selection();next_selection['revision_of']=c['contract_sha256'];revised=self.seal(next_selection,'revision',{})
   self.assertEqual(revised['delivery_policy'],c['delivery_policy'])
+ def test_explicit_node_vector_and_exact_legacy_shapes_reject_mixed_options(self):
+  selection=self.selection('deep_bug_fix');selection['categories'].append({'name':'acceptance','tests':['tests/reproduction.test.mjs'],'fixtures':[]})
+  current=v.commands(selection,self.catalog);legacy=v.commands(selection,self.catalog,legacy=True)
+  self.assertEqual([row['tests'] for row in current],[row['tests'] for row in legacy])
+  self.assertEqual([row['fixtures'] for row in current],[row['fixtures'] for row in legacy])
+  for row in current:
+   if row['category']!='sanity':self.assertEqual(row['argv'],['node','--test','--test-reporter=tap','--test-concurrency=1',*row['tests']])
+  contract=self.seal(selection,'synthetic proposal',{'verdict':'APPROVED'});v.write_selection(self.root,contract);self.commit();self.assertEqual(v.verify(self.root)['commands'],current)
+  old=copy.deepcopy(contract);old['commands']=legacy;(self.root/v.SELECTION).write_text(json.dumps(reseal(old)));self.commit()
+  self.assertEqual(v.verify(self.root)['commands'],legacy)
+  with self.assertRaises(ValueError):v.native_origin(self.root)
+  for mutate in [lambda rows:rows[1]['argv'].remove('--test-concurrency=1'),
+                 lambda rows:rows[1]['argv'].__setitem__(3,'--test-concurrency=2'),
+                 lambda rows:rows[1]['argv'].append('--test-concurrency=1'),
+                 lambda rows:rows[1]['argv'].append('tests/unknown.test.mjs')]:
+   changed=copy.deepcopy(contract);mutate(changed['commands']);(self.root/v.SELECTION).write_text(json.dumps(reseal(changed)));self.commit()
+   with self.assertRaisesRegex(ValueError,'selected commands'):v.verify(self.root)
+  with self.assertRaises(ValueError):v.native_origin(self.root)
+
+ def test_declared_node_file_bound_executes_actual_exclusive_files(self):
+  names=['tests/exclusive-first.test.mjs','tests/exclusive-second.test.mjs']
+  body="import test from 'node:test';import {mkdirSync,rmdirSync} from 'node:fs';import {setTimeout} from 'node:timers/promises';test('exclusive file',async()=>{mkdirSync('active-file');try{await setTimeout(100)}finally{rmdirSync('active-file')}});"
+  for name in names:(self.root/name).write_text(body)
+  selection=self.selection();selection['categories'][1]['tests']=names
+  selection['acceptance_tests']=[{'module':name,'covers':[0],'purpose':'Actual exclusive file scheduling'} for name in names]
+  v.validate_selection(selection,self.catalog)
+  command=v.commands(selection,self.catalog)[1]['argv'];environment={k:value for k,value in os.environ.items() if k!='NODE_TEST_CONTEXT'}
+  result=subprocess.run(command,cwd=self.root,env=environment,capture_output=True,text=True,timeout=10)
+  summary=v.result_summary(result.stdout+result.stderr,result.returncode,True)
+  self.assertTrue(summary['passed'],result.stdout+result.stderr);self.assertEqual(summary['tests'],2)
 if __name__=='__main__':unittest.main()

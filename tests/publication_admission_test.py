@@ -939,6 +939,10 @@ def owned_remote(test, root, commit):
         " if args[index]=='origin':",
         '  configured=subprocess.check_output([REAL,"config","--get-all","remote.origin.url"],text=True).split()',
         "  if len(configured)!=1 or configured[0] not in ALIASES:raise SystemExit('Unknown synthetic origin')",
+        " if action=='fetch' and args[index]=='origin' and index==len(args)-1:",
+        '  specs=subprocess.check_output([REAL,"config","--get-all","remote.origin.fetch"],text=True).split()',
+        "  if specs!=['+refs/heads/*:refs/remotes/origin/*']:raise SystemExit('Unknown synthetic fetch mapping')",
+        '  args.extend(specs)',
         ' args[index]=BARE',
         ' fd=os.open(JOURNAL,os.O_WRONLY|os.O_CREAT|os.O_APPEND|os.O_NOFOLLOW,0o600)',
         ' with os.fdopen(fd,"w") as stream:stream.write(json.dumps({"action":action,"target":"owned_fixture_bare"})+"\\n")',
@@ -960,6 +964,23 @@ class OwnedDestinationResolution(unittest.TestCase):
 
     def git(self,*args):
         return subprocess.check_output([_REAL_GIT,*args],cwd=self.root,text=True,stderr=subprocess.PIPE).strip()
+
+    def test_closed_transport_routes_real_objects_readback_and_fetch_and_refuses_unknown(self):
+        self.git('config','user.name','Synthetic Transport');self.git('config','user.email','transport@example.invalid')
+        (self.root/'source.txt').write_text('base');self.git('add','.');self.git('commit','-qm','base')
+        before=self.git('rev-parse','HEAD');self.git('update-ref','refs/remotes/origin/main',before)
+        remote=owned_remote(self,self.root,before);status=publication.public_status
+        self.assertEqual(status.remote_refs(self.root,SSH,['refs/heads/main'])['refs/heads/main'],before)
+        (self.root/'source.txt').write_text('next');self.git('add','.');self.git('commit','-qm','next')
+        after=self.git('rev-parse','HEAD');status.push_ref(self.root,SSH,after,'refs/heads/main',before)
+        subprocess.run(['git','fetch','origin'],cwd=self.root,check=True,capture_output=True)
+        self.assertEqual(self.git('rev-parse','refs/remotes/origin/main'),after)
+        self.assertEqual(status.remote_refs(self.root,SSH,['refs/heads/main'])['refs/heads/main'],after)
+        refused=subprocess.run(['git','ls-remote','https://unknown.example.invalid/foreign.git'],cwd=self.root,capture_output=True)
+        self.assertNotEqual(refused.returncode,0)
+        events=[json.loads(line) for line in self.transport_journal.read_text().splitlines()]
+        self.assertTrue({'push','fetch','ls-remote'}<={row['action'] for row in events})
+        self.assertTrue(all(row['target']=='owned_fixture_bare' for row in events))
 
     def test_owned_https_to_ssh_and_literal_push_rules_match_real_git(self):
         status=publication.public_status

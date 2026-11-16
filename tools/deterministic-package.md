@@ -612,3 +612,29 @@ owned directory identities, and preserves foreign replacements. The existing
 isolated-cohort and sealed-spec modules test resource decisions, content/mode
 continuity, actual startup rejection and constructor mutations. Full current
 native verification remains required; historical timing breaches stay recorded.
+
+### Profile /18: explicit nested execution and owned transports
+
+New selected Node vectors and the fixed Node suite explicitly declare
+`--test-concurrency=1`. Each command retains its exact files and cases, while
+its existing inner cohorts retain their original bounds. Current package
+admission rejects legacy, missing, duplicate, changed or extra options; genuine
+historical seals retain their exact complete legacy vectors. The command
+producer writes the bounded shape through a genuine replacement proposal seal.
+No environment override or historical proof edit supplies that seal.
+
+The preserved inventory adds the exact `tests/publication-admission.test.mjs`
+consumer (34 paths, unchanged mandatory selected modules). Its discovery executes
+both existing publication cases and owned-destination negatives. Tests preserve
+real synthetic Git objects, leases and readback behind a closed local transport
+stand-in; unknown network effects are refused. Configured and resolved fetch,
+push, literal mutation and canonical readback URLs each stay within the existing
+fixed owned aliases. Exact scope, receipt, source, CI, authority and server lease
+checks remain required.
+
+The spec consumer partitions only independently inspected heavy classes, retains
+all actual case IDs/raw results and original deadlines, and cleans verified-owned
+resources. Host tests use real readiness/progress barriers and the exact logical
+expiry callback; the production host's lifetime and authority stay unchanged.
+Full current native verification remains mandatory. Original failed runs and
+all timing-budget breaches remain retained evidence.

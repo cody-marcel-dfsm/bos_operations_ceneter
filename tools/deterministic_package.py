@@ -220,6 +220,7 @@ PRESERVED_SPEC_PATHS = {'.agents/skills/operations-center-implementation/SKILL.m
  'tests/oracle_scope_index_test.py',
  'tests/oracle_source_frontier_test.py',
  'tests/oracle_spec_test.py',
+ 'tests/publication-admission.test.mjs',
  'tests/publication_admission_test.py',
  'tests/published_fixture.py',
  'tests/shipment_workflow_test.py',
