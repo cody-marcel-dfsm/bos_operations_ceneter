@@ -138,6 +138,7 @@ export async function prepareNativeValidationGit({ parentDirectory, environment 
       if (disposed) throw new Error("Native Git resource already disposed");
       assert.equal(hash(encoded(original)), originalHash, "Original environment changed");
       assert.equal(hash(encoded(child)), provenance.child_environment_sha256, "Child environment changed");
+      if (directory) await verifyDirectory();
       for (const [name, path] of Object.entries(paths)) {
         assert.equal(await selected(name === "python" ? "python3" : name, original), path, "Original tool routing changed");
         assert.deepEqual(await executable(path), captured[name], "Original tool executable changed");
@@ -149,7 +150,6 @@ export async function prepareNativeValidationGit({ parentDirectory, environment 
       assert.deepEqual(JSON.parse(await command(paths.python, ["-c", "import json,sys;print(json.dumps({'executable':sys.executable,'version':sys.version}))"], child)), python,
         "Original Python selection changed");
       if (directory) {
-        await verifyDirectory();
         assert.deepEqual(await executable(utility.path, true), utility, "Native developer utility changed");
         assert.equal(await command(utility.path, ["--find", "git"], original), direct.path, "Selected developer Git changed");
         assert.deepEqual(await executable(direct.path, true), direct, "Native Git executable changed");
