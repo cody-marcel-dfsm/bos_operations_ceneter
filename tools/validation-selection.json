@@ -4,12 +4,12 @@
   "stamp": {
     "engine": "codex",
     "model": "gpt-6.1-sol",
-    "oracle_sha256": "11c855e3c0183799fcfdf10d02c6b89c1eb397582c73406c0defe99f07017fe1",
+    "oracle_sha256": "47b5dc9d6639b40fcc1f39dde51f9dbd72abcab68e88a6b6b9e01cf42f896817",
     "host": "Codys-MacBook-Pro.local",
-    "time": "2026-11-16T12:01:06Z",
+    "time": "2026-11-16T13:13:00Z",
     "origin_main": "b16128819f56e81b2cb794c07506da056d073535",
-    "request_sha256": "6958bf0375ab2c2370527736ccf428464f6bed175be8c17731fd1db5d07ea413",
-    "proposal_sha256": "a0d6e14c5fe023a5e9d73af3cd095ffa40faf8a546162540e8b56a4fb8edc1c1"
+    "request_sha256": "ad97b9d149c9461a509f8f60723fa61ff40dd80b0974b94e465f8c07978e5e4d",
+    "proposal_sha256": "9601aa638b3fc2a50858f1f458400a3cf1200b67440f29e8a12087e86f9f5def"
   },
   "selection": {
     "acceptance": [
@@ -87,7 +87,8 @@
       "Generate newly sealed selected and fixed Node command vectors with explicit per-file concurrency one; accept historical commands only as complete exact vectors in genuine immutable historical seals, reject mixed or arbitrary vectors, and require the bounded vector for the new current deterministic profile through a genuine native replacement seal.",
       "The selected publication consumer executes the complete admission and destination-resolution test classes, verifies exact unique declared and callable test membership, rejects unknown or missing classes and test identities, and is admitted only through its exact finite selected path with mandatory coverage and all existing checks preserved.",
       "Extend only the two selected heavy test consumers to verified test-only native Git and conservative resource-admitted concurrency capped at eight. Preserve the complete unique 77-case union, actual executed identities, raw outcomes, existing unit and category deadlines, other consumer defaults and production Git routing. Verify source, runtime, tool and environment continuity; pressure, swap or custody degradation cancels and drains owned work, retains failures and completes verified-owned cleanup before success.",
-      "Continuously capture category stdout and stderr through bounded binary reads into private immutable run-bound evidence, preserving stream identity, ordering, byte counts and hashes before interruption. Prove actual early binary output followed by timeout and owned-child drain; reject missing, altered, reordered, incomplete or mismatched evidence and preserve non-passing interruption outcomes. Successful summary bytes remain equivalent to the prior stdout-plus-stderr behavior; historical records retain strict legacy validation without fabricated stream witnesses, every new optional custody field is validated when present, and raw stream bodies remain excluded from packages and public attestations."
+      "Continuously capture category stdout and stderr through bounded binary reads into private immutable run-bound evidence, preserving stream identity, ordering, byte counts and hashes before interruption. Prove actual early binary output followed by timeout and owned-child drain; reject missing, altered, reordered, incomplete or mismatched evidence and preserve non-passing interruption outcomes. Successful summary bytes remain equivalent to the prior stdout-plus-stderr behavior; historical records retain strict legacy validation without fabricated stream witnesses, every new optional custody field is validated when present, and raw stream bodies remain excluded from packages and public attestations.",
+      "Permit only tests/deterministic-lanes.test.mjs to reuse the unchanged verified test-only Git routing and private-directory/content-continuity primitives. Preserve its two existing labels and complete deterministic_source_test.py and deterministic_package_test.py modules, discover and execute every actual unique test identity exactly once with zero skips or failures, retain actual raw stdout/stderr bytes and outcomes, and run at most one Python child at a time. Pin the original absolute Python and Node executables; preserve custom Git and non-Darwin behavior and every other environment value; verify source bytes, modes, runtime, executable equivalence and owned-directory custody before and after execution. Cover startup rejection and cancellation, drain owned children, retain original failures and clean only verified-owned artifacts before success. Add no resource credit, worker pool, concurrency increase, deadline change or production routing change; preserve all existing selections, limits, historical evidence and clocks, and require complete current native verification without treating the timing observation as aggregate success."
     ],
     "acceptance_tests": [
       {
@@ -144,7 +145,8 @@
           71,
           72,
           73,
-          74
+          74,
+          75
         ],
         "module": "tests/deterministic-lanes.test.mjs",
         "purpose": "Verify finite profile membership, neighboring-path refusal, mandatory conformance modules, complete selected execution and exact-source leased publication."
@@ -577,9 +579,9 @@
       }
     ],
     "change_class": "feature",
-    "design": "Vault/tmp/feedback-development/aio-integration/final4-recovery-design.md",
-    "reason": "Add bounded consumer resource admission and interruption-safe binary category evidence while preserving every prior criterion, selected module, fixture, mapping, execution guard and historical result.",
-    "revision_of": "16b8ea9ab4171338094ecf42831df15727566a2eb93795c3d1754a04334863df",
+    "design": "Vault/tmp/feedback-development/aio-integration/lane-git-only-design.md",
+    "reason": "Extend verified test-only Git routing to the existing sequential deterministic-lane consumer while preserving complete case execution, custody, cleanup, existing guards and all prior validation requirements.",
+    "revision_of": "6511f8d09a0019a9d57a3a53ef83c2a4691b53c76a131ede69afc4a7f2a25271",
     "scope_paths": [
       ".agents/skills/operations-center-implementation/SKILL.md",
       ".agents/skills/oracle/review-output.schema.json",
@@ -1207,8 +1209,8 @@
       "tools/vault_index.py"
     ]
   },
-  "base_commit": "a39c4205b55f387442720de17df3b33197a2df74",
-  "base_tree": "9ee16630d70436c6fa3a482f2c928c7d63d2fa0f",
+  "base_commit": "73be108800ae9116804d60bf7458cab015dfa914",
+  "base_tree": "e91da5c9fc2c5c235301a844da02660064daf9fb",
   "catalog_sha256": "9a96f1cd2a973457f9da681dddcc5161aa8ffda188b092d849e5bc83999391c8",
   "runtime": {
     "node": "v22.11.0",
@@ -1218,8 +1220,8 @@
     "architecture": "arm64",
     "options_sha256": "ebc442c160f8629073a82976daadaba1d95a60a38d768c81c8eb06598aedcac5"
   },
-  "proposal_sha256": "a0d6e14c5fe023a5e9d73af3cd095ffa40faf8a546162540e8b56a4fb8edc1c1",
-  "review_sha256": "84befb7d89b8963dd0f70fabe48bc80a7ebbd405ebb5a2c815a5f1a1f6c51666",
+  "proposal_sha256": "9601aa638b3fc2a50858f1f458400a3cf1200b67440f29e8a12087e86f9f5def",
+  "review_sha256": "4f311199a15004d55f6b7d2abbf1b89e4511b3c509168dde9459134ee305f162",
   "commands": [
     {
       "category": "sanity",
@@ -1374,18 +1376,14 @@
     "maximum_reasoning_effort": "medium"
   },
   "design_binding": {
-    "design": "Vault/tmp/feedback-development/aio-integration/final4-recovery-design.md",
-    "design_sha256": "496960edce70c78825722de7be6a370bb5e1fea1dbb9e057e56b37f90fc7de5f",
-    "plan": "Vault/tmp/feedback-development/aio-integration/final4-recovery-design.test-plan.json",
-    "plan_sha256": "ec9ff2ba27664fad35f747ed88d64f16dbec728bfe40a375c8ede1502407595c",
+    "design": "Vault/tmp/feedback-development/aio-integration/lane-git-only-design.md",
+    "design_sha256": "b985663a8b665794865a71245b463652bf02d324f6d49e2e960880f33338e220",
+    "plan": "Vault/tmp/feedback-development/aio-integration/lane-git-only-design.test-plan.json",
+    "plan_sha256": "f3c6ea2040bd83900f14ab46f51e545a3dcc21e186b8985de74096135ad14601",
     "tests": [
-      "tests/command-coverage.test.mjs",
-      "tests/deterministic-lanes.test.mjs",
-      "tests/publication-admission.test.mjs",
-      "tests/shipment-workflow.test.mjs",
-      "tests/validation-contract.test.mjs"
+      "tests/deterministic-lanes.test.mjs"
     ]
   },
-  "contract_sha256": "6511f8d09a0019a9d57a3a53ef83c2a4691b53c76a131ede69afc4a7f2a25271",
-  "seal": "fb7e60f2441563718d1fb56e530f3df14dbf31519fd0ef6a2e935ee1876f4f22"
+  "contract_sha256": "6c7e71026f4cfb36efd4934e8d963ff5c03b19408be6448fb9e3d821b4d226e6",
+  "seal": "0d5bf83d0ff5f0204db5bdbb97ab94963f36279b31717132fc9c0bdcb6a6d891"
 }

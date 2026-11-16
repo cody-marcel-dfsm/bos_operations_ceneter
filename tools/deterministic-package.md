@@ -649,14 +649,23 @@ commands directly. Raw native streams never enter packages or public attestation
 
 Only the publication and shipment test consumers use the existing verified
 native-Git and conservative resource helpers with at most eight admitted workers.
-Their complete35and42method inventories, original labels, per-process outcomes,
+Their complete 35 and 42 method inventories, original labels, per-process outcomes,
 source/tool/environment/resource checks and verified cleanup remain required.
 Other cohort defaults, these consumers' existing timeout0, top-level file
 concurrency one and the900second category guard remain unchanged. An interrupted
 run retains actual available bytes and reports incomplete execution.
 
-Profile19's exact editable native inventory contains35paths, adding only
-`tests/shipment-workflow.test.mjs` to profile18's34. Its existing required selected
+Profile19's exact editable native inventory contains 35 paths, adding only
+`tests/shipment-workflow.test.mjs` to profile18's 34. Its existing required selected
 consumer remains mandatory; an unselected consumer or neighboring filename fails
 admission. The sorted newline inventory SHA256 is
 `ce8df23a9f26515e06e6f5be092842c0c5f9eda62527305810523ba70eb361f3`.
+
+The existing `tests/deterministic-lanes.test.mjs` consumer also uses verified
+Git routing and owned-directory/content-continuity primitives. It runs the same
+two Python CLI modules, one child at a time, with complete discovered case IDs
+and original absolute runtime/environment custody. It grants no RAM credit,
+adds no pool, and changes no default, unit deadline, selected vector or category
+timeout. Existing custom Git wrappers and Linux routing remain preserved by the
+unchanged helper. This bounded consumer adaptation is authorized by the genuine
+76-criterion spec; all complete current native checks remain mandatory.
