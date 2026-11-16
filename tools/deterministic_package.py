@@ -1129,8 +1129,10 @@ def run_complete_category(root, base, before, selected, *, ci=False):
 
 
 def check_combined_schedule(root, before, runs, spec_runs, schedule, *, ci=False):
+    if not isinstance(spec_runs,list):raise ValueError('Selected schedule membership missing')
     if schedule is None:
-        if any('environment_overrides' in row for row in spec_runs):
+        if ([row.get('category') for row in spec_runs] == ['sanity','interactions','acceptance'] and scheduling(CHECKS) != 'serial/1'
+                or any('environment_overrides' in row for row in spec_runs)):
             raise ValueError('Selected schedule missing')
         return
     try:

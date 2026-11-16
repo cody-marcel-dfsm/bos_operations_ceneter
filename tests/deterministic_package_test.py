@@ -175,6 +175,8 @@ class PackageGateTests(unittest.TestCase):
         self.assertLess(max(row['started_at'] for row in selected[1:]),min(row['completed_at'] for row in selected[1:]))
         with patch.object(d,'CHECKS',self.fixed_commands):
             d.check_combined_schedule(self.root,before,runs,selected,schedule,ci=True)
+            with self.assertRaisesRegex(ValueError,'schedule missing'):
+                d.check_combined_schedule(self.root,before,runs,[{k:v for k,v in row.items() if k!='environment_overrides'} for row in selected],None,ci=True)
             for change in ('environment','ready','source','missing','output','sequential'):
                 changed=json.loads(json.dumps(schedule));rows=json.loads(json.dumps(selected))
                 if change=='environment':rows[0]['environment_overrides']={'UV_THREADPOOL_SIZE':'4'}
