@@ -8,6 +8,7 @@ import os
 from pathlib import Path
 import re
 import shutil
+import signal
 import subprocess
 import sys
 import time
@@ -107,40 +108,100 @@ def selected_commands(root, base, source):
         return []
     return contract.verify(root, source)['commands']
 
-def spec_runs(root, base, source, store, failure, *, ci=False):
-    """Execute every spec-selected category completely; a failure retains output and issues nothing.
-
-    Locally each category runs through the native runner, which also enforces the bug-fix
-    fail-before reproduction and records its result. A CI host has a different runtime and
-    no owner-local reproduction, so it executes the selected argv directly as a phase check.
-    """
-    runs = []
+def execute_spec_category(root, base, source, store, row, *, ci=False, environment_overrides=None, timeout=900):
+    """Run one actual selected command; callers still prove the full ordered union."""
+    if type(timeout) not in (int,float) or not 0 < timeout <= 900:
+        raise ValueError('Original selected category deadline required')
+    chosen = next((item for item in selected_commands(root, base, source)
+                   if item['category'] == row.get('category')), None)
+    if chosen != row:
+        raise ValueError('Exact current selected category required')
+    if environment_overrides is not None and (row['category'] != 'sanity'
+            or environment_overrides != {'UV_THREADPOOL_SIZE': '8'}):
+        raise ValueError('Only the fixed validation sanity environment is admitted')
     environment = {k: v for k, v in os.environ.items() if k != 'NODE_TEST_CONTEXT'}
-    for row in selected_commands(root, base, source):
-        command = row['argv'] if ci else [sys.executable, 'tools/validation_contract.py', 'run', '--category', row['category']]
-        began = time.time()
+    environment.update(environment_overrides or {})
+    command = row['argv'] if ci else [sys.executable, 'tools/validation_contract.py', 'run', '--category', row['category']]
+    began = time.time()
+    try:
+        process = subprocess.Popen(command, cwd=root, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                   env=environment, start_new_session=True)
         try:
-            done = subprocess.run(command, cwd=root, capture_output=True, timeout=900, env=environment)
-            output, code = done.stdout + b'\n' + done.stderr, done.returncode
-        except subprocess.TimeoutExpired as error:
-            output, code = (error.stdout or b'') + b'\n' + (error.stderr or b''), 'TIMEOUT'
-        key = digest(output); path = store / (key + '.log')
-        if not path.exists(): private_write(path, output)
-        entry = {'category': row['category'], 'command': row['argv'], 'runner': command, 'exit_code': code,
-                 'output_sha256': key, 'started_at': began, 'completed_at': time.time()}
-        if ci:
-            passed = code != 'TIMEOUT' and contract.result_summary(output.decode('utf-8', 'replace'), code, bool(row['tests']))['passed']
-        else:
-            native = _native_record(output)
-            passed = code == 0 and native is not None and native.get('passed') is True
-            if native is not None:
-                record = Path(native['record'])
-                entry.update(record=str(record), record_sha256=digest(record.read_bytes()) if record.is_file() else None)
+            stdout, stderr = process.communicate(timeout=timeout)
+            code = process.returncode
+        except subprocess.TimeoutExpired:
+            # Signal only this newly created session. Wrapper TERM hooks drain
+            # their separately owned fixture groups before the bounded KILL.
+            try: os.killpg(process.pid, signal.SIGTERM)
+            except ProcessLookupError: pass
+            try: stdout, stderr = process.communicate(timeout=5)
+            except subprocess.TimeoutExpired:
+                try: os.killpg(process.pid, signal.SIGKILL)
+                except ProcessLookupError: pass
+                stdout, stderr = process.communicate(timeout=5)
+            code = 'TIMEOUT'
+        output = stdout + b'\n' + stderr
+    except OSError as error:
+        output, code = str(error).encode(), 'EXECUTION_ERROR'
+    key = digest(output); path = store / (key + '.log')
+    if not path.exists(): private_write(path, output)
+    entry = {'category': row['category'], 'command': row['argv'], 'runner': command, 'exit_code': code,
+             'output_sha256': key, 'started_at': began, 'completed_at': time.time(), 'timeout_seconds': timeout}
+    if environment_overrides is not None:
+        entry['environment_overrides'] = dict(environment_overrides)
+    if ci:
+        passed = code not in {'TIMEOUT', 'EXECUTION_ERROR'} and contract.result_summary(output.decode('utf-8', 'replace'), code, bool(row['tests']))['passed']
+    else:
+        actual = _native_record(output)
+        passed = code == 0 and actual is not None and actual.get('passed') is True
+        if actual is not None:
+            record = Path(actual['record'])
+            entry.update(record=str(record), record_sha256=digest(record.read_bytes()) if record.is_file() else None)
+    return entry, passed
+
+
+def spec_runs(root, base, source, store, failure, *, ci=False):
+    """Execute all selected categories with the source lane's original serial order."""
+    runs = []
+    for row in selected_commands(root, base, source):
+        entry, passed = execute_spec_category(root, base, source, store, row, ci=ci)
         runs.append(entry)
         if not passed:
             private_write(store / (str(time.time_ns()) + '.failure.json'), encoded(dict(failure, spec_runs=runs)))
-            raise ValueError('Sealed spec category failed: ' + row['category'] + '; retained ' + str(path))
+            raise ValueError('Sealed spec category failed: ' + row['category'] + '; retained ' + str(store / (entry['output_sha256'] + '.log')))
     return runs
+
+
+def spec_category_output(root, row, store, *, ci=False):
+    """Original category body, including nested sanity output, under existing custody."""
+    output = store / (row['output_sha256'] + '.log')
+    if output.is_symlink() or digest(output.read_bytes()) != row['output_sha256']:
+        raise ValueError('Selected category output custody changed')
+    if ci:
+        return output.read_bytes()
+    record = Path(row.get('record') or '')
+    if record.is_symlink() or not record.is_file() or digest(record.read_bytes()) != row.get('record_sha256'):
+        raise ValueError('Selected category original custody changed')
+    value = json.loads(record.read_bytes())
+    original = Path(value['output_file'])
+    if original.is_symlink() or digest(original.read_bytes()) != value['output_sha256']:
+        raise ValueError('Selected category original output changed')
+    return original.read_bytes()
+
+
+def check_spec_environment(root, row, store, *, ci=False):
+    if 'timeout_seconds' in row and (type(row['timeout_seconds']) is not int or row['timeout_seconds'] != 900):
+        raise ValueError('Selected category deadline changed')
+    override = row.get('environment_overrides')
+    if 'environment_overrides' not in row:
+        return
+    if row['category'] != 'sanity' or override != {'UV_THREADPOOL_SIZE': '8'}:
+        raise ValueError('Selected validation environment changed')
+    reports = [json.loads(line)['privacy_coverage'] for line in spec_category_output(root, row, store, ci=ci).splitlines()
+               if line.startswith(b'{"privacy_coverage":')]
+    if len(reports) != 1 or type(reports[0].get('io_threads')) is not int or reports[0]['io_threads'] != 8:
+        raise ValueError('Selected sanity effective environment changed')
+
 
 def _native_record(output):
     for line in reversed(output.decode('utf-8', 'replace').splitlines()):
@@ -210,6 +271,7 @@ def check_spec_runs(root, base, source, runs, store, *, receipt_completed=None, 
     if mode not in {'native', 'ci'}:
         raise ValueError('Unknown spec execution mode')
     for row, chosen in zip(runs, expected):
+        check_spec_environment(root, row, store, ci=mode == 'ci')
         path = store / (row['output_sha256'] + '.log')
         if mode == 'ci':
             # A CI phase receipt binds the complete retained output of the directly executed argv.

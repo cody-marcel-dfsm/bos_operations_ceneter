@@ -529,3 +529,23 @@ bounded Claude Code Monitor watches, absent Codex idle wake and current-task API
 coordination. Ordinary skill-version propagation and the fixed five-host build/
 archive parity checks remain mandatory. Source generation grants no installed
 host, persistent monitor, publication or deployment readiness.
+
+Amendment `/14` retains the complete selected command inventory and runs selected
+sanity to actual completion after sequential source preparation. Only that
+validation child receives `UV_THREADPOOL_SIZE=8`; its retained real privacy report
+must confirm the effective setting. The existing fixed privacy FD snapshot must
+match its source, tree, file count and policy before any independent test starts.
+The remaining two selected categories use at most two workers alongside the
+fixed tail; every original result and failure is collected in canonical order.
+The receipt binds these fences, ordering, environment and original byte custody;
+source/runtime movement, changed reports and incomplete membership reject.
+Source-maintenance default execution remains serial. Selected command timeouts
+retain their900-second deadline and terminate/drain only their owned process
+session, invoking existing fixture-group cancellation hooks before bounded KILL.
+
+The inspected Oracle module retains all44 discovered IDs. Its fast34-case class
+stays intact; only the independent3+7 per-test fixtures become exact-ID units in
+the existing three-process native pool and an at-most-three-process wrapper.
+Module/class lifetime hooks, unknown/omitted/duplicated cases, source drift,
+skips, count mismatches and altered raw proofs reject. All existing privacy,
+history, packaging, selected contracts and original SLA evidence remain required.

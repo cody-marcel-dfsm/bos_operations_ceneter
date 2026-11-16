@@ -33,7 +33,7 @@ except ImportError:
     import oracle_spec_seal as spec_seal
 
 KIND = 'boc-deterministic-package/1'
-PROFILE = 'feedback-discovery-and-release-tool/13'
+PROFILE = 'feedback-discovery-and-release-tool/14'
 _OUTPUT_LOCK = threading.Lock()
 WS_LOCK_RECORD = {
     'version': '8.23.0', 'resolved': 'https://registry.npmjs.org/ws/-/ws-8.23.0.tgz',
@@ -68,8 +68,10 @@ TESTS = [
 ]
 PYTHON_MODULES = ('deterministic_package_test', 'command_coverage_test', 'oracle_parallel_test')
 ORACLE_CLASSES = ('ParallelReview', 'CriterionDependencyRoles', 'RawObservationCriterion')
-PYTHON_UNITS = PYTHON_MODULES[:2] + tuple('oracle_parallel_test.' + name for name in ORACLE_CLASSES)
-PYTHON_DISPATCH = PYTHON_UNITS[2:] + PYTHON_UNITS[:2]
+ORACLE_INDEPENDENT_CASES = {'CriterionDependencyRoles': ('test_authentic_legacy_controls_require_fresh_adoption_and_future_roles_remain_separate', 'test_original_functional_control_module_and_changed_support_stay_individual', 'test_tampered_unknown_lineage_policy_changed_body_and_admitted_control_invalidation'), 'RawObservationCriterion': ('test_postcheck_error_reuses_only_unchanged_completed_body_after_independent_adoption', 'test_tampered_output_or_foreign_producer_role_cannot_form_a_raw_criterion', 'test_aggregate_error_retains_authenticated_completed_per_file_observation', 'test_raw_checkpoint_guard_lookup_is_once_per_original_record', 'test_later_admitted_unreviewed_keeps_raw_source_individual_until_reassessed', 'test_later_admitted_invalidated_support_keeps_raw_source_individual_until_reassessed', 'test_changed_inputs_and_negative_rows_remain_individual_assignments')}
+PYTHON_UNITS = PYTHON_MODULES[:2] + ('oracle_parallel_test.ParallelReview',) + tuple(
+    'oracle_parallel_test.'+name+'.'+method for name,methods in ORACLE_INDEPENDENT_CASES.items() for method in sorted(methods))
+PYTHON_DISPATCH = PYTHON_UNITS[3:] + PYTHON_UNITS[:3]
 PYTHON_CHECK = [sys.executable, '-B', 'tools/deterministic_package.py', 'python-category', 'unittest']
 _PYTHON_ACTIVE = set()
 _PYTHON_LOCK = threading.Lock()
@@ -710,8 +712,9 @@ def validate_python_inventory(value):
         if set(value) != {'units','modules','source_sha256'}: raise ValueError()
         if set(value['units'])!=set(PYTHON_UNITS) or set(value['modules'])!=set(PYTHON_MODULES) or set(value['source_sha256'])!=set(PYTHON_MODULES): raise ValueError()
         for unit, ids in value['units'].items():
+            if unit.count('.')==2 and ids != [unit]:raise ValueError()
             if (not isinstance(ids,list) or not 0<len(ids)<=10000 or ids!=sorted(set(ids))
-                    or any(not isinstance(name,str) or len(name)>512 or not name.startswith(unit+'.') for name in ids)): raise ValueError()
+                    or any(not isinstance(name,str) or len(name)>512 or not (name==unit or name.startswith(unit+'.')) for name in ids)): raise ValueError()
         for module in PYTHON_MODULES:
             ids=sorted(name for unit in PYTHON_UNITS if unit.split('.')[0]==module for name in value['units'][unit])
             if (value['modules'][module]!=ids or len(ids)!=len(set(ids))
@@ -723,10 +726,11 @@ def validate_python_inventory(value):
 
 def python_inventory(root):
     # Discovery imports definitions only, in its own process. No test or fixture
-    # is executed here. Whole-class units retain their original fixture order.
+    # is executed here. Only inspected per-test fixtures become exact-ID units.
     code = """import importlib,json,sys,unittest
 sys.path.insert(0,'tests')
 modules=('deterministic_package_test','command_coverage_test','oracle_parallel_test')
+independent={'CriterionDependencyRoles': ('test_authentic_legacy_controls_require_fresh_adoption_and_future_roles_remain_separate', 'test_original_functional_control_module_and_changed_support_stay_individual', 'test_tampered_unknown_lineage_policy_changed_body_and_admitted_control_invalidation'), 'RawObservationCriterion': ('test_postcheck_error_reuses_only_unchanged_completed_body_after_independent_adoption', 'test_tampered_output_or_foreign_producer_role_cannot_form_a_raw_criterion', 'test_aggregate_error_retains_authenticated_completed_per_file_observation', 'test_raw_checkpoint_guard_lookup_is_once_per_original_record', 'test_later_admitted_unreviewed_keeps_raw_source_individual_until_reassessed', 'test_later_admitted_invalidated_support_keeps_raw_source_individual_until_reassessed', 'test_changed_inputs_and_negative_rows_remain_individual_assignments')}
 classes=('ParallelReview','CriterionDependencyRoles','RawObservationCriterion')
 def ids(suite):
  result=[]
@@ -740,7 +744,15 @@ assert not getattr(oracle,'setUpModule',None) and not getattr(oracle,'tearDownMo
 actual=sorted(name for name,item in vars(oracle).items() if isinstance(item,type) and issubclass(item,unittest.TestCase) and item.__module__==oracle.__name__)
 assert actual==sorted(classes)
 units={name:full[name] for name in modules[:2]}
-units.update({'oracle_parallel_test.'+name:ids(loader.loadTestsFromName('oracle_parallel_test.'+name)) for name in classes})
+for name in classes:
+ cls=getattr(oracle,name)
+ assert all(getattr(getattr(cls,hook,None),'__func__',None)==getattr(getattr(unittest.TestCase,hook,None),'__func__',None) for hook in ('setUpClass','tearDownClass'))
+ prefix='oracle_parallel_test.'+name
+ discovered=ids(loader.loadTestsFromName(prefix))
+ if name in independent:
+  assert discovered==sorted(prefix+'.'+method for method in independent[name])
+  units.update({item:[item] for item in discovered})
+ else:units[prefix]=discovered
 print(json.dumps({'units':units,'modules':full}))
 """
     root=Path(root)
@@ -755,6 +767,11 @@ print(json.dumps({'units':units,'modules':full}))
     return validate_python_inventory(value)
 
 
+def executed_python_ids(raw):
+    return [name.decode('ascii') for name in re.findall(
+        rb'^test_[A-Za-z0-9_]+ \(([A-Za-z0-9_.]+)\) \.\.\.',raw,re.M)]
+
+
 def python_category_output(before, results, *, inventory, unchanged=True):
     validate_python_inventory(inventory)
     if [row['module'] for row in results] != list(PYTHON_UNITS):
@@ -766,10 +783,10 @@ def python_category_output(before, results, *, inventory, unchanged=True):
         if len(raw) > _PYTHON_OUTPUT_LIMIT + 1: raise ValueError('Python output bound changed')
         count = re.findall(rb'Ran ([1-9][0-9]*) tests? in', raw)
         tests = int(count[-1]) if count else 0
-        passed = passed and complete(python_module_command(row['module']), raw, row['exit_code']) and tests==len(inventory['units'][row['module']])
+        passed = passed and complete(python_module_command(row['module']), raw, row['exit_code']) and tests==len(inventory['units'][row['module']]) and executed_python_ids(raw)==inventory['units'][row['module']]
         frames.append(b'BOC_PYTHON_MODULE '+row['module'].encode()+b' '+str(len(raw)).encode()+b'\n'+raw)
         summaries.append({key:row[key] for key in ('module','command','exit_code','wall_ms','temporary_directory_sha256')} |
-                         {'tests':tests,'output_sha256':native.digest(raw)})
+                         {'tests':tests,'executed_ids':executed_python_ids(raw),'output_sha256':native.digest(raw)})
     report = {'source':before['source'],'tree':before['tree'],'runtime_sha256':native.digest(native.encoded(before['runtime'])),
               'modules':summaries,'membership':inventory,'concurrency':3,'status':'PASS' if passed else 'REJECT'}
     return b''.join(frames)+native.encoded({'python_category':report})+b'\n', 0 if passed else 1
@@ -822,11 +839,12 @@ def python_category_report(output, expected=None, membership=None):
         validate_python_inventory(report['membership'])
         if membership is not None and membership!=report['membership']: raise ValueError()
         for module,row,raw in zip(PYTHON_UNITS,report['modules'],originals):
-            if set(row) != {'module','command','exit_code','wall_ms','temporary_directory_sha256','tests','output_sha256'}: raise ValueError()
+            if set(row) != {'module','command','exit_code','wall_ms','temporary_directory_sha256','tests','executed_ids','output_sha256'}: raise ValueError()
             count=re.findall(rb'Ran ([1-9][0-9]*) tests? in',raw)
             if (row['module']!=module or row['command']!=python_module_command(module)
                     or type(row['exit_code']) is not int or row['exit_code']!=0
-                    or row['output_sha256']!=native.digest(raw) or not count
+                    or row['output_sha256']!=native.digest(raw) or len(count)!=1
+                    or row['executed_ids']!=executed_python_ids(raw) or row['executed_ids']!=report['membership']['units'][module]
                     or type(row['tests']) is not int or row['tests']!=int(count[-1]) or row['tests']!=len(report['membership']['units'][module])
                     or type(row['wall_ms']) not in (int,float) or not 0<=row['wall_ms']<=305000
                     or not re.fullmatch('[0-9a-f]{64}',row['temporary_directory_sha256'])
@@ -886,6 +904,7 @@ def read_receipt(root):
         raise ValueError('Fixed scheduling contract changed')
     if [row['command'] for row in value['runs']] != CHECKS:
         raise ValueError('Fixed command category changed')
+    check_combined_schedule(root, current, value['runs'], value.get('spec_runs'), value.get('selected_scheduling'), ci=value.get('spec_mode') == 'ci')
     native.check_spec_runs(root, value['base'], current['source'], value.get('spec_runs'), directory(root),
                            receipt_completed=native._completed(value), mode=value.get('spec_mode'))
     for failure in directory(root).glob('*.failure.json'):
@@ -1004,7 +1023,7 @@ def await_privacy_snapshot(fd, token, before):
         return row
 
 
-def run_category(root, commands, before, base=None):
+def run_category(root, commands, before, base=None, *, before_privacy=None, after_snapshot=None):
     runs = []
     parallel = scheduling(commands) != 'serial/1'
     for command in commands[:4] if parallel else commands:
@@ -1012,6 +1031,8 @@ def run_category(root, commands, before, base=None):
         if not complete(command, (directory(root)/(row['output_sha256']+'.log')).read_bytes(), row['exit_code']):
             return runs
     if not parallel:
+        return runs
+    if before_privacy is not None and before_privacy(runs) is not True:
         return runs
     read_fd, write_fd = os.pipe(); token = secrets.token_hex(32)
     with ThreadPoolExecutor(max_workers=4) as pool:
@@ -1029,6 +1050,9 @@ def run_category(root, commands, before, base=None):
             return runs
         finally:
             os.close(read_fd)
+        if after_snapshot is not None and after_snapshot(snapshot) is not True:
+            runs.append(privacy.result())
+            return runs
         others = [pool.submit(execute_check, root, command, None, (base, before['source']))
                   if command == ['node', 'scripts/check-publication-history.mjs'] else
                   pool.submit(execute_check, root, command) for command in commands[5:]]
@@ -1050,6 +1074,93 @@ def run_category(root, commands, before, base=None):
         try: history_report((directory(root)/(row['output_sha256']+'.log')).read_bytes(), base, before['source'])
         except ValueError: row['exit_code'] = 'HISTORY_RESULT_MISMATCH'
     return runs
+
+
+COMBINED_SCHEDULING = 'prepared-sanity-complete-privacy-ready-selected-parallel/1'
+
+
+def run_complete_category(root, base, before, selected, *, ci=False):
+    """Actual sanity is complete before the existing readiness-gated parallel tail."""
+    spec_runs = []; futures = []; errors = []; schedule = None
+    # A generic/source lane and other selected shapes retain their original order.
+    combined = (scheduling(CHECKS) != 'serial/1'
+                and [row['category'] for row in selected] == ['sanity', 'interactions', 'acceptance'])
+    if not combined:
+        return run_category(root, CHECKS, before, base), None, None, []
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        sanity_report = None
+        def sanity(preparation):
+            nonlocal sanity_report
+            entry, passed = native.execute_spec_category(root, base, before['source'], directory(root), selected[0],
+                ci=ci, environment_overrides={'UV_THREADPOOL_SIZE':'8'})
+            spec_runs.append(entry)
+            if not passed:
+                errors.append('Selected sanity failed'); return False
+            try:
+                native.check_spec_environment(root, entry, directory(root), ci=ci)
+                sanity_report = privacy_report(native.spec_category_output(root, entry, directory(root), ci=ci))
+                if (sanity_report.get('source_commit') != before['source']
+                        or sanity_report.get('source_tree') != before['tree']):
+                    raise ValueError('Selected sanity source changed')
+            except (ValueError, KeyError, TypeError, OSError) as error:
+                errors.append(str(error)); return False
+            return True
+        def ready(snapshot):
+            nonlocal schedule
+            if not all(sanity_report.get(key) == snapshot[value] for key,value in
+                    [('source_commit','source'),('source_tree','tree'),('files','files'),('policy_sha256','policy_sha256')]):
+                errors.append('Selected sanity and fixed snapshot differ'); return False
+            schedule = {'kind':COMBINED_SCHEDULING,'selected_workers':2,
+                        'ready_at':time.time(), 'snapshot':{key:snapshot[key] for key in ('source','tree','files','policy_sha256')}}
+            futures.extend(pool.submit(native.execute_spec_category, root, base, before['source'], directory(root), row, ci=ci)
+                           for row in selected[1:])
+            return True
+        try:
+            runs = run_category(root, CHECKS, before, base, before_privacy=sanity, after_snapshot=ready)
+        finally:
+            # The context waits every owned category even when another job fails.
+            for future in futures:
+                try:
+                    entry, passed = future.result(); spec_runs.append(entry)
+                    if not passed: errors.append('Selected category failed: '+entry['category'])
+                except Exception as error:
+                    errors.append('Selected category execution error: '+type(error).__name__)
+    return runs, spec_runs, schedule, errors
+
+
+def check_combined_schedule(root, before, runs, spec_runs, schedule, *, ci=False):
+    if schedule is None:
+        if any('environment_overrides' in row for row in spec_runs):
+            raise ValueError('Selected schedule missing')
+        return
+    try:
+        if (set(schedule) != {'kind','selected_workers','ready_at','snapshot'} or schedule['kind'] != COMBINED_SCHEDULING
+                or type(schedule['selected_workers']) is not int or schedule['selected_workers'] != 2
+                or type(schedule['ready_at']) not in (float,int)
+                or [row['category'] for row in spec_runs] != ['sanity','interactions','acceptance']
+                or [row['command'] for row in runs] != CHECKS
+                or spec_runs[0].get('environment_overrides') != {'UV_THREADPOOL_SIZE':'8'}
+                or any('environment_overrides' in row for row in spec_runs[1:])):
+            raise ValueError()
+        snapshot=schedule['snapshot']
+        if (set(snapshot) != {'source','tree','files','policy_sha256'} or snapshot['source'] != before['source']
+                or snapshot['tree'] != before['tree'] or type(snapshot['files']) is not int or snapshot['files'] < 1
+                or not re.fullmatch('[0-9a-f]{64}',snapshot['policy_sha256'])):
+            raise ValueError()
+        fixed=privacy_report((directory(root)/(runs[4]['output_sha256']+'.log')).read_bytes())
+        native.check_spec_environment(root,spec_runs[0],directory(root),ci=ci)
+        sanity=privacy_report(native.spec_category_output(root,spec_runs[0],directory(root),ci=ci))
+        for report in (fixed,sanity):
+            if not all(report.get(key)==snapshot[value] for key,value in
+                    [('source_commit','source'),('source_tree','tree'),('files','files'),('policy_sha256','policy_sha256')]):raise ValueError()
+        if not (max(row['completed_at'] for row in runs[:4]) <= spec_runs[0]['started_at']
+                <= spec_runs[0]['completed_at'] <= runs[4]['started_at'] <= schedule['ready_at']
+                <= min(row['started_at'] for row in [*runs[5:],*spec_runs[1:]])
+                and schedule['ready_at'] <= runs[4]['completed_at']
+                and max(row['started_at'] for row in [runs[6],*spec_runs[1:]])
+                    < min(row['completed_at'] for row in [runs[6],*spec_runs[1:]])):raise ValueError()
+    except (ValueError,KeyError,TypeError,IndexError,OSError):
+        raise ValueError('Complete selected scheduling custody changed')
 
 
 def history_report(output, base, source):
@@ -1110,21 +1221,25 @@ def validate(root, base, requested_at, *, ci=False):
         contract.native_origin(root, before['source'])
     if not CHECKS:
         raise ValueError('Fixed package check category is empty')
-    runs = run_category(root, CHECKS, before, base)
-    if any(not complete(row['command'], (directory(root) / (row['output_sha256'] + '.log')).read_bytes(), row['exit_code']) for row in runs):
+    selected_commands = native.selected_commands(root, base, before['source'])
+    runs, selected, selected_schedule, execution_errors = run_complete_category(root, base, before, selected_commands, ci=ci)
+    if execution_errors or [row['command'] for row in runs] != CHECKS or any(not complete(row['command'], (directory(root) / (row['output_sha256'] + '.log')).read_bytes(), row['exit_code']) for row in runs):
         native.private_write(directory(root) / (str(time.time_ns()) + '.failure.json'),
                              native.encoded({'kind': KIND + '-failure', 'identity': before,
-                                             'base': base, 'request_started_at': requested_at, 'runs': runs}))
+                                             'base': base, 'request_started_at': requested_at, 'runs': runs,
+                                             'spec_runs': selected or [], 'execution_errors': execution_errors}))
         raise ValueError('Required package check failed: ' + json.dumps(failed_check_summary(runs, root), sort_keys=True)
                          + '; original outputs retained: ' + str(directory(root)))
-    selected = native.spec_runs(root, base, before['source'], directory(root),
+    if selected is None:
+        selected = native.spec_runs(root, base, before['source'], directory(root),
                                 {'kind': KIND + '-failure', 'identity': before, 'base': base,
                                  'request_started_at': requested_at, 'runs': runs}, ci=ci)
+    check_combined_schedule(root, before, runs, selected, selected_schedule, ci=ci)
     if native.identity(root) != before:
         raise ValueError('Source, generated package or runtime changed during verification')
     value = {'kind': KIND, 'profile': PROFILE, 'status': 'VERIFIED', **before,
              'base': base, 'paths': paths, 'runs': runs, 'scheduling': scheduling(CHECKS),
-             'spec_runs': selected, 'spec_mode': 'ci' if ci else 'native',
+             'spec_runs': selected, 'selected_scheduling': selected_schedule, 'spec_mode': 'ci' if ci else 'native',
              'request_started_at': requested_at,
              'sla_status': ('BREACHED_ORIGINAL_TIME_UNAVAILABLE' if start is None else
                             'BREACHED' if time.time() - start.timestamp() > 300 else 'NOT_ESTABLISHED'),

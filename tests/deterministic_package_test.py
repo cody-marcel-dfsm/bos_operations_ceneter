@@ -88,7 +88,7 @@ class PackageGateTests(unittest.TestCase):
                         'status':'PASS','pairs':1,'inventory_sha256':'b'*64,'policy_sha256':'c'*64,'findings':[],'classifications':[]}}).encode()
                 elif command == d.PYTHON_CHECK:
                     results=[{'module':module,'command':d.python_module_command(module),'exit_code':0,
-                              'output':b'Ran 1 test in 0.01s\n\nOK\n','wall_ms':1,
+                              'output':self.python_output(module,count=1),'wall_ms':1,
                               'temporary_directory_sha256':'d'*64} for module in d.PYTHON_UNITS]
                     output,_=d.python_category_output(before,results,inventory=self.python_inventory(count=1))
                 else:
@@ -150,6 +150,57 @@ class PackageGateTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError,'check failed'):self.validate()
         record=json.loads(next(d.directory(self.root).glob('*.failure.json')).read_bytes())
         self.assertEqual(len(record['runs']),9);self.assertEqual(record['runs'][4]['exit_code'],'SNAPSHOT_RESULT_MISMATCH')
+
+    def combined_execution(self, *, sanity_threads=8, snapshot_files=1, selected_fail=False):
+        execute,snapshot,calls,peak=self.scheduled_execution()
+        before=d.native.identity(self.root)
+        report={'source_commit':before['source'],'source_tree':before['tree'],'files':1,'policy_sha256':'a'*64,
+                'io_threads':sanity_threads,'max_active_persistence':1,'max_awaiting_persistence':1,'compact_persistence_bytes':65536}
+        selected=[{'category':'sanity','argv':[sys.executable,'-c','import json;print(json.dumps({"privacy_coverage":'+repr(report)+'}))'],
+                   'tests':[],'fixtures':[]}]
+        for name in ('interactions','acceptance'):
+            code='from pathlib import Path;import time;assert Path(".git/snapshot-published").is_file();time.sleep(.08);print("actual '+name+'");raise SystemExit('+str(7 if selected_fail and name=='interactions' else 0)+')'
+            selected.append({'category':name,'argv':[sys.executable,'-c',code],'tests':[],'fixtures':[]})
+        def ready(*args):
+            value=snapshot(*args);(self.root/'.git/snapshot-published').write_text('ready')
+            value['files']=snapshot_files;return value
+        with patch.object(d,'CHECKS',self.fixed_commands),patch.object(d,'execute_check',side_effect=execute),patch.object(d,'await_privacy_snapshot',side_effect=ready),patch.object(d.native,'selected_commands',return_value=selected):
+            result=d.run_complete_category(self.root,self.base,before,selected,ci=True)
+            return before,result,calls
+
+    def test_combined_selected_sanity_finishes_before_readiness_then_real_selected_jobs_overlap(self):
+        before,(runs,selected,schedule,errors),calls=self.combined_execution()
+        self.assertEqual(errors,[]);self.assertEqual(len(runs),9);self.assertEqual(len(selected),3)
+        self.assertEqual([row['category'] for row in selected],['sanity','interactions','acceptance'])
+        self.assertLess(max(row['started_at'] for row in selected[1:]),min(row['completed_at'] for row in selected[1:]))
+        with patch.object(d,'CHECKS',self.fixed_commands):
+            d.check_combined_schedule(self.root,before,runs,selected,schedule,ci=True)
+            for change in ('environment','ready','source','missing','output','sequential'):
+                changed=json.loads(json.dumps(schedule));rows=json.loads(json.dumps(selected))
+                if change=='environment':rows[0]['environment_overrides']={'UV_THREADPOOL_SIZE':'4'}
+                if change=='ready':changed['ready_at']=0
+                if change=='source':changed['snapshot']['source']='f'*40
+                if change=='missing':rows.pop()
+                if change=='output':rows[0]['output_sha256']='f'*64
+                if change=='sequential':rows[2]['started_at']=rows[1]['completed_at']+.01;rows[2]['completed_at']=rows[2]['started_at']+.01
+                with self.assertRaisesRegex(ValueError,'scheduling custody'):
+                    d.check_combined_schedule(self.root,before,runs,rows,changed,ci=True)
+
+    def test_combined_bad_sanity_environment_starts_no_privacy_or_independent_test(self):
+        before,(runs,selected,schedule,errors),calls=self.combined_execution(sanity_threads=4)
+        self.assertTrue(errors);self.assertEqual(calls,self.fixed_commands[:4]);self.assertEqual(len(selected),1)
+        self.assertIsNone(schedule)
+
+    def test_combined_snapshot_mismatch_starts_no_independent_test(self):
+        before,(runs,selected,schedule,errors),calls=self.combined_execution(snapshot_files=2)
+        self.assertTrue(errors);self.assertEqual(calls,self.fixed_commands[:5]);self.assertEqual(len(selected),1)
+        self.assertIsNone(schedule)
+
+    def test_combined_selected_failure_awaits_and_retains_every_real_result(self):
+        before,(runs,selected,schedule,errors),calls=self.combined_execution(selected_fail=True)
+        self.assertTrue(errors);self.assertEqual(len(runs),9);self.assertEqual(len(selected),3)
+        self.assertEqual([row['exit_code'] for row in selected],[0,7,0])
+        self.assertTrue(all((d.directory(self.root)/(row['output_sha256']+'.log')).exists() for row in selected))
 
     def test_report_bounds_require_exact_integer_configuration_and_bounded_waiting(self):
         original={'io_threads':8,'compact_persistence_bytes':65536,'max_active_persistence':8,'max_awaiting_persistence':8}
@@ -604,13 +655,17 @@ class PackageGateTests(unittest.TestCase):
                 finally:fixture.doCleanups()
 
     def python_inventory(self, count=2):
-        units={unit:[unit+('.Synthetic' if unit in d.PYTHON_MODULES[:2] else '')+'.test_'+str(index) for index in range(count)] for unit in d.PYTHON_UNITS}
+        units={unit:([unit] if unit.count('.')==2 else [unit+('.Synthetic' if unit in d.PYTHON_MODULES[:2] else '')+'.test_'+str(index) for index in range(count)]) for unit in d.PYTHON_UNITS}
         return {'units':units,'modules':{module:sorted(name for unit,ids in units.items() if unit.split('.')[0]==module for name in ids) for module in d.PYTHON_MODULES},
                 'source_sha256':{module:'a'*64 for module in d.PYTHON_MODULES}}
 
+    def python_output(self, module, count=2):
+        ids=self.python_inventory(count=count)['units'][module]
+        return ''.join(name.split('.')[-1]+' ('+name+') ... ok\n' for name in ids).encode()+('Ran '+str(len(ids))+' tests in 0.01s\n\nOK\n').encode()
+
     def python_results(self):
         return [{'module':module,'command':d.python_module_command(module),'exit_code':0,
-                 'output':b'Ran 2 tests in 0.01s\n\nOK\n','wall_ms':10,
+                 'output':self.python_output(module),'wall_ms':10,
                  'temporary_directory_sha256':'d'*64} for module in d.PYTHON_UNITS]
 
     def test_fixed_python_category_runs_all_three_independently_and_merges_in_fixed_order(self):
@@ -626,7 +681,7 @@ class PackageGateTests(unittest.TestCase):
         self.assertEqual(code,0);self.assertEqual(peak,3)
         report=d.python_category_report(output,before)
         self.assertEqual([row['module'] for row in report['modules']],list(d.PYTHON_UNITS))
-        self.assertEqual(sum(row['tests'] for row in report['modules']),10)
+        self.assertEqual(sum(row['tests'] for row in report['modules']),sum(map(len,self.python_inventory()['units'].values())))
         for row in report['modules']:
             self.assertEqual(d.native.digest((d.directory(self.root)/(row['output_sha256']+'.log')).read_bytes()),row['output_sha256'])
 
@@ -660,13 +715,25 @@ class PackageGateTests(unittest.TestCase):
         bad,_=d.python_category_output(before,rows,inventory=self.python_inventory())
         self.assertFalse(d.complete(d.PYTHON_CHECK,bad,0))
 
+    def test_actual_python_ids_cannot_be_omitted_repeated_or_replaced_by_equal_counts(self):
+        before=d.native.identity(self.root)
+        for change in ('omit','repeat','foreign'):
+            rows=self.python_results();raw=rows[0]['output'];lines=raw.splitlines(keepends=True)
+            if change=='omit':lines.pop(0)
+            if change=='repeat':lines[1]=lines[0]
+            if change=='foreign':lines[0]=lines[0].replace(b'test_0',b'foreign')
+            rows[0]['output']=b''.join(lines)
+            output,code=d.python_category_output(before,rows,inventory=self.python_inventory())
+            self.assertEqual(code,1)
+            with self.assertRaisesRegex(ValueError,'Python module proof'):d.python_category_report(output,before)
+
     def test_python_category_source_change_retains_every_module_but_prevents_pass(self):
         def execute(root,module):
             if module==d.PYTHON_MODULES[0]:(self.root/'AGENTS.md').write_text('intervening candidate')
             return next(row for row in self.python_results() if row['module']==module)
         output,code=d.run_python_category(self.root,execute,inventory_loader=lambda root:self.python_inventory())
         self.assertEqual(code,1);self.assertFalse(d.complete(d.PYTHON_CHECK,output,code))
-        self.assertEqual(len(list(d.directory(self.root).glob('*.log'))),1)
+        self.assertEqual(len(list(d.directory(self.root).glob('*.log'))),len({d.native.digest(row['output']) for row in self.python_results()}))
 
     def test_actual_python_subprocesses_have_isolated_private_temp_and_bounded_timeout_output(self):
         import concurrent.futures
@@ -728,10 +795,10 @@ class PackageGateTests(unittest.TestCase):
         directory=self.root/'tests';directory.mkdir()
         base='import unittest\nclass Synthetic(unittest.TestCase):\n def test_fixture(self): pass\n'
         for module in d.PYTHON_MODULES[:2]:(directory/(module+'.py')).write_text(base)
-        oracle='import unittest\n'+''.join('class '+name+'(unittest.TestCase):\n def test_fixture(self): pass\n' for name in d.ORACLE_CLASSES)
+        oracle='import unittest\n'+''.join('class '+name+'(unittest.TestCase):\n'+''.join(' def '+method+'(self): pass\n' for method in d.ORACLE_INDEPENDENT_CASES.get(name,('test_fixture',))) for name in d.ORACLE_CLASSES)
         path=directory/'oracle_parallel_test.py';path.write_text(oracle);self.commit()
         result=d.python_inventory(self.root)
-        self.assertEqual(len(result['modules']['oracle_parallel_test']),3)
+        self.assertEqual(len(result['modules']['oracle_parallel_test']),11)
         self.assertEqual(set(result['units']),set(d.PYTHON_UNITS))
         path.write_text(oracle+'def setUpModule(): pass\n');self.commit()
         with self.assertRaisesRegex(ValueError,'discovery'):d.python_inventory(self.root)

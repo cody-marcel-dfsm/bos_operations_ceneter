@@ -92,4 +92,48 @@ class SourceAdmissionTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError,'exact public repository'):d.publish(self.root,'codex/source-docs')
             self.assertEqual(calls,[])
 
+    def test_selected_actual_command_confines_eight_thread_sanity_environment(self):
+        row={'category':'sanity','argv':[sys.executable,'-c',
+             'import os,json;print(json.dumps({"privacy_coverage":{"io_threads":int(os.environ["UV_THREADPOOL_SIZE"])}}))'],
+             'tests':[],'fixtures':[]}
+        previous=os.environ.get('UV_THREADPOOL_SIZE')
+        with patch.object(d,'selected_commands',return_value=[row]):
+            entry,passed=d.execute_spec_category(self.root,self.base,self.git('rev-parse','HEAD'),d.directory(self.root),row,
+                ci=True,environment_overrides={'UV_THREADPOOL_SIZE':'8'})
+            self.assertTrue(passed);d.check_spec_environment(self.root,entry,d.directory(self.root),ci=True)
+            self.assertEqual(os.environ.get('UV_THREADPOOL_SIZE'),previous)
+            for override in ({'UV_THREADPOOL_SIZE':'12'},{'UV_THREADPOOL_SIZE':'8','OTHER':'value'},{}):
+                with self.assertRaisesRegex(ValueError,'environment'):
+                    d.execute_spec_category(self.root,self.base,self.git('rev-parse','HEAD'),d.directory(self.root),row,ci=True,environment_overrides=override)
+            with self.assertRaisesRegex(ValueError,'Exact current'):
+                d.execute_spec_category(self.root,self.base,self.git('rev-parse','HEAD'),d.directory(self.root),dict(row,argv=['unselected']),ci=True)
+        for altered in (dict(entry,environment_overrides=None),dict(entry,environment_overrides={'UV_THREADPOOL_SIZE':'4'})):
+            with self.assertRaisesRegex(ValueError,'environment'):d.check_spec_environment(self.root,altered,d.directory(self.root),ci=True)
+        original=d.directory(self.root)/(entry['output_sha256']+'.log');original.write_text('altered')
+        with self.assertRaisesRegex(ValueError,'custody'):d.check_spec_environment(self.root,entry,d.directory(self.root),ci=True)
+
+    def test_selected_deadline_terminates_and_drains_its_owned_process_group(self):
+        code='import subprocess,sys,time;child=subprocess.Popen([sys.executable,"-c","import time;time.sleep(30)"]);print(child.pid,flush=True);time.sleep(30)'
+        row={'category':'interactions','argv':[sys.executable,'-c',code],'tests':[],'fixtures':[]}
+        with patch.object(d,'selected_commands',return_value=[row]):
+            entry,passed=d.execute_spec_category(self.root,self.base,self.git('rev-parse','HEAD'),d.directory(self.root),row,ci=True,timeout=.1)
+            self.assertFalse(passed);self.assertEqual(entry['exit_code'],'TIMEOUT')
+            raw=(d.directory(self.root)/(entry['output_sha256']+'.log')).read_bytes()
+            child=int(raw.splitlines()[0]);state=subprocess.run(['ps','-p',str(child),'-o','state='],capture_output=True,text=True).stdout.strip()
+            self.assertTrue(not state or state.startswith('Z'),state)
+            for timeout in (0,901,True,float('inf')):
+                with self.assertRaisesRegex(ValueError,'deadline'):
+                    d.execute_spec_category(self.root,self.base,self.git('rev-parse','HEAD'),d.directory(self.root),row,ci=True,timeout=timeout)
+
+    def test_selected_default_source_lane_preserves_serial_failure_output(self):
+        rows=[{'category':name,'argv':[sys.executable,'-c','print("actual '+name+'");raise SystemExit('+str(code)+')'],
+               'tests':[],'fixtures':[]} for name,code in [('sanity',7),('acceptance',0)]]
+        with patch.object(d,'selected_commands',return_value=rows):
+            with self.assertRaisesRegex(ValueError,'sanity'):
+                d.spec_runs(self.root,self.base,self.git('rev-parse','HEAD'),d.directory(self.root),{'runs':[]},ci=True)
+        failure=json.loads(next(d.directory(self.root).glob('*.failure.json')).read_bytes())
+        self.assertEqual(len(failure['spec_runs']),1);self.assertEqual(failure['spec_runs'][0]['exit_code'],7)
+        self.assertNotIn('environment_overrides',failure['spec_runs'][0])
+        self.assertIn(b'actual sanity',(d.directory(self.root)/(failure['spec_runs'][0]['output_sha256']+'.log')).read_bytes())
+
 if __name__=='__main__':unittest.main()
