@@ -281,6 +281,14 @@ def instruction_binding(root,selected,owner_path,requested):
 def forbidden_model(*args,**kwargs):raise AssertionError('Human instruction must never launch a model')
 p._instruction_binding=instruction_binding
 o._review_process=forbidden_model
+original_request=lifecycle._request
+def observed_request(o_,root_,identity,request):
+ # Record an accepted attach so the parent orders release after it, never by sleeping.
+ response=original_request(o_,root_,identity,request)
+ if request.get('operation')=='attach' and not response.get('error'):
+  (root/'.git/oracle/authorization-attached').write_text(str(request.get('observer_pid')))
+ return response
+lifecycle._request=observed_request
 try:
  if len(sys.argv)>7:
   # Distinct requests own separate admissions. They cannot observe this owner.
@@ -306,7 +314,10 @@ except o.OracleApprovalError as e:print(str(e),file=sys.stderr);sys.exit(2)
             child=start(changed,observe=True);stdout,stderr=child.communicate(timeout=5)
             self.assertEqual(child.returncode,2,(changed,stdout,stderr))
             self.assertIn('Incompatible',stderr)
-        same=start(original);time.sleep(.2)
+        same=start(original);deadline=time.monotonic()+10
+        while not (directory/'authorization-attached').exists():  # hang guard only
+            if time.monotonic()>deadline:self.fail('Identical request did not attach to the live owner')
+            time.sleep(.02)
         (directory/'release-authorization').write_text('release')
         self.assertEqual(self.finish(owner),self.finish(same))
         self.assertEqual(len((directory/'authorization-calls').read_text().splitlines()),1)
