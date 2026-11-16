@@ -836,8 +836,17 @@ class BoundedReviewer(unittest.TestCase):
                 self.execute('import time;print("checkpoint",flush=True);time.sleep(5)')
         self.assertEqual((self.run/'stdout.log').read_bytes(),b'checkpoint\n')
         self.assertFalse(json.loads((self.run/'reviewer-progress.json').read_text())['complete'])
-        record=next((self.controller.directory/'children').glob('reviewer-*.json'))
-        data=json.loads(record.read_text());self.assertEqual(lifecycle._reviewer_group(data),[])
+        registrations=[path for path in (self.controller.directory/'children').iterdir()
+                       if o.re.fullmatch(r'reviewer-[0-9a-f]{32}\.json',path.name)]
+        self.assertEqual(len(registrations),1,'Exactly one actual reviewer registration must bind this timeout')
+        record=registrations[0];self.assertTrue(record.is_file());self.assertFalse(record.is_symlink())
+        data=json.loads(record.read_text())
+        self.assertEqual(data['kind'],'boc-native-reviewer-process-v1')
+        self.assertIsInstance(data['pid'],int);self.assertGreater(data['pid'],0)
+        self.assertEqual(data['process_group'],data['pid']);self.assertTrue(data['process_birth'])
+        self.assertEqual(data['root'],str(self.root))
+        self.assertEqual(data['record_sha256'],o._sha(o._canonical({k:v for k,v in data.items() if k!='record_sha256'})))
+        self.assertEqual(lifecycle._reviewer_group(data),[])
         self.assertTrue(list((self.controller.directory/'children').glob('*.failure.json')))
 
     def test_live_counts_are_available_before_the_owned_reviewer_exits(self):

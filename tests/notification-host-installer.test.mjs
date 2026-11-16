@@ -14,8 +14,29 @@ import {notificationFixture} from "./helpers/synthetic-notifications.mjs";
 
 const project = fileURLToPath(new URL("..", import.meta.url));
 const git = (root, ...args) => execFileSync("git", ["-C", root, "-c", "user.name=Synthetic installer", "-c", "user.email=installer@example.invalid", ...args], {encoding: "utf8", stdio: ["ignore", "pipe", "pipe"]}).trim();
+function ownedChild(children,args){
+  const child=spawn(process.execPath,args,{stdio:["pipe","pipe","pipe"]});
+  const state={child,stdout:"",stderr:"",closed:false,error:null,code:null,signal:null};children.push(state);
+  child.stdout.on("data",data=>{state.stdout+=data;});child.stderr.on("data",data=>{state.stderr+=data;});
+  child.on("error",error=>{state.error=error.code??error.name;});
+  state.done=new Promise(resolve=>child.once("close",(code,signal)=>{state.closed=true;state.code=code;state.signal=signal;resolve(code);}));
+  const diagnostic=()=>JSON.stringify({code:state.code,signal:state.signal,error:state.error,stderr:state.stderr.slice(0,2000)});
+  state.ready=async()=>{
+    for(let count=0;count<200;count++){
+      const lines=state.stdout.split("\n").slice(0,-1);
+      if(lines.some(line=>{try{return JSON.parse(line).started===true;}catch{return false;}}))return;
+      if(state.closed||state.error)throw new Error("Installed host exited before readiness: "+diagnostic());
+      await delay(10);
+    }
+    throw new Error("Installed host did not publish readiness within the original200x10ms wait: "+diagnostic());
+  };
+  const waitClose=async()=>{let timer;try{await Promise.race([state.done,new Promise(resolve=>{timer=setTimeout(resolve,5000);timer.unref?.();})]);}finally{clearTimeout(timer);}};
+  state.stop=async()=>{if(state.closed)return;child.kill("SIGTERM");await waitClose();if(!state.closed){child.kill("SIGKILL");await waitClose();}assert.ok(state.closed,"Owned installed host did not close after termination");};
+  return state;
+}
 test("immutable published host closure installs atomically, verifies modes and preserves native lifecycle custody", async t => {
-  const temporary = await realpath(await mkdtemp(join(await realpath("Vault/tmp"), "n"))); t.after(() => rm(temporary, {recursive: true, force: true}));
+  const temporary = await realpath(await mkdtemp(join(await realpath("Vault/tmp"), "n"))),children=[];
+  t.after(async()=>{const outcomes=await Promise.allSettled(children.map(child=>child.stop()));const failure=outcomes.find(row=>row.status==="rejected");if(failure)throw failure.reason;await rm(temporary,{recursive:true,force:true});});
   const source = join(temporary, "source"), root = temporary; await mkdir(source, {mode: 0o700});
   for (const name of ["source/host-runtime/bos-journey-notifications", "source/host-runtime/bos-shared-cache",
     "source/platform/bos-workflow-orchestrator/scripts", "source/platform/bos-app-discovery/scripts",
@@ -47,21 +68,18 @@ test("immutable published host closure installs atomically, verifies modes and p
   // selected loopback port has no service; it proves no authenticated SSE/wake.
   const credential = join(root, "existing-credential"), context = "bos_ctx_v2_" + "2".repeat(64);
   await writeFile(credential, "synthetic-existing-key", {mode: 0o600});
-  const child = spawn(process.execPath, [join(destination, "source/host-runtime/bos-journey-notifications/muse-companion-cli.mjs"),
-    "monitor", "--root", root, "--credential-file", credential], {stdio: ["pipe", "pipe", "pipe"]});
-  let stdout = "", stderr = ""; child.stdout.on("data", data => { stdout += data; }); child.stderr.on("data", data => { stderr += data; });
-  const done = new Promise(resolve => child.on("close", code => resolve(code)));
-  child.stdin.end(JSON.stringify({origin: "https://127.0.0.1:9", contextHandle: context, sourceContract: notificationFixture().contract,
+  const monitor=ownedChild(children,[join(destination, "source/host-runtime/bos-journey-notifications/muse-companion-cli.mjs"),
+    "monitor", "--root", root, "--credential-file", credential]);
+  monitor.child.stdin.end(JSON.stringify({origin: "https://127.0.0.1:9", contextHandle: context, sourceContract: notificationFixture().contract,
     identities: ["synthetic-journey"], taskIntent: "Continue the synthetic task through fresh state.", lifetimeMs: 30000, intentConfirmed: true}));
-  for (let count = 0; count < 200 && !stdout.includes('"started":true'); count++) await delay(10);
-  assert.ok(stdout.includes('"started":true'), stderr);
+  await monitor.ready();
   try {
     assert.equal((await callCompanion(join(root, "run", "control.json"), "poll")).pending, false);
     assert.equal((await callCompanion(join(root, "run", "control.json"), "retire")).retired, true);
   } catch (error) {
-    await delay(50); throw new Error("Synthetic installed monitor readback failed: " + error.reason + "; " + stderr);
+    await delay(50); throw new Error("Synthetic installed monitor readback failed: " + error.reason + "; " + monitor.stderr);
   }
-  assert.equal(await done, 0, stderr); assert.ok(!stdout.includes(context)); assert.ok(!stdout.includes("synthetic-existing-key"));
+  assert.equal(await monitor.done, 0, monitor.stderr); assert.ok(!monitor.stdout.includes(context)); assert.ok(!monitor.stdout.includes("synthetic-existing-key"));
   const release = await acquireCompanionLease(join(root, "run"));
   await assert.rejects(installNotificationHost({sourceRoot: source, root, revision, observedHook: observation(false)}), NotificationHostError);
   await release();
@@ -101,10 +119,9 @@ test("immutable published host closure installs atomically, verifies modes and p
   }
   // The previous journey prompt is insufficient for the new fixed item mode.
   await assert.rejects(recordNotificationHook({root,observation:observation(true)}),NotificationHostError);
-  const disabled=spawn(process.execPath,[join(destination,"source/host-runtime/bos-journey-notifications/muse-companion-cli.mjs"),
-    "discussion-monitor","--root",root,"--credential-file",credential],{stdio:["pipe","pipe","pipe"]});
-  const disabledDone=new Promise(resolve=>disabled.on("close",resolve));disabled.stdin.end("{}");
-  assert.equal(await disabledDone,1);
+  const disabled=ownedChild(children,[join(destination,"source/host-runtime/bos-journey-notifications/muse-companion-cli.mjs"),
+    "discussion-monitor","--root",root,"--credential-file",credential]);
+  disabled.child.stdin.end("{}");assert.equal(await disabled.done,1);
   const own=await installNotificationHost({sourceRoot:source,root,revision,mode:"onboarding"});
   assert.equal(own.hook_definition_plan.initial_state,"disabled");
   assert.match(own.hook_definition_plan.prompt,/metadata-only/u);
@@ -113,16 +130,13 @@ test("immutable published host closure installs atomically, verifies modes and p
   assert(immutable.files.some(row=>row.path.endsWith("ada/scripts/customer-onboarding.mjs")));
   await assert.rejects(recordNotificationHook({root,observation:observation(true)}),NotificationHostError);
   await recordNotificationHook({root,observation:{...observation(true),prompt:own.hook_definition_plan.prompt}});
-  const ownChild=spawn(process.execPath,[join(destination,"source/host-runtime/bos-journey-notifications/muse-companion-cli.mjs"),
-    "onboarding-monitor","--root",root,"--credential-file",credential],{stdio:["pipe","pipe","pipe"]});
-  let ownOut="",ownErr="";ownChild.stdout.on("data",data=>{ownOut+=data;});ownChild.stderr.on("data",data=>{ownErr+=data;});
-  const ownDone=new Promise(resolve=>ownChild.on("close",resolve));
-  ownChild.stdin.end(JSON.stringify({protectedResource:"https://127.0.0.1:9/mcp/apps/bos/platform",taskIntent:"Inspect synthetic own onboarding",lifetimeMs:30000,intentConfirmed:true}));
-  for(let count=0;count<200&&!ownOut.includes('"started":true');count++)await delay(10);
-  assert(ownOut.includes('"started":true'),ownErr);
+  const onboarding=ownedChild(children,[join(destination,"source/host-runtime/bos-journey-notifications/muse-companion-cli.mjs"),
+    "onboarding-monitor","--root",root,"--credential-file",credential]);
+  onboarding.child.stdin.end(JSON.stringify({protectedResource:"https://127.0.0.1:9/mcp/apps/bos/platform",taskIntent:"Inspect synthetic own onboarding",lifetimeMs:30000,intentConfirmed:true}));
+  await onboarding.ready();
   assert.equal((await callCompanion(join(root,"run","control.json"),"onboarding-read",{payload:{}})).available,false);
   assert.equal((await callCompanion(join(root,"run","control.json"),"poll")).pending,false);
-  await callCompanion(join(root,"run","control.json"),"retire");assert.equal(await ownDone,0,ownErr);
+  await callCompanion(join(root,"run","control.json"),"retire");assert.equal(await onboarding.done,0,onboarding.stderr);
   assert(!ownOut.includes("synthetic-existing-key"));
   const vendor=join(destination,"source/host-runtime/bos-journey-notifications/vendor/ws.bundle.mjs");
   const vendorBytes=await readFile(vendor);await writeFile(vendor,"changed vendor");

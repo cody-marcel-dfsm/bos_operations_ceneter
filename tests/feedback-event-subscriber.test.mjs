@@ -88,7 +88,12 @@ test("one long-lived connection carries more than 120 mixed frames with no recon
   const f=await subscriber(t,{policy:{maxConnections:3,maxPending:500}});
   f.s.comment("baseline");await until(()=>f.lines().some(line=>line.type==="ready"));
   for(let n=0;n<5;n++){await f.host.submitComment({body:"own "+n});await until(()=>f.host.commentStatus().status==="committed");
-    for(let m=0;m<25;m++)f.s.comment(`peer ${n}.${m}`);}
+    for(let m=0;m<25;m++)f.s.comment(`peer ${n}.${m}`);
+    // Advance the next write only after this real pushed batch is durably
+    // committed. ACK latency must not include the previous batch's backlog.
+    await until(()=>f.lines().filter(line=>line.type==="event").length===(n+1)*26);
+    assert.equal(f.lines().filter(line=>line.type==="event").at(-1).cursor,`fj1:${item}:${1+(n+1)*26}:0`);
+  }
   await until(()=>f.lines().filter(line=>line.type==="event").length===130,1500);
   const events=f.lines().filter(line=>line.type==="event");
   assert.equal(new Set(events.map(line=>line.event_id)).size,130,"no duplicate wake");

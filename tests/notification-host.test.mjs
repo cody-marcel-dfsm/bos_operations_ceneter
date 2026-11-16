@@ -164,11 +164,23 @@ test("live and malformed runtime leases are preserved; released leases get new r
   assert.equal(await readFile(join(f.root, "lease.json"), "utf8"), "{}");
 });
 test("bounded lifetime retires volatile authority while durable state remains", async t => {
+  const actualTimeout=globalThis.setTimeout,actualNow=Date.now();let logicalNow=actualNow;
+  const deadlines=[];
+  t.mock.method(Date,"now",()=>logicalNow);
+  t.mock.method(globalThis,"setTimeout",(callback,milliseconds,...args)=>{
+    const handle=actualTimeout(callback,milliseconds,...args);
+    if(milliseconds===1000){clearTimeout(handle);deadlines.push({milliseconds,expire:()=>callback(...args),handle});}
+    return handle;
+  });
   const f = await fixture(t, {lifetimeMs: 1000}); await f.start();
   const value = await f.host.readPending(); assert.match(value.taskIntent, /synthetic registered journey/u);
-  await delay(1100);
+  assert.equal(deadlines.length,1);assert.equal(deadlines[0].milliseconds,1000);
+  assert.equal(typeof deadlines[0].handle.unref,"function");
+  logicalNow=actualNow+1001;deadlines[0].expire();
+  const path=join(f.root, `${f.host.binding.registrationRef}.json`);
+  await until(async()=>JSON.parse(await readFile(path,"utf8")).status==="retired");
   await assert.rejects(f.host.acknowledge(value.deliveries[0].ticket), NotificationHostError);
-  const record = JSON.parse(await readFile(join(f.root, `${f.host.binding.registrationRef}.json`)));
+  const record = JSON.parse(await readFile(path));
   assert.equal(record.status, "retired");
   assert.equal(JSON.parse(await readFile(join(f.root, "queue", record.queuePartition, "pending.json"))).generation, 1);
 });
