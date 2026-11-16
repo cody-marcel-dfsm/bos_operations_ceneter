@@ -13,8 +13,12 @@ const bounded = (value, pattern) => typeof value === "string" && pattern.test(va
 
 // Actual host facilities, stated truthfully. Source tests prove none of them live.
 export const hostSubscriberCapabilities = Object.freeze({
+  // An ad-hoc Monitor watch has a host deadline (5 minutes default, 30 maximum; 10 in
+  // non-interactive -p) and the registration lifetime is at most 15 minutes. A
+  // session-lifetime plugin monitor is a separate host mode this binding does not use.
   claude_code: Object.freeze({available: true, event_wake: "monitor_stdout_line_per_committed_event",
-    credential_custody: "protected_current_user_credential_file", native_wake_proven: false}),
+    credential_custody: "protected_current_user_credential_file", bounded_watch: true,
+    long_lived_plugin_monitor: false, native_wake_proven: false}),
   codex: Object.freeze({available: false,
     missing_facility: "no supported facility delivers a background process's output into an existing idle task as a wake"}),
   muse: Object.freeze({available: true, event_wake: "native_hook", mode: "feedback"})

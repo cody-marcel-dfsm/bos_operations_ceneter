@@ -45,6 +45,8 @@ async function subscriber(t,options={}){
 test("host capability states are truthful: Claude Code stdout wake, Codex missing facility",()=>{
   assert.equal(hostSubscriberCapabilities.claude_code.available,true);
   assert.equal(hostSubscriberCapabilities.claude_code.native_wake_proven,false);
+  assert.equal(hostSubscriberCapabilities.claude_code.bounded_watch,true);
+  assert.equal(hostSubscriberCapabilities.claude_code.long_lived_plugin_monitor,false);
   assert.equal(hostSubscriberCapabilities.codex.available,false);
   assert.match(hostSubscriberCapabilities.codex.missing_facility,/background/u);
 });

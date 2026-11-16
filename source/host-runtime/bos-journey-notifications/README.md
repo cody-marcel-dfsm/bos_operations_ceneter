@@ -150,7 +150,13 @@ uses the unchanged `worker-read`, `worker-ack` and `worker-comment` controls.
 Reconnect happens only after a transport drop, a retryable `rate_limited` or
 `service_unavailable` error, or a server `reconnect` frame, and resumes from the
 committed cursor. The existing 15-minute registration lifetime still applies; its
-end is reported as `lifetime_ended`, never as credential expiry. Codex currently has
+end is reported as `lifetime_ended`, never as credential expiry. An ad-hoc Claude
+Code Monitor watch is itself bounded (5 minutes by default, 30 at most, 10 in
+non-interactive `-p`); arm it with a timeout covering the registration and start a
+fresh registration only for current authorized intent. No watcher or socket restarts
+itself on a timer. A session-lifetime plugin monitor is a separate host mode that
+this binding does not configure. Keep the private root short: the control socket
+path must fit the portable 103-byte Unix bound or the bridge refuses to start. Codex currently has
 no supported facility to deliver background output into an existing idle task, so
 its subscriber capability is unavailable. Synthetic loopback tests prove protocol
 behavior only; live service socket availability and observed native wake remain
