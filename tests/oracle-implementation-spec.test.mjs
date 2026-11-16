@@ -83,7 +83,7 @@ const temporary=join(fileURLToPath(root),'Vault/tmp');mkdirSync(temporary,{recur
 const cohortRoot=mkdtempSync(join(temporary,'spec-cohort-'));
 const identity=lstatSync(cohortRoot,{bigint:true});
 const jobs=[];
-let cohort;
+let cohort,interrupted=false;
 const handlers=[];
 function verifyRoot(){const fact=lstatSync(cohortRoot,{bigint:true});for(const key of ['dev','ino','uid'])assert.equal(fact[key],identity[key]);assert.ok(fact.isDirectory()&&!fact.isSymbolicLink());assert.equal(fact.mode&0o777n,0o700n);}
 function cleanup(){
@@ -104,12 +104,13 @@ try{
  }
  cohort=isolatedTestCohort(jobs,{concurrency:4,timeoutMs:120000,captureBytes:true});
  for(const signal of ['SIGINT','SIGTERM']){
-  const handler=()=>cohort.cancel();process.on(signal,handler);handlers.push([signal,handler]);
+  const handler=()=>{interrupted=true;cohort.cancel();};process.on(signal,handler);handlers.push([signal,handler]);
  }
  finish=(async()=>{
   const problems=[],reports=[];let continuity=null,cleaned=false;
   try{
    await cohort.completion;
+   if(interrupted)problems.push('Spec units interrupted by an owned cancellation signal');
    for(const job of jobs){
     const result=await cohort.outcome(job.name);
     console.log('native-spec-cohort '+JSON.stringify({name:job.name,ids:job.ids,source:inventory.source,
