@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Project-owned executable validation selection; no approval or customer runtime."""
 from __future__ import annotations
-import argparse, copy, fnmatch, hashlib, json, os, platform, re, shutil, subprocess, sys, tempfile
+import argparse, copy, fnmatch, hashlib, json, locale, os, platform, re, selectors, shutil, signal, stat, subprocess, sys, tempfile, uuid
 from datetime import datetime, timezone
 from pathlib import Path
 try: from . import oracle_spec_seal as spec_seal
@@ -496,11 +496,169 @@ def store(root,contract,commit,category,phase,record,output):
     if not target.exists():target.write_text(json.dumps(record,indent=2)+'\n')
     return target
 
+def _stream_directory(root,binding,run_id,*,create=False):
+    """Open the exact native namespace without following a substituted directory."""
+    if (not re.fullmatch('[a-f0-9]{64}',binding.get('contract_sha256',''))
+            or not re.fullmatch('[a-f0-9]{40}',binding.get('commit',''))
+            or not re.fullmatch('[a-f0-9]{32}',run_id)):
+        raise ValueError('Invalid native stream identity')
+    fd=os.open(root,os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW)
+    try:
+        for name in ('.git','oracle','validation-contract-results',binding['contract_sha256'],binding['commit'],'streams',run_id):
+            if create:
+                try:os.mkdir(name,0o700,dir_fd=fd)
+                except FileExistsError:
+                    if name==run_id:raise ValueError('Native stream identity already exists')
+            child=os.open(name,os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW,dir_fd=fd)
+            fact=os.fstat(child)
+            if fact.st_uid!=os.getuid() or fact.st_mode&0o022:
+                os.close(child);raise ValueError('Native stream directory custody changed')
+            os.close(fd);fd=child
+        return fd
+    except BaseException:
+        os.close(fd);raise
+
+def _stream_write(directory,name,raw):
+    temporary='.pending-'+uuid.uuid4().hex
+    fd=os.open(temporary,os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o600,dir_fd=directory)
+    try:
+        with os.fdopen(fd,'wb') as stream:
+            stream.write(raw);stream.flush();os.fsync(stream.fileno())
+        os.link(temporary,name,src_dir_fd=directory,dst_dir_fd=directory,follow_symlinks=False)
+        os.fsync(directory)
+    finally:os.unlink(temporary,dir_fd=directory)
+    return sha256(raw)
+
+def _stream_read(directory,name,limit=16*1024*1024):
+    if not re.fullmatch(r'[a-zA-Z0-9._-]+',name):raise ValueError('Invalid native stream member')
+    fd=os.open(name,os.O_RDONLY|os.O_NOFOLLOW,dir_fd=directory)
+    with os.fdopen(fd,'rb') as stream:
+        before=os.fstat(stream.fileno())
+        if (not stat.S_ISREG(before.st_mode) or before.st_uid!=os.getuid()
+                or stat.S_IMODE(before.st_mode)!=0o600 or before.st_size>limit):
+            raise ValueError('Native stream member custody changed')
+        raw=stream.read(limit+1);after=os.fstat(stream.fileno())
+        if (len(raw)!=before.st_size or (before.st_dev,before.st_ino,before.st_size,before.st_mtime_ns,before.st_ctime_ns)
+                !=(after.st_dev,after.st_ino,after.st_size,after.st_mtime_ns,after.st_ctime_ns)):
+            raise ValueError('Native stream member changed during read')
+        return raw
+
+def _stream_binding(record):
+    return {key:record[key] for key in ('contract_sha256','commit','tree','category','phase','command','fixtures','runtime')}
+
+def stream_summary_text(stdout,stderr):
+    # subprocess.run(text=True) historically translated each stream separately.
+    return ''.join(raw.decode(locale.getpreferredencoding(False)).replace('\r\n','\n').replace('\r','\n') for raw in (stdout,stderr))
+
+def stream_execution(root,command,environment,binding,*,forward=True):
+    """Retain each real binary read before forwarding it to the owning supervisor.
+
+    A killed controller leaves an explicitly unfinished start record and immutable
+    chunks. Neither those chunks nor a signal-handling child's zero exit is PASS.
+    """
+    if binding.get('command')!=command:raise ValueError('Stream command binding changed')
+    run_id=uuid.uuid4().hex;directory=_stream_directory(root,binding,run_id,create=True)
+    encode=lambda value:json.dumps(value,sort_keys=True,separators=(',',':')).encode()
+    reference={'kind':'boc.validation-stream/1','run_id':run_id}
+    child=None;interrupted=[];handlers={};chunks=[];parts={'stdout':[],'stderr':[]}
+    def stop(number,frame):
+        interrupted.append(number)
+        if child is not None and child.poll() is None:
+            try:child.send_signal(number)
+            except ProcessLookupError:pass
+    try:
+        identity=os.fstat(directory)
+        start={'kind':reference['kind'],'binding':binding,'run_id':run_id,
+               'directory':{'dev':identity.st_dev,'ino':identity.st_ino,'uid':identity.st_uid,'mode':stat.S_IMODE(identity.st_mode)},
+               'environment_sha256':digest(environment)}
+        reference['start_sha256']=_stream_write(directory,'start.json',encode(start))
+        for number in (signal.SIGINT,signal.SIGTERM):
+            handlers[number]=signal.signal(number,stop)
+        child=subprocess.Popen(command,cwd=root,env=environment,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+        with selectors.DefaultSelector() as ready:
+            for stream,name in ((child.stdout,'stdout'),(child.stderr,'stderr')):ready.register(stream,selectors.EVENT_READ,name)
+            while ready.get_map():
+                for key,event in ready.select(.2):
+                    raw=os.read(key.fileobj.fileno(),65536)
+                    if not raw:ready.unregister(key.fileobj);key.fileobj.close();continue
+                    name=key.data;index=len(chunks);checksum=sha256(raw)
+                    member=f'{index:08d}-{name}-{checksum}.bin'
+                    _stream_write(directory,member,raw)
+                    chunks.append({'index':index,'stream':name,'file':member,'bytes':len(raw),'sha256':checksum});parts[name].append(raw)
+                    if forward:
+                        output=getattr(sys,name).buffer;output.write(raw);output.flush()
+        child_code=child.wait();code=128+interrupted[0] if interrupted else child_code
+        outputs={name:b''.join(values) for name,values in parts.items()}
+        inventory={'chunks':chunks,'streams':{name:{'bytes':len(raw),'sha256':sha256(raw)} for name,raw in outputs.items()}}
+        reference['index_sha256']=_stream_write(directory,'index.json',encode(inventory))
+        finish={'status':'INCOMPLETE' if interrupted else 'COMPLETE','returncode':code,'child_returncode':child_code,
+                'signals':interrupted,'start_sha256':reference['start_sha256'],'index_sha256':reference['index_sha256']}
+        reference['finish_sha256']=_stream_write(directory,'finish.json',encode(finish))
+        result=subprocess.CompletedProcess(command,code,outputs['stdout'],outputs['stderr']);result.stream_custody=reference
+        return result
+    finally:
+        for number,handler in handlers.items():signal.signal(number,handler)
+        if child is not None and child.poll() is None:
+            child.terminate()
+            try:child.wait(timeout=5)
+            except subprocess.TimeoutExpired:child.kill();child.wait()
+        for stream in (getattr(child,'stdout',None),getattr(child,'stderr',None)):
+            if stream is not None:stream.close()
+        os.close(directory)
+
+def verify_stream_execution(root,record):
+    reference=record['stream_custody'];keys={'kind','run_id','start_sha256','index_sha256','finish_sha256'}
+    if (not isinstance(reference,dict) or set(reference)!=keys or reference['kind']!='boc.validation-stream/1'
+            or any(not re.fullmatch('[a-f0-9]{64}',reference[key]) for key in keys-{'kind','run_id'})):
+        raise ValueError('Native stream reference changed')
+    binding=_stream_binding(record);directory=_stream_directory(root,binding,reference['run_id'])
+    try:
+        values={}
+        for name in ('start','index','finish'):
+            raw=_stream_read(directory,name+'.json')
+            if sha256(raw)!=reference[name+'_sha256']:raise ValueError('Native stream evidence changed')
+            values[name]=json.loads(raw)
+        start,index,finish=(values[name] for name in ('start','index','finish'));fact=os.fstat(directory)
+        if (set(start)!={'kind','binding','run_id','directory','environment_sha256'} or start['kind']!=reference['kind']
+                or start['binding']!=binding or start['run_id']!=reference['run_id']
+                or start['directory']!={'dev':fact.st_dev,'ino':fact.st_ino,'uid':fact.st_uid,'mode':stat.S_IMODE(fact.st_mode)}
+                or not re.fullmatch('[a-f0-9]{64}',start['environment_sha256'])):
+            raise ValueError('Native stream input custody changed')
+        if (set(index)!={'chunks','streams'} or set(finish)!={'status','returncode','child_returncode','signals','start_sha256','index_sha256'}
+                or finish['start_sha256']!=reference['start_sha256'] or finish['index_sha256']!=reference['index_sha256']
+                or finish['returncode']!=record['exit_code'] or finish['status'] not in ('COMPLETE','INCOMPLETE')
+                or (finish['status']=='COMPLETE' and (finish['signals'] or finish['child_returncode']!=record['exit_code']))
+                or not isinstance(finish['signals'],list)
+                or any(type(number) is not int or number not in (signal.SIGINT,signal.SIGTERM) for number in finish['signals'])
+                or (finish['status']=='INCOMPLETE' and (not finish['signals'] or record['exit_code']!=128+finish['signals'][0]
+                    or record.get('passed') is True))):
+            raise ValueError('Native stream completion changed')
+        parts={'stdout':[],'stderr':[]};members={'start.json','index.json','finish.json'}
+        for number,chunk in enumerate(index['chunks']):
+            if (set(chunk)!={'index','stream','file','bytes','sha256'} or type(chunk['index']) is not int or chunk['index']!=number
+                    or chunk['stream'] not in parts or type(chunk['bytes']) is not int or not 0<chunk['bytes']<=65536
+                    or not re.fullmatch('[a-f0-9]{64}',chunk['sha256'])
+                    or chunk['file']!=f"{number:08d}-{chunk['stream']}-{chunk['sha256']}.bin"):
+                raise ValueError('Native stream sequence changed')
+            raw=_stream_read(directory,chunk['file'],65536)
+            if len(raw)!=chunk['bytes'] or sha256(raw)!=chunk['sha256']:raise ValueError('Native stream bytes changed')
+            parts[chunk['stream']].append(raw);members.add(chunk['file'])
+        if set(os.listdir(directory))!=members:raise ValueError('Native stream membership changed')
+        outputs={name:b''.join(values) for name,values in parts.items()}
+        if index['streams']!={name:{'bytes':len(raw),'sha256':sha256(raw)} for name,raw in outputs.items()}:
+            raise ValueError('Native stream summary changed')
+        return outputs,finish
+    finally:os.close(directory)
+
 def originals(root,contract,phase):
     folder=Path(git(root,'rev-parse','--absolute-git-dir'))/'oracle/validation-contract-results'/contract['contract_sha256']
     for p in folder.glob('*/*-'+phase+'-*.json'):
         d=json.loads(p.read_text());body={k:v for k,v in d.items() if k!='record_sha256'}
         if digest(body)!=d.get('record_sha256') or hashlib.sha256(Path(d['output_file']).read_bytes()).hexdigest()!=d['output_sha256']:raise ValueError('Original execution custody changed')
+        if 'stream_custody' in d:
+            streams,finish=verify_stream_execution(root,d)
+            if stream_summary_text(streams['stdout'],streams['stderr'])!=Path(d['output_file']).read_text():
+                raise ValueError('Native stream output differs from original execution')
         yield {**d, '_record_path':str(p)}
 
 def execute(root,category,phase='after'):
@@ -519,9 +677,12 @@ def execute(root,category,phase='after'):
         before=[r for r in originals(root,contract,'before') if r.get('inputs_unchanged') is True and r['category']==category and r['fixtures']==fixtures and r['runtime']==contract['runtime'] and r['exit_code']!=0 and r['summary'].get('complete') and r['summary'].get('fail',0)>0 and 'ERR_ASSERTION' in Path(r['output_file']).read_text() and not any(r['summary'].get(k,0) for k in ('skipped','todo','cancelled'))]
         if not before:raise ValueError('Missing unchanged-test fail-before execution; do not substitute an infrastructure error')
     env={k:v for k,v in os.environ.items() if k!='NODE_TEST_CONTEXT'}
-    result=subprocess.run(row['argv'],cwd=root,capture_output=True,text=True,env=env);text=result.stdout+result.stderr
+    binding={'contract_sha256':contract['contract_sha256'],'commit':commit,'tree':git(root,'rev-parse',commit+'^{tree}'),
+             'category':category,'phase':phase,'command':row['argv'],'fixtures':fixtures,'runtime':contract['runtime']}
+    result=stream_execution(root,row['argv'],env,binding);text=stream_summary_text(result.stdout,result.stderr)
     summary=result_summary(text,result.returncode,bool(row['tests']));unchanged=git(root,'rev-parse','HEAD')==commit and not git(root,'status','--porcelain=v1','--untracked-files=all') and runtime()==contract['runtime']
     record={'kind':'boc-validation-execution-v1','result_scope':'validation_phase','e2e_status':'NOT_EVALUATED','delivery_policy':contract['delivery_policy'],'finished_at':datetime.now(timezone.utc).isoformat(),'execution_environment':{'node':contract['runtime']['node'],'python':platform.python_version(),'platform':platform.system()},'contract_sha256':contract['contract_sha256'],'catalog_sha256':contract['catalog_sha256'],'commit':commit,'tree':git(root,'rev-parse',commit+'^{tree}'),'category':category,'phase':phase,'command':row['argv'],'fixtures':fixtures,'runtime':contract['runtime'],'controller_python':platform.python_version(),'exit_code':result.returncode,'summary':summary,'inputs_unchanged':unchanged,'passed':phase=='after' and summary['passed'] and unchanged}
+    record['stream_custody']=result.stream_custody
     target=store(root,contract,commit,category,phase,record,text);print(json.dumps({'record':str(target),'passed':record['passed'],'phase':phase,'summary':summary}))
     return 0 if record['passed'] or phase=='before' and unchanged and summary.get('complete') and summary.get('fail',0)>0 and not any(summary.get(k,0) for k in ('skipped','todo','cancelled')) and 'ERR_ASSERTION' in text and result.returncode!=0 else 1
 

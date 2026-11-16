@@ -1304,5 +1304,28 @@ class PackageGateTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError,'file concurrency one'):d.require_node_file_bounds(changed)
 
 
+class NativeStreamAdmission(unittest.TestCase):
+    def test_current_native_requires_real_complete_streams_and_legacy_stays_immutable(self):
+        scratch=Path(__file__).resolve().parents[1]/'Vault/tmp'
+        with tempfile.TemporaryDirectory(dir=scratch,prefix='native-stream-') as name:
+            root=Path(name).resolve()
+            subprocess.run(['git','init','-q',str(root)],check=True)
+            command=[sys.executable,'-c',"print('actual output')"]
+            binding={'contract_sha256':'a'*64,'commit':'b'*40,'tree':'c'*40,'category':'interactions','phase':'after','command':command,'fixtures':{},'runtime':{}}
+            result=d.contract.stream_execution(root,command,dict(os.environ),binding,forward=False)
+            record={**binding,'exit_code':result.returncode,'stream_custody':result.stream_custody}
+            path=root/'record.json';path.write_text(json.dumps(record));rows=[{'record':str(path)}]
+            d.require_native_streams(root,rows,'native')
+            legacy=dict(record);legacy.pop('stream_custody');path.write_text(json.dumps(legacy))
+            with self.assertRaisesRegex(ValueError,'lacks stream custody'):d.require_native_streams(root,rows,'native')
+            d.require_native_streams(root,[], 'ci')
+            with self.assertRaisesRegex(ValueError,'mode changed'):d.require_native_streams(root,rows,'unknown')
+            # Legacy originals keep their exact existing digest/output checks.
+            selected={'contract_sha256':binding['contract_sha256']}
+            original=d.contract.store(root,selected,binding['commit'],'interactions','after',legacy,'actual output\n')
+            self.assertEqual(len(list(d.contract.originals(root,selected,'after'))),1)
+            value=json.loads(original.read_bytes());Path(value['output_file']).write_text('altered')
+            with self.assertRaisesRegex(ValueError,'custody changed'):list(d.contract.originals(root,selected,'after'))
+
 if __name__ == '__main__':
     unittest.main()

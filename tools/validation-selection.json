@@ -6,10 +6,10 @@
     "model": "gpt-6.1-sol",
     "oracle_sha256": "11c855e3c0183799fcfdf10d02c6b89c1eb397582c73406c0defe99f07017fe1",
     "host": "Codys-MacBook-Pro.local",
-    "time": "2026-11-16T10:54:17Z",
+    "time": "2026-11-16T12:01:06Z",
     "origin_main": "b16128819f56e81b2cb794c07506da056d073535",
-    "request_sha256": "c4dbabf193272982e58b56e9062a4f4f5e61eac3110b7f6808c00ab159c90e32",
-    "proposal_sha256": "9d17cdd347887aed8b3975e47b29e31b0117af31c615aad552298fb68535f0a7"
+    "request_sha256": "6958bf0375ab2c2370527736ccf428464f6bed175be8c17731fd1db5d07ea413",
+    "proposal_sha256": "a0d6e14c5fe023a5e9d73af3cd095ffa40faf8a546162540e8b56a4fb8edc1c1"
   },
   "selection": {
     "acceptance": [
@@ -85,7 +85,9 @@
       "Coordinate subscriber bursts with verified committed progress while retaining one connection, 130 unique events, five committed own comments, final cursor 131, duplicate-wake rejection and existing waits.",
       "Partition only the two identified heavy test classes into independently executable test IDs after checking fixture hooks; preserve the exact discovered unique case union, actual executed identities, raw outcomes, existing concurrency limits and unit/category deadlines, rejecting missing, extra, empty, skipped or timed-out execution.",
       "Generate newly sealed selected and fixed Node command vectors with explicit per-file concurrency one; accept historical commands only as complete exact vectors in genuine immutable historical seals, reject mixed or arbitrary vectors, and require the bounded vector for the new current deterministic profile through a genuine native replacement seal.",
-      "The selected publication consumer executes the complete admission and destination-resolution test classes, verifies exact unique declared and callable test membership, rejects unknown or missing classes and test identities, and is admitted only through its exact finite selected path with mandatory coverage and all existing checks preserved."
+      "The selected publication consumer executes the complete admission and destination-resolution test classes, verifies exact unique declared and callable test membership, rejects unknown or missing classes and test identities, and is admitted only through its exact finite selected path with mandatory coverage and all existing checks preserved.",
+      "Extend only the two selected heavy test consumers to verified test-only native Git and conservative resource-admitted concurrency capped at eight. Preserve the complete unique 77-case union, actual executed identities, raw outcomes, existing unit and category deadlines, other consumer defaults and production Git routing. Verify source, runtime, tool and environment continuity; pressure, swap or custody degradation cancels and drains owned work, retains failures and completes verified-owned cleanup before success.",
+      "Continuously capture category stdout and stderr through bounded binary reads into private immutable run-bound evidence, preserving stream identity, ordering, byte counts and hashes before interruption. Prove actual early binary output followed by timeout and owned-child drain; reject missing, altered, reordered, incomplete or mismatched evidence and preserve non-passing interruption outcomes. Successful summary bytes remain equivalent to the prior stdout-plus-stderr behavior; historical records retain strict legacy validation without fabricated stream witnesses, every new optional custody field is validated when present, and raw stream bodies remain excluded from packages and public attestations."
     ],
     "acceptance_tests": [
       {
@@ -118,7 +120,8 @@
           7,
           10,
           65,
-          71
+          71,
+          74
         ],
         "module": "tests/validation-contract.test.mjs",
         "purpose": "Preserve contract recording, native revisions, selected execution and exact feature-design binding."
@@ -139,7 +142,9 @@
           56,
           61,
           71,
-          72
+          72,
+          73,
+          74
         ],
         "module": "tests/deterministic-lanes.test.mjs",
         "purpose": "Verify finite profile membership, neighboring-path refusal, mandatory conformance modules, complete selected execution and exact-source leased publication."
@@ -296,7 +301,8 @@
           50,
           62,
           63,
-          72
+          72,
+          73
         ],
         "module": "tests/publication-admission.test.mjs",
         "purpose": "Verify attestation custody, reuse, replacement, revocation, exact remote admission and leased promotion; exercise named verbatim questions, adjacent genuine human answers, exact effect scope, journal provenance, byte custody, append safety and unchanged Codex admission."
@@ -310,7 +316,8 @@
           33,
           34,
           62,
-          63
+          63,
+          73
         ],
         "module": "tests/shipment-workflow.test.mjs",
         "purpose": "Verify SSH shipment, attestation consumption, immutable checkpoint reuse, revocation and confirmed delivery during concurrent authoring."
@@ -570,9 +577,9 @@
       }
     ],
     "change_class": "feature",
-    "design": "Vault/tmp/feedback-development/aio-integration/command-consumer-seal-design.md",
-    "reason": "Add explicit publication-consumer discovery and finite-path coverage using retained selected modules. Preserve the complete prior feature contract, genuine producer-emitted command sealing, immutable history and original delivery limits.",
-    "revision_of": "5e32075b6bbf88f7b857082b6a8f4e8fe768eed45f88a060cb1b841fc78168b3",
+    "design": "Vault/tmp/feedback-development/aio-integration/final4-recovery-design.md",
+    "reason": "Add bounded consumer resource admission and interruption-safe binary category evidence while preserving every prior criterion, selected module, fixture, mapping, execution guard and historical result.",
+    "revision_of": "16b8ea9ab4171338094ecf42831df15727566a2eb93795c3d1754a04334863df",
     "scope_paths": [
       ".agents/skills/operations-center-implementation/SKILL.md",
       ".agents/skills/oracle/review-output.schema.json",
@@ -1200,8 +1207,8 @@
       "tools/vault_index.py"
     ]
   },
-  "base_commit": "d4280129e7fc9b500d9245347bf6fd7831024332",
-  "base_tree": "9f7941ec29bafce7b9144209fc6f57528eb247ad",
+  "base_commit": "a39c4205b55f387442720de17df3b33197a2df74",
+  "base_tree": "9ee16630d70436c6fa3a482f2c928c7d63d2fa0f",
   "catalog_sha256": "9a96f1cd2a973457f9da681dddcc5161aa8ffda188b092d849e5bc83999391c8",
   "runtime": {
     "node": "v22.11.0",
@@ -1211,8 +1218,8 @@
     "architecture": "arm64",
     "options_sha256": "ebc442c160f8629073a82976daadaba1d95a60a38d768c81c8eb06598aedcac5"
   },
-  "proposal_sha256": "9d17cdd347887aed8b3975e47b29e31b0117af31c615aad552298fb68535f0a7",
-  "review_sha256": "4ca1c99013013d1b751563aaa5283f6abd457995566668cf30b9219830812a49",
+  "proposal_sha256": "a0d6e14c5fe023a5e9d73af3cd095ffa40faf8a546162540e8b56a4fb8edc1c1",
+  "review_sha256": "84befb7d89b8963dd0f70fabe48bc80a7ebbd405ebb5a2c815a5f1a1f6c51666",
   "commands": [
     {
       "category": "sanity",
@@ -1367,16 +1374,18 @@
     "maximum_reasoning_effort": "medium"
   },
   "design_binding": {
-    "design": "Vault/tmp/feedback-development/aio-integration/command-consumer-seal-design.md",
-    "design_sha256": "46f8746b04ba22575184455293798411d13540f6131d789a2c5ade30ceadb378",
-    "plan": "Vault/tmp/feedback-development/aio-integration/command-consumer-seal-design.test-plan.json",
-    "plan_sha256": "e57694669665208bb0ce91fd6ec2ae2ecbaf77172db93d4dd4adcac8923b8036",
+    "design": "Vault/tmp/feedback-development/aio-integration/final4-recovery-design.md",
+    "design_sha256": "496960edce70c78825722de7be6a370bb5e1fea1dbb9e057e56b37f90fc7de5f",
+    "plan": "Vault/tmp/feedback-development/aio-integration/final4-recovery-design.test-plan.json",
+    "plan_sha256": "ec9ff2ba27664fad35f747ed88d64f16dbec728bfe40a375c8ede1502407595c",
     "tests": [
+      "tests/command-coverage.test.mjs",
       "tests/deterministic-lanes.test.mjs",
       "tests/publication-admission.test.mjs",
+      "tests/shipment-workflow.test.mjs",
       "tests/validation-contract.test.mjs"
     ]
   },
-  "contract_sha256": "16b8ea9ab4171338094ecf42831df15727566a2eb93795c3d1754a04334863df",
-  "seal": "3d80a49afb26acfb0ef7caa2049ff347cc51448500924f8009bfa55d2a8b3251"
+  "contract_sha256": "6511f8d09a0019a9d57a3a53ef83c2a4691b53c76a131ede69afc4a7f2a25271",
+  "seal": "fb7e60f2441563718d1fb56e530f3df14dbf31519fd0ef6a2e935ee1876f4f22"
 }

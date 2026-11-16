@@ -175,3 +175,20 @@ complete legacy vector of an immutable historical seal; mixed or arbitrary
 options reject. Current deterministic package admission requires the bounded
 vector and its genuine proposal origin. Updating the command producer never
 rewrites an old seal or supplies a new decision through manual resealing.
+
+### Interrupted native output custody
+
+Native executions retain actual binary stdout/stderr reads before forwarding them
+into the existing supervisor. Each private run beneath
+`.git/oracle/validation-contract-results/` binds the selected command, source/tree,
+fixtures, runtime, environment digest and directory identity. Immutable numbered
+chunks and final stream manifests bind every byte, order, size and digest. These
+bodies stay private; publication carries existing metadata/digests only.
+
+A signal, missing completion manifest, changed member, substituted directory or
+source mismatch remains incomplete or failing. Successful summary input keeps
+legacy stdout-then-stderr order. Existing original records retain their pinned
+legacy digest checks; new stream fields receive full custody validation when
+present. Current package profile19 requires complete native stream witnesses.
+CI continues to execute the exact sealed vectors directly. The original900second
+category guard and explicit file concurrency one remain unchanged.

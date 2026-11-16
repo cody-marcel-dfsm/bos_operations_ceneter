@@ -33,7 +33,7 @@ except ImportError:
     import oracle_spec_seal as spec_seal
 
 KIND = 'boc-deterministic-package/1'
-PROFILE = 'feedback-discovery-and-release-tool/18'
+PROFILE = 'feedback-discovery-and-release-tool/19'
 _OUTPUT_LOCK = threading.Lock()
 WS_LOCK_RECORD = {
     'version': '8.23.0', 'resolved': 'https://registry.npmjs.org/ws/-/ws-8.23.0.tgz',
@@ -916,6 +916,7 @@ def read_receipt(root):
     check_combined_schedule(root, current, value['runs'], value.get('spec_runs'), value.get('selected_scheduling'), ci=value.get('spec_mode') == 'ci')
     native.check_spec_runs(root, value['base'], current['source'], value.get('spec_runs'), directory(root),
                            receipt_completed=native._completed(value), mode=value.get('spec_mode'))
+    require_native_streams(root,value.get('spec_runs'),value.get('spec_mode'))
     for failure in directory(root).glob('*.failure.json'):
         record = json.loads(failure.read_bytes())
         if (record.get('identity') == current and record.get('runs')
@@ -1095,6 +1096,17 @@ def require_node_file_bounds(selected):
         expected = ['node','--test','--test-reporter=tap','--test-concurrency=1',*row['tests']]
         if row['argv'] != expected:
             raise ValueError('Current selected Node commands require explicit file concurrency one')
+
+
+def require_native_streams(root,rows,mode):
+    """Profile19 requires actual streams; immutable historical records stay legacy."""
+    if mode=='ci':return  # CI executes the exact vectors directly, without a local native record.
+    if mode!='native' or not isinstance(rows,list):raise ValueError('Native stream execution mode changed')
+    for row in rows:
+        record=json.loads(Path(row['record']).read_bytes())
+        if 'stream_custody' not in record:raise ValueError('Current native execution lacks stream custody')
+        streams,finish=contract.verify_stream_execution(root,record)
+        if finish['status']!='COMPLETE':raise ValueError('Incomplete native stream execution')
 
 
 def run_complete_category(root, base, before, selected, *, ci=False):

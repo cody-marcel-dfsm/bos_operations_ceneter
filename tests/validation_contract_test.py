@@ -1,4 +1,4 @@
-import copy,hashlib,json,os,subprocess,sys,tempfile,unittest
+import copy,hashlib,json,os,signal,subprocess,sys,tempfile,unittest
 from pathlib import Path
 from unittest.mock import patch
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
@@ -221,4 +221,91 @@ class Contracts(unittest.TestCase):
   result=subprocess.run(command,cwd=self.root,env=environment,capture_output=True,text=True,timeout=10)
   summary=v.result_summary(result.stdout+result.stderr,result.returncode,True)
   self.assertTrue(summary['passed'],result.stdout+result.stderr);self.assertEqual(summary['tests'],2)
+class NativeStreams(unittest.TestCase):
+ def setUp(self):
+  scratch=Path(__file__).resolve().parents[1]/'Vault/tmp';scratch.mkdir(parents=True,exist_ok=True)
+  self.temp=tempfile.TemporaryDirectory(dir=scratch,prefix='stream-');self.addCleanup(self.temp.cleanup);self.root=Path(self.temp.name).resolve();(self.root/'.git').mkdir()
+ def binding(self,command):
+  return {'contract_sha256':'a'*64,'commit':'b'*40,'tree':'c'*40,'category':'interactions','phase':'after','command':command,'fixtures':{},'runtime':{'synthetic':'test-only'}}
+ def capture(self,body):
+  command=[sys.executable,'-u','-c',body];binding=self.binding(command)
+  result=v.stream_execution(self.root,command,dict(os.environ),binding,forward=False)
+  return result,{**binding,'exit_code':result.returncode,'stream_custody':result.stream_custody}
+ def folder(self,record):
+  return self.root/'.git/oracle/validation-contract-results'/record['contract_sha256']/record['commit']/'streams'/record['stream_custody']['run_id']
+ def test_successful_real_binary_streams_preserve_legacy_stdout_then_stderr_bytes(self):
+  body="import os;os.write(1,b'first\\x00\\xff\\n');os.write(2,b'error\\x00\\xfe\\n')"
+  legacy=subprocess.run([sys.executable,'-u','-c',body],capture_output=True,check=True)
+  result,record=self.capture(body);streams,finish=v.verify_stream_execution(self.root,record)
+  self.assertEqual(result.stdout+result.stderr,legacy.stdout+legacy.stderr)
+  self.assertEqual(streams,{'stdout':legacy.stdout,'stderr':legacy.stderr});self.assertEqual(finish['status'],'COMPLETE')
+  self.assertEqual(finish['returncode'],0)
+ def test_changed_missing_reordered_members_and_input_references_fail_closed(self):
+  result,record=self.capture("import os,time;os.write(1,b'one');time.sleep(.05);os.write(2,b'two')")
+  folder=self.folder(record);original={p.name:p.read_bytes() for p in folder.iterdir()}
+  chunk=next(p for p in folder.iterdir() if p.suffix=='.bin')
+  chunk.write_bytes(b'changed')
+  with self.assertRaisesRegex(ValueError,'stream bytes changed'):v.verify_stream_execution(self.root,record)
+  chunk.write_bytes(original[chunk.name]);chunk.unlink()
+  with self.assertRaises(OSError):v.verify_stream_execution(self.root,record)
+  chunk.write_bytes(original[chunk.name]);chunk.chmod(0o600)
+  index=json.loads(original['index.json']);index['chunks'].reverse();raw=json.dumps(index).encode();(folder/'index.json').write_bytes(raw)
+  forged=copy.deepcopy(record);forged['stream_custody']['index_sha256']=v.sha256(raw)
+  finish=json.loads(original['finish.json']);finish['index_sha256']=v.sha256(raw);raw=json.dumps(finish).encode();(folder/'finish.json').write_bytes(raw);forged['stream_custody']['finish_sha256']=v.sha256(raw)
+  with self.assertRaisesRegex(ValueError,'sequence changed'):v.verify_stream_execution(self.root,forged)
+  for name,raw in original.items():(folder/name).write_bytes(raw)
+  altered=copy.deepcopy(record);altered['fixtures']={'tests/other.test.mjs':'d'*40}
+  with self.assertRaisesRegex(ValueError,'input custody changed'):v.verify_stream_execution(self.root,altered)
+  (folder/'foreign').write_text('foreign')
+  with self.assertRaisesRegex(ValueError,'membership changed'):v.verify_stream_execution(self.root,record)
+ def test_successful_unicode_and_per_stream_newline_translation_equal_legacy_text_mode(self):
+  body="import os;os.write(1,'café\\r\\nend\\r'.encode());os.write(2,b'\\nerror\\r')"
+  legacy=subprocess.run([sys.executable,'-u','-c',body],capture_output=True,text=True,check=True)
+  result,record=self.capture(body)
+  self.assertEqual(v.stream_summary_text(result.stdout,result.stderr),legacy.stdout+legacy.stderr)
+  streams,finish=v.verify_stream_execution(self.root,record)
+  self.assertEqual(streams['stdout'],result.stdout);self.assertEqual(streams['stderr'],result.stderr)
+ def test_native_write_fault_retains_original_failure_and_drains_actual_child(self):
+  pidfile=self.root/'child.pid'
+  body="import os,time;from pathlib import Path;Path("+repr(str(pidfile))+").write_text(str(os.getpid()));print('ready',flush=True);time.sleep(30)"
+  command=[sys.executable,'-u','-c',body];write=v._stream_write
+  def fail(directory,name,raw):
+   if name.endswith('.bin'):raise OSError('synthetic native write failure')
+   return write(directory,name,raw)
+  with patch.object(v,'_stream_write',side_effect=fail):
+   with self.assertRaisesRegex(OSError,'synthetic native write failure'):v.stream_execution(self.root,command,dict(os.environ),self.binding(command),forward=False)
+  with self.assertRaises(ProcessLookupError):os.kill(int(pidfile.read_text()),0)
+  self.assertFalse(list((self.root/'.git').rglob('finish.json')))
+ def test_actual_supervisor_signal_retains_early_binary_bytes_and_drains_child(self):
+  body="import os,time;print('READY '+str(os.getpid()),flush=True);os.write(2,b'early\\x00\\xff');time.sleep(30)"
+  command=[sys.executable,'-u','-c',body];binding=self.binding(command)
+  driver="import json,os,sys;from pathlib import Path;sys.path.insert(0,sys.argv[1]);from tools import validation_contract as v;r=v.stream_execution(Path(sys.argv[2]),json.loads(sys.argv[3]),dict(os.environ),json.loads(sys.argv[4]));print('RESULT '+json.dumps({'code':r.returncode,'reference':r.stream_custody}),flush=True)"
+  child=subprocess.Popen([sys.executable,'-u','-c',driver,str(Path(v.__file__).resolve().parents[1]),str(self.root),json.dumps(command),json.dumps(binding)],stdout=subprocess.PIPE,stderr=subprocess.PIPE,start_new_session=True)
+  try:
+   # Read the real ready event before signalling; no startup/latency assumption.
+   import selectors
+   with selectors.DefaultSelector() as ready:
+    ready.register(child.stdout,selectors.EVENT_READ);self.assertTrue(ready.select(5),'Actual ready event missing')
+   line=child.stdout.readline();self.assertTrue(line.startswith(b'READY '));pid=int(line.split()[1])
+   # The early stderr read has its own persisted chunk before interruption.
+   import time
+   folder=self.root/'.git/oracle/validation-contract-results'/binding['contract_sha256']/binding['commit']/'streams'
+   until=time.monotonic()+5
+   while not list(folder.glob('*/*-stderr-*.bin')) and time.monotonic()<until:time.sleep(.005)
+   self.assertTrue(list(folder.glob('*/*-stderr-*.bin')))
+   os.killpg(child.pid,signal.SIGTERM);stdout,stderr=child.communicate(timeout=5);self.assertEqual(child.returncode,0,stderr)
+   value=json.loads(next(row.removeprefix(b'RESULT ') for row in stdout.splitlines() if row.startswith(b'RESULT ')))
+   record={**binding,'exit_code':value['code'],'stream_custody':value['reference']};streams,finish=v.verify_stream_execution(self.root,record)
+   self.assertEqual(streams['stdout'],line);self.assertEqual(streams['stderr'],b'early\x00\xff')
+   self.assertEqual(finish['status'],'INCOMPLETE');self.assertNotEqual(record['exit_code'],0)
+   with self.assertRaises(ProcessLookupError):os.kill(pid,0)
+  finally:
+   if child.poll() is None:os.killpg(child.pid,signal.SIGKILL);child.wait()
+   child.stdout.close();child.stderr.close()
+ def test_interrupted_unfinished_or_replaced_directory_never_supplies_a_complete_record(self):
+  result,record=self.capture("print('retained')");folder=self.folder(record)
+  (folder/'finish.json').unlink()
+  with self.assertRaises(OSError):v.verify_stream_execution(self.root,record)
+  replacement=folder.with_name('preserved');folder.rename(replacement);folder.symlink_to(replacement,target_is_directory=True)
+  with self.assertRaises(OSError):v.verify_stream_execution(self.root,record)
 if __name__=='__main__':unittest.main()

@@ -638,3 +638,19 @@ resources. Host tests use real readiness/progress barriers and the exact logical
 expiry callback; the production host's lifetime and authority stay unchanged.
 Full current native verification remains mandatory. Original failed runs and
 all timing-budget breaches remain retained evidence.
+
+### Profile19: bounded consumer execution and interrupted evidence
+
+`feedback-discovery-and-release-tool/19` retains the complete profile18 finite
+scope and every privacy, history, credential, packaging, runtime, export and test
+check. Its native selected executions require complete private binary-stream
+custody; immutable legacy originals remain unchanged. CI executes the same sealed
+commands directly. Raw native streams never enter packages or public attestations.
+
+Only the publication and shipment test consumers use the existing verified
+native-Git and conservative resource helpers with at most eight admitted workers.
+Their complete35and42method inventories, original labels, per-process outcomes,
+source/tool/environment/resource checks and verified cleanup remain required.
+Other cohort defaults, these consumers' existing timeout0, top-level file
+concurrency one and the900second category guard remain unchanged. An interrupted
+run retains actual available bytes and reports incomplete execution.
