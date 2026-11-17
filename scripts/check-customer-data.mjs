@@ -257,7 +257,7 @@ export function byteCountPrivacyText(text) {
   return text.replace(/(_bytes\\*"\s*:\s*)\d+(?![\d.eE])/gu, "$10");
 }
 
-export function customerDataFindings(text, path, blockedDigests) {
+export function customerDataFindings(text, path, blockedDigests, phoneText = byteCountPrivacyText(text)) {
   const findings = [];
   const publicNotice = isExactPublicLegalNotice(text, path);
   for (const match of text.matchAll(emailPattern)) {
@@ -265,7 +265,6 @@ export function customerDataFindings(text, path, blockedDigests) {
       findings.push(`${path}: non-synthetic email address`);
     }
   }
-  const phoneText = byteCountPrivacyText(text);
   for (const pattern of [formattedNanpPattern, compactNanpPattern]) {
     for (const match of phoneText.matchAll(pattern)) {
       if (!allowedFictionalPhone(match[2], match[3])) {
@@ -531,8 +530,10 @@ export async function scanPrivacyFile(path, body, context, {blockedDigests, appr
         return approvedBinaryDigests.has(sha256(body)) ? [] : [`${label}: unreviewed binary publication artifact`];
       const nativeText = verifiedNativeProbeMetadataText(body.toString("utf8"), context.nativeProbe);
       const sourceText = verifiedSyntheticSourceFixtureText(nativeText, context.sourceFixture);
-      // Typed byte counts are cleared before value decoding detaches them from their keys.
-      return customerDataFindings(operationalPrivacyText(byteCountPrivacyText(sourceText), githubIdentities), label, blockedDigests);
+      // The phone view clears typed byte counts before value decoding detaches
+      // them from their keys; every other check reads the original decoding.
+      return customerDataFindings(operationalPrivacyText(sourceText, githubIdentities), label, blockedDigests,
+        operationalPrivacyText(byteCountPrivacyText(sourceText), githubIdentities));
     }
     if (!textExtensions.has(extname(path).toLowerCase())) {
       if (isWatcherProcessMetadata(path, body)) return customerDataFindings(body.toString("ascii"), label, blockedDigests);

@@ -7,6 +7,7 @@ import crypto from "node:crypto";
 import {syncBuiltinESMExports} from "node:module";
 
 import {
+  byteCountPrivacyText,
   customerDataFindings,
   isExactPublicLegalNotice,
   isProposedTextArtifact,
@@ -647,6 +648,8 @@ test("operational evidence byte counts pass the complete file scan while a phone
     await writeFile(phone, JSON.stringify({free_bytes:1,contact:Number(["202","867","5309"].join(""))})+"\n");
     const result = await fixturePrivacyFailures([counts, phone]);
     assert(!result.some(item => item.includes("resources.stdout.log")), result.join("\n"));
+    const count = String(2 * 2 ** 30), view = JSON.stringify({reserve_bytes: Number(count)});
+    assert(customerDataFindings(view, "run.json", new Set([sha256(count)]), byteCountPrivacyText(view)).some(row => row.endsWith("identifier digest")));
     assert(result.some(item => item.includes("contact.stdout.log: non-fictional phone number")));
   } finally { await rm(directory, {recursive: true, force: true}); }
 });
