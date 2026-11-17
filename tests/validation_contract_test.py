@@ -106,9 +106,15 @@ class Contracts(unittest.TestCase):
    with patch.object(oracle,'_atomic_write',side_effect=lambda p,b:p.write_bytes(b)),patch.object(oracle,'_review_process',return_value={'synthetic':'independent response'}) as dispatch:
     self.assertEqual(oracle._proposal_oracle(self.root,'Synthetic requirement',{},None),{'synthetic':'independent response'})
    selected=json.loads(dispatch.call_args.kwargs['schema_path'].read_text())
-   expected=v.selection_schema();expected['properties']['revision_of']={'const':None}
+   expected=v.selection_schema();expected['properties']['revision_of']={'type':'null','const':None}
    self.assertIn('validation_selection',selected['required']);self.assertEqual(selected['properties']['validation_selection'],expected)
    self.assertEqual(schema_path.read_text(),original)
+   # Strict structured-output schemas reject a const binding without a type.
+   prior='a'*64;(self.root/v.SELECTION).parent.mkdir(parents=True,exist_ok=True);(self.root/v.SELECTION).write_text(json.dumps({'contract_sha256':prior}))
+   with patch.object(oracle,'_atomic_write',side_effect=lambda p,b:p.write_bytes(b)),patch.object(oracle,'_review_process',return_value={}) as dispatch:
+    oracle._proposal_oracle(self.root,'Synthetic requirement',{},None)
+   revision=json.loads(dispatch.call_args.kwargs['schema_path'].read_text())['properties']['validation_selection']['properties']['revision_of']
+   self.assertEqual(revision,{'type':'string','const':prior})
   finally:oracle._RUN.reset(token)
  def test_actual_native_launch_caps_effort_and_preserves_model(self):
   schema=self.root/'schema.json';schema.write_text('{}')

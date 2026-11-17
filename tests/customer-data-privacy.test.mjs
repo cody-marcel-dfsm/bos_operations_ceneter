@@ -628,3 +628,25 @@ test("fixture privacy scope requires explicit paths and retains customer and bin
     assert(findings.some(item => item.includes("unreviewed binary")));
   } finally { await rm(directory, {recursive: true, force: true}); }
 });
+
+test("byte-count values leave the phone check while phones under other keys stay rejected", () => {
+  const counts=['{"free_bytes": 4827074560, "reserve_bytes":2147483648}','{\\"total_bytes\\":16521699328}','"swap_used_bytes" : 2025550123'];
+  for(const text of counts) assert.deepEqual(customerDataFindings(text,"run.json",new Set()),[]);
+  const phone=["202","867","5309"].join("");
+  for(const text of [`{"free": ${phone}}`,`{"free_bytes": "${phone}"}`,`{"free_bytes": 1, "contact": ${phone}}`,`free_bytes ${phone}`,`{"free_bytes_note": ${phone}}`])
+    assert(customerDataFindings(text,"run.json",new Set()).some(row=>row.endsWith("non-fictional phone number")),text);
+  assert(customerDataFindings(operationalPrivacyText(`{"x":"call ${phone}","free_bytes":${phone}}`,[]),"run.json",new Set())
+    .some(row=>row.endsWith("non-fictional phone number")));
+});
+
+test("operational evidence byte counts pass the complete file scan while a phone value fails", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "boc-privacy-bytes-"));
+  const counts = join(directory, "resources.stdout.log"), phone = join(directory, "contact.stdout.log");
+  try {
+    await writeFile(counts, JSON.stringify({host:{cpus:8,free_bytes:4877 * 2 ** 20,total_bytes:15756 * 2 ** 20},reserve_bytes:2 * 2 ** 30})+"\n");
+    await writeFile(phone, JSON.stringify({free_bytes:1,contact:Number(["202","867","5309"].join(""))})+"\n");
+    const result = await fixturePrivacyFailures([counts, phone]);
+    assert(!result.some(item => item.includes("resources.stdout.log")), result.join("\n"));
+    assert(result.some(item => item.includes("contact.stdout.log: non-fictional phone number")));
+  } finally { await rm(directory, {recursive: true, force: true}); }
+});
