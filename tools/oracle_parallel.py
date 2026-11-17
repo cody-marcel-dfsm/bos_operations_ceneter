@@ -387,7 +387,7 @@ def output_schema(base, plan, cohort, prepared=None):
     assessment = copy.deepcopy(base)
     commands = assessment['properties']['command_coverage']
     if cohort['id'] != AREAS[0]:
-        commands['enum'] = [[]]
+        commands['maxItems'] = 0
     elif prepared and prepared.get('required_commands'):
         contract = prepared['command_coverage_contract']
         fields = commands['items']['properties']
