@@ -2,7 +2,7 @@
 name: bos-visual-output
 description: Present BOS operational results as polished visual-first briefs using charts, timelines, diagrams, maps, images, status markers, and compact tables when they materially improve comprehension. Use with BOS MCP results, reconciliation, rosters, schedules, pipelines, capacity, campaigns, invoices, attribution, reviews, performance summaries, daily planners, and executive operating reports.
 metadata:
-  version: "1.0.13"
+  version: "1.0.14"
   requires: "{}"
 ---
 
@@ -103,6 +103,19 @@ evidence, preserving redaction and partial-evidence labels, in this order:
 - **BOSL source beside the graph.** Show authorized, sanitized BOSL source, or the
   executed nodes' identifiers when source cannot be shown, next to the graph,
   so a reader can see code and execution side by side.
+- **Node detail on tap, anchored to the node.** Tapping a node opens its
+  detail — its BOSL for a workflow definition, its actual output and proof
+  for an execution — in an overlay that opens on top of that node, not
+  centered on the screen. The graph stays visible behind it; closing (X,
+  backdrop tap, or Escape) returns to the graph. Never a toggle between
+  graph and source, and never a panel that hides the graph.
+- **Text wraps inside the node.** SVG text does not wrap on its own:
+  word-wrap label and goal text to fit the box, and put the node code on
+  its own row so a long code never collides with the execution badge.
+- **Callback nodes are visible as such.** A node that parks waiting for an
+  event carries a CALLBACK badge, with its on-event exit and its on-expiry
+  exit drawn as edges. Execution badges are CLIENT, SERVER, PARALLEL, or
+  CALLBACK — always the execution type, even on the terminal node.
 - **Balance chart.** For any money workflow, show balance before and balance
   after from the same account, and the change as a single number. Never invent
   an absolute balance: if only the change is verified, show the change and
