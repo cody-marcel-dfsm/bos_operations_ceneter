@@ -251,6 +251,12 @@ function allowedFictionalPhone(exchange, subscriber) {
   return exchange === "555" && /^01\d{2}$/u.test(subscriber);
 }
 
+// Integer values of `*_bytes` keys are machine byte counts, never phone numbers.
+// Only those typed digits leave the phone check; every other check reads them.
+export function byteCountPrivacyText(text) {
+  return text.replace(/(_bytes\\*"\s*:\s*)\d+(?![\d.eE])/gu, "$10");
+}
+
 export function customerDataFindings(text, path, blockedDigests) {
   const findings = [];
   const publicNotice = isExactPublicLegalNotice(text, path);
@@ -259,8 +265,9 @@ export function customerDataFindings(text, path, blockedDigests) {
       findings.push(`${path}: non-synthetic email address`);
     }
   }
+  const phoneText = byteCountPrivacyText(text);
   for (const pattern of [formattedNanpPattern, compactNanpPattern]) {
-    for (const match of text.matchAll(pattern)) {
+    for (const match of phoneText.matchAll(pattern)) {
       if (!allowedFictionalPhone(match[2], match[3])) {
         findings.push(`${path}: non-fictional phone number`);
       }
@@ -524,7 +531,8 @@ export async function scanPrivacyFile(path, body, context, {blockedDigests, appr
         return approvedBinaryDigests.has(sha256(body)) ? [] : [`${label}: unreviewed binary publication artifact`];
       const nativeText = verifiedNativeProbeMetadataText(body.toString("utf8"), context.nativeProbe);
       const sourceText = verifiedSyntheticSourceFixtureText(nativeText, context.sourceFixture);
-      return customerDataFindings(operationalPrivacyText(sourceText, githubIdentities), label, blockedDigests);
+      // Typed byte counts are cleared before value decoding detaches them from their keys.
+      return customerDataFindings(operationalPrivacyText(byteCountPrivacyText(sourceText), githubIdentities), label, blockedDigests);
     }
     if (!textExtensions.has(extname(path).toLowerCase())) {
       if (isWatcherProcessMetadata(path, body)) return customerDataFindings(body.toString("ascii"), label, blockedDigests);

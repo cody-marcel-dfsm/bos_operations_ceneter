@@ -9,7 +9,7 @@ import {isolatedTestCohort} from "./helpers/isolated-test-cohort.mjs";
 import {prepareNativeValidationGit} from "./helpers/native-validation-git.mjs";
 import {assertValidationContinuity,createVerifiedDirectory,prepareNativeValidationResources} from "./helpers/native-validation-state.mjs";
 
-const moduleName="shipment_workflow_test",classes=["ShipmentWorkflow"],expectedCount=42;
+const moduleName="shipment_workflow_test",classes=["ShipmentWorkflow"],expectedCount=43;
 const root=fileURLToPath(new URL("../",import.meta.url));
 const hash=raw=>createHash("sha256").update(raw).digest("hex");
 const testLabel=name=>"Committed shipment: "+name.replace(/^shipment_workflow_test\.ShipmentWorkflow\.test_/u,"").replaceAll("_"," ");

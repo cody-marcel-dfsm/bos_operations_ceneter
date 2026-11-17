@@ -792,6 +792,15 @@ def _proposal_origin(root: Path, proposal: dict, candidate: str) -> str:
     if subprocess.run(["git", "merge-base", "--is-ancestor", origin, candidate],
                       cwd=root, capture_output=True).returncode:
         raise OracleApprovalError("Proposal lifecycle origin is outside the candidate history")
+    # Publication ends a lifecycle: unpublished work on a newer published head
+    # starts its series there. Published candidates keep their own history.
+    published = subprocess.run(["git", "merge-base", candidate, "refs/remotes/origin/main"],
+                               cwd=root, capture_output=True, text=True)
+    head = published.stdout.strip()
+    if (not published.returncode and head not in (origin, _git(root, "rev-parse", candidate).strip())
+            and not subprocess.run(["git", "merge-base", "--is-ancestor", origin, head],
+                                   cwd=root, capture_output=True).returncode):
+        return head
     return origin
 
 
@@ -3176,7 +3185,8 @@ Return JSON matching the supplied schema. Verify the stated problem and cause, c
         if not delta:
             previous = root / validation_contract.SELECTION
             prior_identity = json.loads(previous.read_text())["contract_sha256"] if previous.exists() else None
-            schema["properties"]["validation_selection"]["properties"]["revision_of"] = {"const": prior_identity}
+            schema["properties"]["validation_selection"]["properties"]["revision_of"] = {
+                "type": "string" if prior_identity else "null", "const": prior_identity}
         schema["required"].append("validation_selection")
         schema_path = _RUN.get() / "proposal-contract.schema.json"
         _atomic_write(schema_path, _pretty(schema))

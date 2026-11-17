@@ -650,6 +650,21 @@ class ShipmentWorkflow(unittest.TestCase):
             o.verify_commit(self.root, commit)
             verify.assert_called_once_with(self.root, commit, wait_seconds=0)
 
+    def test_published_lifecycle_origin_starts_the_next_series_at_the_published_head(self):
+        first = self.validate()
+        stale = o._series_directory(self.root, first)
+        rounds = {path.name: path.read_bytes() for path in stale.glob("round-*.json")}
+        self.fixture.git("update-ref", "refs/remotes/origin/main", first)
+        self.assertEqual(o._series_directory(self.root, first), stale)
+        self.fixture.change("peer.py", "next change after publication")
+        second = self.commit("next unpublished change")
+        expected = o._sha(o._canonical({"repository": str(self.root.resolve()), "base_commit": first}))[:24]
+        self.assertEqual(o._series_directory(self.root, second).name, expected)
+        self.assertNotEqual(o._series_directory(self.root, second), stale)
+        self.assertEqual(rounds, {path.name: path.read_bytes() for path in stale.glob("round-*.json")})
+        self.fixture.git("update-ref", "refs/remotes/origin/main", self.fixture.base)
+        self.assertEqual(o._series_directory(self.root, second), stale)
+
     def test_corrupt_lifecycle_origin_refuses_series_reset_and_preserves_history(self):
         commit = self.validate()
         directory = o._series_directory(self.root, commit)

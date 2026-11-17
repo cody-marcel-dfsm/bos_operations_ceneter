@@ -58,31 +58,62 @@ TEXT_SUFFIXES = {
 EXCLUDED_PARTS = {"index", "tmp", ".git", "__pycache__", "node_modules"}
 
 
+# The Vault index and its Chroma dependency run only inside this checkout: the self-contained
+# runtime Vault/index/venv (Git-ignored by the venv rule, pruned from indexing by the index rule).
+# Chroma's native binding needs Python 3.12 or 3.13; nothing outside the project is used.
+INDEX_RUNTIME = Path("Vault/index/venv")
+RUNTIME_EXECUTABLE = INDEX_RUNTIME / "bin" / "python"
+RUNTIME_MARKER = "BOS_VAULT_INDEX_RUNTIME"
+SUPPORTED_RUNTIMES = {(3, 12), (3, 13)}
+RUNTIME_PROBE_SECONDS = 10
+
+
+def _runtime_unavailable(reason: str) -> RuntimeError:
+    return RuntimeError(
+        "Vault indexing runs only in the project-local Python 3.12 or 3.13 runtime "
+        f"Vault/index/venv ({reason}). Provision it as described in "
+        "Vault/docs/operations/vault-index-runtime.md."
+    )
+
+
+def running_in_project_runtime() -> bool:
+    """This process is the supported runtime inside this checkout, executable and prefix alike."""
+    runtime = (PROJECT_ROOT / INDEX_RUNTIME).resolve()
+    return (tuple(sys.version_info[:2]) in SUPPORTED_RUNTIMES
+            and runtime.is_relative_to(PROJECT_ROOT.resolve())
+            and Path(sys.executable).resolve().is_relative_to(runtime)
+            and Path(sys.prefix).resolve().is_relative_to(runtime))
+
+
 def ensure_stable_chroma_runtime() -> None:
-    """Keep Chroma's native binding off unsupported Homebrew Python 3.14."""
-    if sys.version_info < (3, 14):
+    """Continue inside the project runtime; otherwise re-execute once under it."""
+    if running_in_project_runtime():
         return
-    configured = os.environ.get("VAULT_INDEX_PYTHON")
-    candidates = [
-        Path(configured).expanduser() if configured else None,
-        Path("/opt/anaconda3/bin/python"),
-    ]
-    current = Path(sys.executable).resolve()
-    for candidate in candidates:
-        if candidate is None or not candidate.is_file():
-            continue
-        if candidate.resolve() == current:
-            continue
-        # Keep a virtualenv's own python: resolving its symlink loses the venv's packages.
-        interpreter = str(candidate.absolute())
-        os.execv(
-            interpreter,
-            [interpreter, str(Path(__file__).resolve()), *sys.argv[1:]],
+    if os.environ.get(RUNTIME_MARKER):
+        raise _runtime_unavailable("the re-executed process is not that runtime")
+    root = PROJECT_ROOT.resolve()
+    try:
+        interpreter = (PROJECT_ROOT / RUNTIME_EXECUTABLE).resolve(strict=True)
+    except OSError:
+        raise _runtime_unavailable("it is not installed") from None
+    if not interpreter.is_relative_to(root):
+        raise _runtime_unavailable("its interpreter resolves outside the project")
+    if not interpreter.is_file() or not os.access(interpreter, os.X_OK):
+        raise _runtime_unavailable("its interpreter is not executable")
+    try:
+        probe = subprocess.run(
+            [str(interpreter), "-c", "import sys; print('%d.%d' % sys.version_info[:2])"],
+            capture_output=True, text=True, timeout=RUNTIME_PROBE_SECONDS, check=False,
         )
-    raise RuntimeError(
-        "Vault indexing requires Python 3.12 or 3.13 because the installed "
-        "Chroma native binding crashes under Python 3.14. Set "
-        "VAULT_INDEX_PYTHON to a supported interpreter."
+    except (OSError, subprocess.TimeoutExpired) as error:
+        raise _runtime_unavailable(f"its version check failed: {type(error).__name__}") from None
+    version = probe.stdout.strip()
+    if probe.returncode or version not in {f"{major}.{minor}" for major, minor in SUPPORTED_RUNTIMES}:
+        raise _runtime_unavailable(f"it reports {version or 'no version'!r}")
+    os.execve(
+        str(interpreter),
+        [str(interpreter), str(Path(__file__).resolve()), *sys.argv[1:]],
+        {**os.environ, RUNTIME_MARKER: "1"},
     )
 
 

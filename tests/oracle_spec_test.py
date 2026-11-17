@@ -653,26 +653,6 @@ class Engines(Fixture):
             self.launch(json.dumps({'is_error': True, 'result': 'synthetic failure'}))
 
 
-class VaultIndexInterpreter(unittest.TestCase):
-    def test_configured_virtualenv_interpreter_is_not_resolved_to_its_base(self):
-        from tools import vault_index
-        with tempfile.TemporaryDirectory() as folder:
-            base = Path(folder) / 'base-python'
-            base.write_text('synthetic base interpreter')
-            venv = Path(folder) / 'venv/bin/python'
-            venv.parent.mkdir(parents=True)
-            venv.symlink_to(base)
-            calls = []
-            with patch.object(vault_index.sys, 'version_info', (3, 14, 0)), \
-                    patch.dict(os.environ, {'VAULT_INDEX_PYTHON': str(venv)}), \
-                    patch.object(vault_index.os, 'execv', side_effect=lambda path, argv: calls.append((path, argv))):
-                with self.assertRaises(RuntimeError):
-                    vault_index.ensure_stable_chroma_runtime()  # The fake execv returns; no candidate remains.
-            self.assertEqual(calls[0][0], str(venv.absolute()))
-            self.assertNotEqual(calls[0][0], str(base.resolve()))
-            self.assertEqual(calls[0][1][0], str(venv.absolute()))
-
-
 class NativeDelta(Fixture):
     def prepared_delta(self):
         selection=self.selection(scope_paths=['source.mjs','README.md','tests/spec.test.mjs',v.SELECTION,v.CATALOG])
@@ -723,7 +703,7 @@ class NativeDelta(Fixture):
         self.assertNotIn('scope_paths',selected['properties'])
         self.assertNotIn('"scope_paths": [',captured[0][0])
         self.assertEqual(captured[1][1]['properties']['validation_selection']['properties']['revision_of'],
-                         {'const':prior['contract_sha256']})
+                         {'type':'string','const':prior['contract_sha256']})
 
     def test_parent_materializes_exact_scope_and_retains_criteria_categories_and_mapping_projection(self):
         prior,context,delta=self.prepared_delta();before=copy.deepcopy(prior)
