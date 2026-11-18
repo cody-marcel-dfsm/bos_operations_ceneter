@@ -156,6 +156,15 @@ export function restartedBelowRetiredVersion(name, version, previousVersion) {
     compareVersions(version, restart.restart) >= 0 && compareVersions(version, restart.retiredFrom) < 0;
 }
 
+// True when a restarted lineage (at or above the restart, below the retired range) would move
+// back onto a retired label. The importer knows only its previous receipt, so it refuses this.
+export function retiredAfterRestart(name, version, previousVersion) {
+  const restart = skillVersionRestarts[name];
+  return Boolean(restart) &&
+    compareVersions(previousVersion, restart.restart) >= 0 && compareVersions(previousVersion, restart.retiredFrom) < 0 &&
+    compareVersions(version, restart.retiredFrom) >= 0 && compareVersions(version, restart.retiredThrough) <= 0;
+}
+
 export function assertSkillVersionTransition(current, previous) {
   if (!previous) return;
   validateSkillManifest(previous);

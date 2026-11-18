@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { promisify } from "node:util";
 import { publicPackagePath, stableJson } from "./package-model.mjs";
 import { assertVersion, compareText, compareVersions, readSkillMetadata, skillNamePattern } from "./skill-metadata.mjs";
-import { assertFileInventory, regularFiles, restartFromCanonicalSource, restartedBelowRetiredVersion, safeSkillPath, sha256, skillManifestFile, validateSkillManifest } from "./skill-release.mjs";
+import { assertFileInventory, regularFiles, restartFromCanonicalSource, restartedBelowRetiredVersion, retiredAfterRestart, safeSkillPath, sha256, skillManifestFile, validateSkillManifest } from "./skill-release.mjs";
 
 const exec = promisify(execFile);
 export const importReceiptFile = ".skill-import.json";
@@ -215,11 +215,16 @@ export async function materializeSkillImport(release, { repositoryRoot, target, 
     const source = { repository: release.pin.repository, previousRepository: previous.pin.repository, packageName: release.package, previousPackage: previous.package };
     const restarted = (name, version, previousVersion) =>
       restartFromCanonicalSource(name, source) && restartedBelowRetiredVersion(name, version, previousVersion);
-    if (compareVersions(release.pin.version, previous.pin.version) < 0 &&
-        !restarted(release.pin.skill, release.pin.version, previous.pin.version)) throw new Error("Skill import updates require a newer version");
+    // A restarted lineage never moves back onto a retired label.
+    const retired = (name, version, previousVersion) =>
+      restartFromCanonicalSource(name, source) && retiredAfterRestart(name, version, previousVersion);
+    if ((compareVersions(release.pin.version, previous.pin.version) < 0 &&
+        !restarted(release.pin.skill, release.pin.version, previous.pin.version)) ||
+        retired(release.pin.skill, release.pin.version, previous.pin.version)) throw new Error("Skill import updates require a newer version");
     for (const [name, row] of Object.entries(release.skills)) {
       const old = previous.skills?.[name];
       if (!old) continue;
+      if (retired(name, row.version, old.version)) throw new Error(`Changed imported skill requires a newer version: ${name}`);
       if (restarted(name, row.version, old.version)) continue;
       const order = compareVersions(row.version, old.version);
       if (order < 0 || (order === 0 && stableJson(row.files) !== stableJson(old.files))) throw new Error(`Changed imported skill requires a newer version: ${name}`);

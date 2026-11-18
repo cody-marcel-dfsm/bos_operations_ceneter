@@ -209,6 +209,16 @@ test("an existing Ada import from the canonical source updates from a retired 1.
   assert.equal((await materializeSkillImport(await read({ ...canonical, version: "0.0.6" }), { repositoryRoot: base, target: ada })).status, "imported");
   assert.match(await readFile(join(ada, "ada/SKILL.md"), "utf8"), /version: "0.0.6"/);
   await assert.rejects(materializeSkillImport(await read({ ...canonical, version: "0.0.5" }), { repositoryRoot: base, target: ada }), /newer version/);
+  // After the restart, the retired 1.0.0-1.0.6 labels stay unusable; versions past either end still update.
+  for (const version of ["1.0.0", "1.0.3", "1.0.6"]) {
+    await assert.rejects(materializeSkillImport(await read({ ...canonical, version }), { repositoryRoot: base, target: ada }), /newer version/);
+    assert.match(await readFile(join(ada, "ada/SKILL.md"), "utf8"), /version: "0.0.6"/);
+  }
+  for (const version of ["0.0.7", "1.0.7"]) {
+    const restartedBase = await workspace(t), readRestarted = reader(restartedBase), target = join(restartedBase, "source/imports/ada");
+    await materializeSkillImport(await readRestarted({ ...canonical, version: "0.0.6" }), { repositoryRoot: restartedBase, target });
+    assert.equal((await materializeSkillImport(await readRestarted({ ...canonical, version }), { repositoryRoot: restartedBase, target })).status, "imported");
+  }
   // An "ada" skill from another repository or package keeps the strict floor.
   for (const source of [{ root: "ada" }, { ...canonical, packageName: "fixture" }]) {
     const other = await workspace(t), readOther = reader(other), target = join(other, "source/imports/ada");
