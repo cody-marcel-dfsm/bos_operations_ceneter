@@ -3,7 +3,7 @@
   "release": "0.0.223",
   "skills": {
     "ada": {
-      "version": "1.0.6",
+      "version": "0.0.6",
       "requires": {
         "bos-app-discovery": "1.0.13",
         "bos-mcp-client": "1.0.12",
@@ -12,7 +12,7 @@
       "path": "source/platform/ada",
       "files": {
         "SKILL.md": {
-          "sha256": "24828fd092fc70f7a741920a7c67cd066c3f8038aaa57380aaf9044da255a894",
+          "sha256": "bc6722530eeaa21a97943492936aa02b52458b3d77ec2a32d130e901ad35e30d",
           "mode": 420
         },
         "agents/openai.yaml": {
@@ -57,7 +57,7 @@
         }
       },
       "effective": {
-        "bos": "9c0b94305a9a6676221fc13626e3c889881eb0ea2cdb8908dec78978ef33bdd0"
+        "bos": "79edac058bde9509821d7bb6cd405a95bcd8c980baf733611c455b338a9c4391"
       }
     },
     "agent-call-operations": {

@@ -124,12 +124,45 @@ export function validateSkillManifest(manifest) {
   return manifest;
 }
 
+// Owner direction, 2026-11-17: Ada's published 1.0.0-1.0.6 labels were wrong and
+// Ada restarts at 0.0.6. A retired label sets no floor for a restarted version below
+// the retired range; later versions must increase again, and retired labels stay unusable.
+// The importer honors a restart only for this repository's canonical source and package.
+export const skillVersionRestarts = Object.freeze({
+  ada: Object.freeze({
+    retiredFrom: "1.0.0", retiredThrough: "1.0.6", restart: "0.0.6",
+    repository: "https://github.com/cody-marcel-dfsm/bos_operations_ceneter.git", package: "bos-operations-center"
+  })
+});
+
+function normalizedRepository(value) {
+  try { return new URL(value).href; } catch { return null; }
+}
+
+// True only when both the earlier and the new import come from the restart's canonical source and package.
+export function restartFromCanonicalSource(name, { repository, previousRepository, packageName, previousPackage }) {
+  const restart = skillVersionRestarts[name];
+  if (!restart) return false;
+  const canonical = normalizedRepository(restart.repository);
+  return normalizedRepository(repository) === canonical && normalizedRepository(previousRepository) === canonical &&
+    packageName === restart.package && previousPackage === restart.package;
+}
+
+// Shared by the release history guard and the skill importer's version floors.
+export function restartedBelowRetiredVersion(name, version, previousVersion) {
+  const restart = skillVersionRestarts[name];
+  return Boolean(restart) &&
+    compareVersions(previousVersion, restart.retiredFrom) >= 0 && compareVersions(previousVersion, restart.retiredThrough) <= 0 &&
+    compareVersions(version, restart.restart) >= 0 && compareVersions(version, restart.retiredFrom) < 0;
+}
+
 export function assertSkillVersionTransition(current, previous) {
   if (!previous) return;
   validateSkillManifest(previous);
   for (const [name, row] of Object.entries(current.skills)) {
     const old = previous.skills[name];
     if (!old) continue;
+    if (restartedBelowRetiredVersion(name, row.version, old.version)) continue;
     const order = compareVersions(row.version, old.version);
     const changed = stableJson(row.files) !== stableJson(old.files) || stableJson(row.requires) !== stableJson(old.requires) ||
       Object.keys(old.effective).some(product => row.effective[product] !== undefined && row.effective[product] !== old.effective[product]);
