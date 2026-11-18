@@ -1,6 +1,6 @@
 {
   "package": "bos-operations-center",
-  "release": "0.0.222",
+  "release": "0.0.223",
   "skills": {
     "ada": {
       "version": "1.0.6",
