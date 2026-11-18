@@ -15,12 +15,16 @@ import shlex
 import socket
 import stat
 import subprocess
+import sys
 import threading
 import time
 import uuid
 
 _LIVE = {}
 REVIEWER_SECONDS = 180
+# Missing structural inputs wait this long for attached evidence or source movement,
+# then the review ends INCOMPLETE instead of waiting without a deadline.
+STRUCTURAL_WAIT_SECONDS = REVIEWER_SECONDS
 REVIEWER_OUTPUT_BYTES = 8 * 1024 * 1024
 
 def bounded_reviewer_output(o, run, process, token, record):
@@ -874,6 +878,12 @@ def run(o, root, kind, attempt, args, kwargs, *, follow_commits=False, request=N
                             continue
                         source_tree = o._git(root, "rev-parse", "HEAD^{tree}").strip()
                         source_status = o._git(root, "status", "--porcelain=v1", "--untracked-files=all")
+                        print("Oracle review is waiting up to %d seconds for missing structural inputs: %s. "
+                              "Record each required validation category with `npm run oracle:validate` and pass "
+                              "each record with --evidence, or rerun `npm run oracle:review -- --evidence <record>` "
+                              "to attach it to this review." % (STRUCTURAL_WAIT_SECONDS, exc),
+                              file=sys.stderr, flush=True)
+                        deadline = time.monotonic() + STRUCTURAL_WAIT_SECONDS
                         while True:
                             arrivals = controller.evidence()
                             if arrivals:
@@ -882,6 +892,8 @@ def run(o, root, kind, attempt, args, kwargs, *, follow_commits=False, request=N
                             if (o._git(root, "rev-parse", "HEAD^{tree}").strip() != source_tree
                                     or o._git(root, "status", "--porcelain=v1", "--untracked-files=all") != source_status):
                                 break
+                            if time.monotonic() >= deadline:
+                                raise exc
                             time.sleep(.2)
                         continue
                     moved = o._git(root, "rev-parse", "HEAD").strip() != before
