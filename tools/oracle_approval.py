@@ -94,9 +94,23 @@ def _engine_settings() -> tuple[str, str | None]:
     return selected_model(), validation_contract.review_effort(selected_reasoning_effort())
 
 
+def _claude_schema_argument(schema_text: str) -> str:
+    """The schema text for `claude --json-schema`, without its `$schema` declaration.
+
+    The Claude CLI cannot resolve the draft 2020-12 meta-schema URI and rejects
+    the whole schema. Every constraint is kept, and the reviewer's answer is
+    still validated against the complete custody-read schema file.
+    """
+    schema = json.loads(schema_text)
+    if not isinstance(schema, dict) or "$schema" not in schema:
+        return schema_text
+    return json.dumps({key: value for key, value in schema.items() if key != "$schema"},
+                      separators=(",", ":"))
+
+
 def _claude_command(prompt: str, schema_text: str, developer_instructions: str, model: str) -> list[str]:
     """Read-only, schema-bound, MCP-free Claude reviewer; the prompt follows `--`."""
-    command = ["claude", "-p", "--output-format", "json", "--json-schema", schema_text,
+    command = ["claude", "-p", "--output-format", "json", "--json-schema", _claude_schema_argument(schema_text),
                "--restricted", "--strict-mcp-config", "--tools", CLAUDE_READ_TOOLS,
                "--allowedTools", CLAUDE_READ_TOOLS, "--no-session-persistence",
                "--append-system-prompt", developer_instructions]
@@ -140,6 +154,12 @@ def _claude_answer(stdout: str, requested: str) -> tuple[dict, str]:
         envelope = json.loads(stdout)
     except ValueError as exc:
         raise OracleApprovalError("Claude Oracle returned non-JSON output") from exc
+    if isinstance(envelope, list):
+        # Newer Claude CLIs emit the session's event list; exactly one final result event carries the answer.
+        results = [event for event in envelope if isinstance(event, dict) and event.get("type") == "result"]
+        if len(results) != 1:
+            raise OracleApprovalError("Claude Oracle event list has no single result event")
+        envelope = results[0]
     if not isinstance(envelope, dict) or envelope.get("is_error"):
         raise OracleApprovalError("Claude Oracle reported an error: " + str(envelope.get("result") if isinstance(envelope, dict) else envelope)[-2000:])
     answer = envelope.get("structured_output")
