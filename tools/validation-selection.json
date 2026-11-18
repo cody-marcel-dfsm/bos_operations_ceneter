@@ -2,89 +2,30 @@
   "schema": "boc.validation-contract/v2",
   "kind": "oracle-spec/1",
   "stamp": {
-    "engine": "codex",
-    "model": "gpt-6.1-sol",
-    "oracle_sha256": "79cff71be08ba949a2c50a94730427213edc1d800f4eab7d41de0da15bf0efd6",
-    "host": "aio",
-    "time": "2026-11-17T14:50:23Z",
-    "origin_main": "738bac4f8510c3308e73fed2a569e275488d72bf",
-    "request_sha256": "a96965885b1fe1cc9e8a2388c373d523cba43e106d4779662fe6a2faced6a09a",
-    "proposal_sha256": "d51b21121ecb393d38e5fe4a052d62414a20bb340b0c9454220dfdb02e6df806"
+    "engine": "claude",
+    "model": "claude-opus-5-5",
+    "oracle_sha256": "a9fe3d5142f622f993eee31ad2089b21a9e3c2e4c3147eb81f92e48524b83133",
+    "host": "Codys-MacBook-Pro.local",
+    "time": "2026-11-18T03:48:57Z",
+    "origin_main": "c3869d89f50bbf3c77424048abaf1e3d5aa72e05",
+    "request_sha256": "f5a4531cecb65309ce821608824058a8ffa5a0ad3a556e998d656ca64af6283b",
+    "proposal_sha256": "b7be6f123f73095e89f49a99e57e53b48abab52b40fcdc6047082b36a6b3c8a0"
   },
   "selection": {
     "acceptance": [
-      "Run indexing only with a supported project-contained standalone runtime; reject external interpreters, escaping runtime directories or executable links, unsupported versions, failed probes and invalid marked processes.",
-      "Probe runtime selection without a shell under a bounded timeout, preserve arguments during a single marked re-execution, ignore legacy interpreter overrides and retain existing indexing, worker, locking and store behavior.",
-      "Advance review-series origins only to an eligible published ancestor strictly after the immutable origin and before the candidate; retain published-candidate behavior, custody checks, historical records and coverage of the complete unpublished range.",
-      "Exclude only complete unquoted integer byte-count values under keys ending in _bytes from phone detection in ordinary and JSON-escaped text; preserve phone detection for other keys, quoted values and unkeyed text, and preserve original-byte email and digest checks.",
-      "Bind proposal revision constants with the corresponding string or null type while preserving exact prior-contract binding and leaving the canonical output schema unchanged.",
-      "Retain unchanged deterministic assertion-based fail-before/pass-after evidence for the repaired behavior, replacing obsolete interpreter-override expectations without weakening independent proposal or shipment safeguards.",
-      "Prepare patch release metadata consistently across canonical and generated products while preserving package composition, transport, authentication declarations and private-runtime exclusion."
+      "The Claude reviewer launch passes the output schema with only its top-level meta-schema declaration removed, preserving every other constraint, passes a schema without that declaration unchanged, and keeps its read-only tool, MCP-free and non-persistent session restrictions.",
+      "Reviewer output supplied as an event list yields the structured answer and actual model identity of its single result event; lists with no or several result events, an error result, no structured answer or no single model identity are refused, and single-object output behaves as before.",
+      "Both repaired behaviors are covered by unchanged deterministic regressions that fail by assertion before the repair and pass after it."
     ],
     "acceptance_tests": [
       {
         "covers": [
           0,
           1,
-          5
-        ],
-        "module": "tests/vault-index-runtime.test.mjs",
-        "purpose": "Exercise supported runtime selection, argument preservation, bounded probing, one-time re-execution and rejection paths, including escaping directory and executable links."
-      },
-      {
-        "covers": [
-          3,
-          5
-        ],
-        "module": "tests/customer-data-privacy.test.mjs",
-        "purpose": "Verify narrow byte-count classification and preservation of phone, email and identifier detection on original evidence."
-      },
-      {
-        "covers": [
-          4,
-          5
-        ],
-        "module": "tests/validation-contract.test.mjs",
-        "purpose": "Verify both typed revision bindings, canonical schema immutability and existing contract admission requirements."
-      },
-      {
-        "covers": [
-          2,
-          5
-        ],
-        "module": "tests/shipment-workflow.test.mjs",
-        "purpose": "Verify publication-bound lifecycle advancement, complete declared case execution and preservation of custody, history and shipment admission."
-      },
-      {
-        "covers": [
-          0,
-          1,
-          4,
-          5
+          2
         ],
         "module": "tests/oracle-implementation-spec.test.mjs",
-        "purpose": "Verify compatibility of the replaced interpreter expectation with complete spec production, schema binding and existing independent proposal safeguards."
-      },
-      {
-        "covers": [
-          3
-        ],
-        "module": "tests/privacy-coverage.test.mjs",
-        "purpose": "Verify privacy policy identity, complete evidence coverage and rejection of stale or altered coverage after the scanner change."
-      },
-      {
-        "covers": [
-          6
-        ],
-        "module": "tests/release-version.test.mjs",
-        "purpose": "Verify patch progression and consistent native release metadata."
-      },
-      {
-        "covers": [
-          6
-        ],
-        "module": "tests/package-model.test.mjs",
-        "purpose": "Verify generated product parity, composition and preserved transport and authentication declarations."
+        "purpose": "Run the Oracle spec suite, including the schema-argument and event-list regressions and the existing read-only command and envelope refusal cases."
       }
     ],
     "categories": [
@@ -95,102 +36,39 @@
       },
       {
         "fixtures": [
-          "tests/vault_index_runtime_test.py",
-          "tests/validation_contract_test.py"
+          "tests/oracle_spec_test.py",
+          "tests/published_fixture.py",
+          "tests/helpers/isolated-test-cohort.mjs"
         ],
         "name": "focused",
         "tests": [
-          "tests/vault-index-runtime.test.mjs",
-          "tests/customer-data-privacy.test.mjs",
-          "tests/validation-contract.test.mjs"
-        ]
-      },
-      {
-        "fixtures": [
-          "tests/shipment_workflow_test.py",
-          "tests/oracle_review_series.py",
-          "tests/oracle_spec_test.py",
-          "tests/published_fixture.py",
-          "tests/helpers/isolated-test-cohort.mjs",
-          "tests/helpers/native-validation-git.mjs",
-          "tests/helpers/native-validation-state.mjs"
-        ],
-        "name": "interactions",
-        "tests": [
-          "tests/shipment-workflow.test.mjs",
-          "tests/oracle-implementation-spec.test.mjs",
-          "tests/privacy-coverage.test.mjs",
-          "tests/release-version.test.mjs",
-          "tests/package-model.test.mjs"
+          "tests/oracle-implementation-spec.test.mjs"
         ]
       }
     ],
-    "change_class": "deep_bug_fix",
+    "change_class": "bug_fix",
     "design": null,
-    "reason": "Revise the existing contract for bounded runtime-containment, review-lifecycle, privacy-classification and schema-dispatch repairs with patch-release parity. Select focused reproductions and directly affected interactions; preserve historical evidence, independent admission safeguards and the original delivery clock.",
-    "revision_of": "6c7e71026f4cfb36efd4934e8d963ff5c03b19408be6448fb9e3d821b4d226e6",
+    "reason": "Narrow repair of the Claude reviewer launch and output reader in the Oracle tooling: drop only the top-level meta-schema declaration from the schema argument and read the single result event from event-list output while retaining every existing refusal. A small deterministic fail-before/pass-after reproduction in the existing Oracle spec suite suffices; no integration or broader regression is selected.",
+    "revision_of": "173edc9687dbf0da0b825b721db68787d9cdf1fe7cd006aae47907263e52079a",
     "scope_paths": [
-      "tools/vault_index.py",
       "tools/oracle_approval.py",
-      "tools/validation-selection.json",
-      "scripts/check-customer-data.mjs",
-      "tests/vault_index_runtime_test.py",
-      "tests/vault-index-runtime.test.mjs",
       "tests/oracle_spec_test.py",
-      "tests/shipment_workflow_test.py",
-      "tests/shipment-workflow.test.mjs",
-      "tests/customer-data-privacy.test.mjs",
-      "tests/validation_contract_test.py",
-      "Vault/docs/operations/vault-index-runtime.md",
-      "Vault/README.md",
-      "README.md",
-      "package.json",
-      "package-lock.json",
-      "package-manifest.json",
-      "skill-release-manifest.json",
-      "products/bos/product.json",
-      "products/education-center/product.json",
-      "products/bos/openai/bos-skills.zip",
-      "products/education-center/openai/education-center-skills.zip",
-      ".claude-plugin/marketplace.json",
-      ".agents/plugins/marketplace.json",
-      "clients/claude/.claude-plugin/marketplace.json",
-      "clients/codex/.agents/plugins/marketplace.json",
-      "clients/claude/plugins/bos/.bos-product.json",
-      "clients/claude/plugins/bos/.claude-plugin/plugin.json",
-      "clients/claude/plugins/education-center/.bos-product.json",
-      "clients/claude/plugins/education-center/.claude-plugin/plugin.json",
-      "clients/codex/plugins/bos/.bos-product.json",
-      "clients/codex/plugins/bos/.codex-plugin/plugin.json",
-      "clients/codex/plugins/education-center/.bos-product.json",
-      "clients/codex/plugins/education-center/.codex-plugin/plugin.json",
-      "clients/copilot/products/bos/.bos-product.json",
-      "clients/copilot/products/education-center/.bos-product.json",
-      "clients/gemini/extensions/bos/.bos-product.json",
-      "clients/gemini/extensions/bos/gemini-extension.json",
-      "clients/gemini/extensions/bos/plugin.json",
-      "clients/gemini/extensions/education-center/.bos-product.json",
-      "clients/gemini/extensions/education-center/gemini-extension.json",
-      "clients/gemini/extensions/education-center/plugin.json",
-      "clients/muse/plugins/bos/.bos-product.json",
-      "clients/muse/plugins/bos/.muse-plugin/plugin.json",
-      "clients/muse/plugins/education-center/.bos-product.json",
-      "clients/muse/plugins/education-center/.muse-plugin/plugin.json"
+      "tools/validation-selection.json"
     ]
   },
-  "base_commit": "738bac4f8510c3308e73fed2a569e275488d72bf",
-  "base_tree": "690839ef9e738e60f7c78552ca2161880a912d84",
+  "base_commit": "c3869d89f50bbf3c77424048abaf1e3d5aa72e05",
+  "base_tree": "fcd8971560211c70b32575d9eed0d75548d90b2a",
   "catalog_sha256": "9a96f1cd2a973457f9da681dddcc5161aa8ffda188b092d849e5bc83999391c8",
   "runtime": {
-    "node": "v26.12.0",
-    "node_sha256": "caa24debe02770c92a70677e2a62ca98890150e7ac1c17bcfe31bcc98cc89943",
-    "controller_sha256": "375532f83be620283ab780c14ca6bcc5907dc379d2b621de0c5d0a112cf5458b",
-    "platform": "Linux",
-    "architecture": "x86_64",
+    "node": "v22.11.0",
+    "node_sha256": "b3766cc0774a690436a2bc9e3cbfd9d80c29a3f64499ae2f98ca203853b1cd85",
+    "controller_sha256": "56350e25767e19ae4469d7b3e7bda176a9ad6cba027fa95d53dc788c32791c1b",
+    "platform": "Darwin",
+    "architecture": "arm64",
     "options_sha256": "ebc442c160f8629073a82976daadaba1d95a60a38d768c81c8eb06598aedcac5"
   },
-  "proposal_sha256": "d51b21121ecb393d38e5fe4a052d62414a20bb340b0c9454220dfdb02e6df806",
-  "review_sha256": "c07b80b29a3d252eadec0ce4126c2b1d820530bdc279bdee6814875327f71081",
+  "proposal_sha256": "b7be6f123f73095e89f49a99e57e53b48abab52b40fcdc6047082b36a6b3c8a0",
+  "review_sha256": "d3e6d1ac788a7beb43b31172d3f184bd9eee803c1e7d52dfd31d080fda61a12d",
   "commands": [
     {
       "category": "sanity",
@@ -209,60 +87,27 @@
         "--test",
         "--test-reporter=tap",
         "--test-concurrency=1",
-        "tests/vault-index-runtime.test.mjs",
-        "tests/customer-data-privacy.test.mjs",
-        "tests/validation-contract.test.mjs"
+        "tests/oracle-implementation-spec.test.mjs"
       ],
       "tests": [
-        "tests/vault-index-runtime.test.mjs",
-        "tests/customer-data-privacy.test.mjs",
-        "tests/validation-contract.test.mjs"
+        "tests/oracle-implementation-spec.test.mjs"
       ],
       "fixtures": [
-        "tests/vault_index_runtime_test.py",
-        "tests/validation_contract_test.py"
-      ]
-    },
-    {
-      "category": "interactions",
-      "argv": [
-        "node",
-        "--test",
-        "--test-reporter=tap",
-        "--test-concurrency=1",
-        "tests/shipment-workflow.test.mjs",
-        "tests/oracle-implementation-spec.test.mjs",
-        "tests/privacy-coverage.test.mjs",
-        "tests/release-version.test.mjs",
-        "tests/package-model.test.mjs"
-      ],
-      "tests": [
-        "tests/shipment-workflow.test.mjs",
-        "tests/oracle-implementation-spec.test.mjs",
-        "tests/privacy-coverage.test.mjs",
-        "tests/release-version.test.mjs",
-        "tests/package-model.test.mjs"
-      ],
-      "fixtures": [
-        "tests/shipment_workflow_test.py",
-        "tests/oracle_review_series.py",
         "tests/oracle_spec_test.py",
         "tests/published_fixture.py",
-        "tests/helpers/isolated-test-cohort.mjs",
-        "tests/helpers/native-validation-git.mjs",
-        "tests/helpers/native-validation-state.mjs"
+        "tests/helpers/isolated-test-cohort.mjs"
       ]
     }
   ],
   "delivery_policy": {
-    "sla_seconds": 300,
+    "sla_seconds": 180,
     "clock_owner": "build_host",
     "clock_start": "original_insertion",
     "completion": "verified_remote_git",
     "retries_reset_clock": false,
-    "reasoning_effort": "medium",
+    "reasoning_effort": "low",
     "maximum_reasoning_effort": "medium"
   },
-  "contract_sha256": "173edc9687dbf0da0b825b721db68787d9cdf1fe7cd006aae47907263e52079a",
-  "seal": "28ce1855d3ecb898a734abca43033325d5c7670ea986bf21bcfc02fe055bb624"
+  "contract_sha256": "ba4ed343709bc2174e2fb240c5bc0641c399d4041ce52b230183747ea2cebda6",
+  "seal": "b8a6de26f10ee995e88bc6d2f1661f4c24ded126dcbe83b1d1bf91ae4a14ae5d"
 }

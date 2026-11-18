@@ -570,6 +570,16 @@ class Engines(Fixture):
         self.assertIn('--model', oracle._claude_command('p', '{}', 'r', 'claude-synthetic'))
         self.assertFalse(any(tool in ' '.join(command) for tool in ('Bash', 'Write', 'Edit', 'WebFetch')))
 
+    def test_claude_schema_argument_omits_only_the_meta_schema_declaration(self):
+        schema = {'$schema': 'https://json-schema.org/draft/2020-12/schema', 'type': 'object',
+                  'additionalProperties': False, 'required': ['verdict'],
+                  'properties': {'verdict': {'const': 'APPROVED'}}}
+        command = oracle._claude_command('p', json.dumps(schema), 'r', oracle.CLAUDE_DEFAULT_MODEL)
+        passed = json.loads(command[command.index('--json-schema') + 1])
+        self.assertEqual(passed, {key: value for key, value in schema.items() if key != '$schema'})
+        plain = oracle._claude_command('p', '{"type":"object"}', 'r', oracle.CLAUDE_DEFAULT_MODEL)
+        self.assertEqual(plain[plain.index('--json-schema') + 1], '{"type":"object"}')
+
     def test_claude_envelope_parsing(self):
         envelope = {'structured_output': {'verdict': 'APPROVED'}, 'modelUsage': {'claude-synthetic-1': {}}}
         self.assertEqual(oracle._claude_answer(json.dumps(envelope), oracle.CLAUDE_DEFAULT_MODEL),
@@ -587,6 +597,19 @@ class Engines(Fixture):
                        json.dumps({'structured_output': {'v': 1}})):
             with self.assertRaises(oracle.OracleApprovalError):
                 oracle._claude_answer(stdout, oracle.CLAUDE_DEFAULT_MODEL)
+
+    def test_claude_event_list_reads_its_single_result_event(self):
+        result = {'type': 'result', 'is_error': False, 'structured_output': {'verdict': 'REJECTED'},
+                  'modelUsage': {'claude-synthetic-1': {}}}
+        events = [{'type': 'system', 'subtype': 'init'}, {'type': 'assistant', 'message': {}}, result]
+        try:
+            answer = oracle._claude_answer(json.dumps(events), oracle.CLAUDE_DEFAULT_MODEL)
+        except oracle.OracleApprovalError as error:
+            answer = error
+        self.assertEqual(answer, ({'verdict': 'REJECTED'}, 'claude-synthetic-1'))
+        for listed in ([{'type': 'system'}], [result, result], [dict(result, is_error=True)]):
+            with self.assertRaises(oracle.OracleApprovalError):
+                oracle._claude_answer(json.dumps(listed), oracle.CLAUDE_DEFAULT_MODEL)
 
     def external_family(self, body='Synthetic family authority\n'):
         projects = Path(self.temp.name) / 'projects'
