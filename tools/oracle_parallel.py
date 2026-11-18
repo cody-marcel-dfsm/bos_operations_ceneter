@@ -407,9 +407,13 @@ def output_schema(base, plan, cohort, prepared=None):
               "candidate_commit": {"enum": [plan["candidate_commit"]]},
               "candidate_tree": {"enum": [plan["candidate_tree"]]},
               "input_binding_sha256": {"enum": [plan["input_binding_sha256"]]}, "assessment": assessment,
-              "integration": {"type": "array", "items": {"type": "object", "additionalProperties": False,
+              # The schema admits exactly the cohort's assigned concerns, the same set
+              # _assigned_result accepts; a cohort with none returns an empty list.
+              "integration": {"type": "array", "minItems": len(cohort["integration_checks"]),
+                  "maxItems": len(cohort["integration_checks"]),
+                  "items": {"type": "object", "additionalProperties": False,
                   "required": ["concern", "status", "inputs", "reason"], "properties": {
-                      "concern": {"enum": list(INTEGRATION_CHECKS)},
+                      "concern": {"enum": list(cohort["integration_checks"] or INTEGRATION_CHECKS)},
                       "status": {"enum": ["REVIEWED", "NOT_APPLICABLE", "UNREVIEWED"]},
                       "inputs": copy.deepcopy(base["properties"]["coverage"]["items"]["properties"]["inputs"]),
                       "reason": string}}}}
