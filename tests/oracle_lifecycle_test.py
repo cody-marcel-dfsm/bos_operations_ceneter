@@ -1,5 +1,6 @@
 """Real process admission/observation and exact-candidate catch-up regressions."""
 from pathlib import Path
+import io
 import json
 import os
 import subprocess
@@ -741,6 +742,29 @@ class CommittedCatchup(unittest.TestCase):
         rounds=o._read_rounds(o._series_directory(self.root,self.fixture.base))
         self.assertEqual(rounds[-2]['outcome'],'INCOMPLETE')
         self.assertEqual(rounds[-1]['outcome'],'APPROVED')
+
+    def test_missing_intake_without_arrivals_ends_incomplete_within_the_review_deadline(self):
+        calls=[];outcome={}
+        def reviewer(*args):
+            calls.append(1)
+            raise o.OracleIntakeIncomplete('Synthetic missing structural inputs')
+        def review():
+            token=o._FOLLOW_COMMITS.set(True)
+            try:o.issue(self.root,[str(self.fixture.evidence)],None,reviewer)
+            except BaseException as exc:outcome['error']=exc
+            finally:o._FOLLOW_COMMITS.reset(token)
+        stderr=io.StringIO()
+        with patch.object(lifecycle,'STRUCTURAL_WAIT_SECONDS',.5,create=True),patch('sys.stderr',stderr):
+            thread=threading.Thread(target=review,daemon=True);started=time.monotonic();thread.start();thread.join(20)
+        self.assertFalse(thread.is_alive(),'Missing structural intake waited past the review deadline')
+        self.assertLess(time.monotonic()-started,20)
+        self.assertIsInstance(outcome.get('error'),o.OracleIntakeIncomplete)
+        self.assertEqual(len(calls),1,'Unchanged missing intake dispatched another reviewer')
+        notice=stderr.getvalue()
+        self.assertIn('Synthetic missing structural inputs',notice)
+        self.assertIn('--evidence',notice)
+        rounds=o._read_rounds(o._series_directory(self.root,self.fixture.base))
+        self.assertEqual(rounds[-1]['outcome'],'INCOMPLETE')
 
     def test_structural_incomplete_retains_historical_source_observations(self):
         self.fixture.submit()

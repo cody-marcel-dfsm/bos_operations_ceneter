@@ -6,66 +6,26 @@
     "model": "claude-opus-5-5",
     "oracle_sha256": "a9fe3d5142f622f993eee31ad2089b21a9e3c2e4c3147eb81f92e48524b83133",
     "host": "Codys-MacBook-Pro.local",
-    "time": "2026-11-18T15:04:31Z",
-    "origin_main": "c3869d89f50bbf3c77424048abaf1e3d5aa72e05",
-    "request_sha256": "232aba6848874fa36553e9b74180f80d29975f8e546659ab5128f6469c2fe355",
-    "proposal_sha256": "922fcbc56dccac27226fc5af1742ea5240f33762eb3934686c08bf103c2412e4"
+    "time": "2026-11-18T15:46:22Z",
+    "origin_main": "e670840594e40ef37cd0f6951ba05d36a5d67d03",
+    "request_sha256": "0a634e911800b410fdf702cbe30f6ab7b9bbc913bebef3f61bb3c32585b3a930",
+    "proposal_sha256": "01d3db9aed4454e6fb9a615700e7953e72875580399ad1bc4e1bb62777457de3"
   },
   "selection": {
     "acceptance": [
-      "The restarted skill is version 0.0.6 in its canonical source, in every generated client copy, in the skill release manifest and in the packaged skill archive, and no generated surface still carries a retired 1.0.x label for it.",
-      "The release history guard accepts the restarted skill moving from any retired version 1.0.0 through 1.0.6 to a version from 0.0.6 up to (but not including) 1.0.0. It still refuses a version below 0.0.6, reuse of any retired label with changed content, and a later version that does not increase after the restart. Every other skill keeps the strict floor.",
-      "The skill importer applies the same restart rule to the root pin and to each skill's floor only when both the earlier and the new import come from the canonical repository URL and the canonical package. It refuses the restart for a non-canonical repository, a non-canonical package, a version below 0.0.6, a retired 1.0.x label used as a downgrade, and a downgrade of any other skill. Once an import is in the restarted lineage, it refuses a retired 1.0.0 to 1.0.6 label for the root pin and for each closure skill, while later versions such as 0.0.7 and 1.0.7 still update.",
-      "The restart definition's canonical repository equals the runtime export repository, and the runtime skill export stays consistent with the regenerated skill manifest.",
-      "The Claude reviewer launch removes only the top-level meta-schema declaration from the schema it passes, and passes a schema without that declaration unchanged. Event-list output yields the structured answer and model identity of its single result event. Output with no result event, several result events, an error result, no structured answer or no single model identity is refused, and single-object output behaves as before.",
-      "The release version markers, package files, product manifests, client plugin manifests and README all carry the same new release version.",
-      "Each parallel review cohort's output schema admits exactly the integration concerns assigned to that cohort. The minimum and maximum item counts equal the assigned count, and the concern values are limited to the assigned set. A cohort with no assigned concerns admits only an empty list. Specializing one cohort leaves the shared base schema unchanged, and the full parallel review suite still runs its complete discovered membership and passes."
+      "When a follow-commits review stops because structural inputs are missing, has no evidence paths, and sees no queued evidence and no source change, it ends with a terminal INCOMPLETE outcome within the configured structural wait deadline. The deadline defaults to the reviewer deadline. The process then exits instead of waiting indefinitely, and no approval is recorded.",
+      "During that bounded wait the reviewer is not dispatched again, and the controller writes one notice to standard error. The notice names the missing structural inputs reported by the stopped review and explains how to supply them with --evidence.",
+      "When qualifying evidence is attached to the live controller during the wait, the review still resumes with that evidence and completes as before."
     ],
     "acceptance_tests": [
       {
         "covers": [
           0,
-          1
+          1,
+          2
         ],
-        "module": "tests/versioned-skills.test.mjs",
-        "purpose": "Checks the restarted skill version in the manifest and generated identities. Checks the release history guard: the canonical restart is accepted, while versions below the restart floor, retired-label reuse, non-increasing later versions and other-skill downgrades are refused."
-      },
-      {
-        "covers": [
-          2,
-          3
-        ],
-        "module": "tests/skill-import.test.mjs",
-        "purpose": "Checks that import version floors allow the restart only for the canonical repository and package, and that retired labels are refused once the restarted lineage is in effect. Also refuses non-canonical sources, out-of-range versions and other-skill downgrades, and checks that the canonical repository equals the runtime export repository."
-      },
-      {
-        "covers": [
-          4
-        ],
-        "module": "tests/oracle-implementation-spec.test.mjs",
-        "purpose": "Runs the Oracle spec suite, including the schema-argument and event-list regressions and the existing refusal cases."
-      },
-      {
-        "covers": [
-          6
-        ],
-        "module": "tests/oracle-parallel.test.mjs",
-        "purpose": "Runs the full parallel review suite in independent processes, including the cohort schema regression. That regression checks each cohort admits exactly its assigned integration concerns and that the shared base schema stays unchanged."
-      },
-      {
-        "covers": [
-          5
-        ],
-        "module": "tests/release-version.test.mjs",
-        "purpose": "Checks that the new release version appears consistently in the version markers and generated package outputs."
-      },
-      {
-        "covers": [
-          0,
-          3
-        ],
-        "module": "tests/runtime-skill-export.test.mjs",
-        "purpose": "Checks that the runtime skill export reads the regenerated skill manifest consistently, including the restarted skill version."
+        "module": "tests/oracle-lifecycle.test.mjs",
+        "purpose": "Runs every native lifecycle case in its own process. This includes the regression in which a review missing structural inputs, with no arrivals, ends INCOMPLETE within a shortened deadline, dispatches the reviewer once and prints a notice naming --evidence. It also includes the unchanged case in which queued evidence arriving during the wait resumes the review to approval."
       }
     ],
     "categories": [
@@ -76,82 +36,55 @@
       },
       {
         "fixtures": [
-          "tests/oracle_spec_test.py",
-          "tests/published_fixture.py",
-          "tests/helpers/isolated-test-cohort.mjs",
-          "tests/oracle_parallel_test.py",
+          "tests/oracle_lifecycle_test.py",
           "tests/oracle_review_series.py",
-          "tests/helpers/native-validation-state.mjs"
+          "tests/helpers/isolated-test-cohort.mjs"
         ],
         "name": "focused",
         "tests": [
-          "tests/versioned-skills.test.mjs",
-          "tests/skill-import.test.mjs",
-          "tests/oracle-implementation-spec.test.mjs",
-          "tests/oracle-parallel.test.mjs"
-        ]
-      },
-      {
-        "fixtures": [],
-        "name": "interactions",
-        "tests": [
-          "tests/release-version.test.mjs",
-          "tests/runtime-skill-export.test.mjs"
+          "tests/oracle-lifecycle.test.mjs"
         ]
       }
     ],
-    "change_class": "deep_bug_fix",
+    "change_class": "bug_fix",
     "design": null,
-    "reason": "One release with linked parts. The first restarts one skill's version line, applied the same way by the release history guard and by the skill importer's version floors, including refusal of retired labels after the restart. The second repairs the reviewer launch and output reader. The third aligns each parallel review cohort's output schema with the integration concerns the result checker accepts. The fourth is the release metadata and regenerated package outputs. The restart changes version-floor rules that both release history and canonical-source imports depend on, so this is a deep bug fix. Focused tests cover the restart rule, import floors and refusals, the reviewer-launch regressions and the cohort schema regression. Interaction tests cover the release version markers and the runtime skill export. The runtime export reads the regenerated skill manifest and must use the same repository as the importer's canonical source.",
-    "revision_of": "ceca64f1c3d2650c6871945d7be9524518a52ef357d98f49f17644ae1121618c",
+    "reason": "Small local fix to the native review controller. When follow-commits review stops because structural inputs are missing and no evidence was supplied, the controller waits for queued evidence or source movement with no deadline and no operator notice. The fix bounds that wait by the existing reviewer deadline, prints one notice on standard error that explains how to supply the inputs, and then ends the round as INCOMPLETE. The existing behavior of continuing when evidence arrives is kept. Authentication, public interfaces and published client behavior are unchanged, so this is a bug fix. The focused lifecycle module runs every native lifecycle case in its own process. That includes a new deterministic regression that fails by assertion before the fix and the unchanged evidence-arrival case. The release metadata is checked by the existing release tooling.",
+    "revision_of": "67aa3170ea2e1bd9bd78b9866675744a57ed8597151bf8447b7aeb6cf6c593df",
     "scope_paths": [
       "README.md",
       "clients/claude/plugins/bos/.bos-product.json",
       "clients/claude/plugins/bos/.claude-plugin/plugin.json",
-      "clients/claude/plugins/bos/skills/ada/SKILL.md",
       "clients/claude/plugins/education-center/.bos-product.json",
       "clients/claude/plugins/education-center/.claude-plugin/plugin.json",
       "clients/codex/plugins/bos/.bos-product.json",
       "clients/codex/plugins/bos/.codex-plugin/plugin.json",
-      "clients/codex/plugins/bos/skills/ada/SKILL.md",
       "clients/codex/plugins/education-center/.bos-product.json",
       "clients/codex/plugins/education-center/.codex-plugin/plugin.json",
       "clients/copilot/products/bos/.bos-product.json",
-      "clients/copilot/products/bos/skills/ada/SKILL.md",
       "clients/copilot/products/education-center/.bos-product.json",
       "clients/gemini/extensions/bos/.bos-product.json",
       "clients/gemini/extensions/bos/gemini-extension.json",
       "clients/gemini/extensions/bos/plugin.json",
-      "clients/gemini/extensions/bos/skills/ada/SKILL.md",
       "clients/gemini/extensions/education-center/.bos-product.json",
       "clients/gemini/extensions/education-center/gemini-extension.json",
       "clients/gemini/extensions/education-center/plugin.json",
       "clients/muse/plugins/bos/.bos-product.json",
       "clients/muse/plugins/bos/.muse-plugin/plugin.json",
-      "clients/muse/plugins/bos/skills/ada/SKILL.md",
       "clients/muse/plugins/education-center/.bos-product.json",
       "clients/muse/plugins/education-center/.muse-plugin/plugin.json",
       "package-lock.json",
       "package-manifest.json",
       "package.json",
-      "products/bos/openai/bos-skills.zip",
       "products/bos/product.json",
       "products/education-center/product.json",
-      "scripts/lib/skill-import.mjs",
-      "scripts/lib/skill-release.mjs",
       "skill-release-manifest.json",
-      "source/platform/ada/SKILL.md",
-      "tests/oracle_parallel_test.py",
-      "tests/oracle_spec_test.py",
-      "tests/skill-import.test.mjs",
-      "tests/versioned-skills.test.mjs",
-      "tools/oracle_approval.py",
-      "tools/oracle_parallel.py",
+      "tests/oracle_lifecycle_test.py",
+      "tools/oracle_lifecycle.py",
       "tools/validation-selection.json"
     ]
   },
-  "base_commit": "a17c5b0535380081d3619beda5cebf4220df8638",
-  "base_tree": "568fe01df10abb179a0ac43c8e61ff7f2e1d0288",
+  "base_commit": "e670840594e40ef37cd0f6951ba05d36a5d67d03",
+  "base_tree": "49cd3ac83ffba2279480b98017405fce331f2861",
   "catalog_sha256": "9a96f1cd2a973457f9da681dddcc5161aa8ffda188b092d849e5bc83999391c8",
   "runtime": {
     "node": "v22.11.0",
@@ -161,8 +94,8 @@
     "architecture": "arm64",
     "options_sha256": "ebc442c160f8629073a82976daadaba1d95a60a38d768c81c8eb06598aedcac5"
   },
-  "proposal_sha256": "922fcbc56dccac27226fc5af1742ea5240f33762eb3934686c08bf103c2412e4",
-  "review_sha256": "8a0e338616ab44730f2e7fbd3d962e85bcc721d679411f49b68a6b0df4d11273",
+  "proposal_sha256": "01d3db9aed4454e6fb9a615700e7953e72875580399ad1bc4e1bb62777457de3",
+  "review_sha256": "42e3a5cae9601f4eb91740a30f0fe43f5981eec8d81a3399e54034993f2c01e1",
   "commands": [
     {
       "category": "sanity",
@@ -181,52 +114,27 @@
         "--test",
         "--test-reporter=tap",
         "--test-concurrency=1",
-        "tests/versioned-skills.test.mjs",
-        "tests/skill-import.test.mjs",
-        "tests/oracle-implementation-spec.test.mjs",
-        "tests/oracle-parallel.test.mjs"
+        "tests/oracle-lifecycle.test.mjs"
       ],
       "tests": [
-        "tests/versioned-skills.test.mjs",
-        "tests/skill-import.test.mjs",
-        "tests/oracle-implementation-spec.test.mjs",
-        "tests/oracle-parallel.test.mjs"
+        "tests/oracle-lifecycle.test.mjs"
       ],
       "fixtures": [
-        "tests/oracle_spec_test.py",
-        "tests/published_fixture.py",
-        "tests/helpers/isolated-test-cohort.mjs",
-        "tests/oracle_parallel_test.py",
+        "tests/oracle_lifecycle_test.py",
         "tests/oracle_review_series.py",
-        "tests/helpers/native-validation-state.mjs"
+        "tests/helpers/isolated-test-cohort.mjs"
       ]
-    },
-    {
-      "category": "interactions",
-      "argv": [
-        "node",
-        "--test",
-        "--test-reporter=tap",
-        "--test-concurrency=1",
-        "tests/release-version.test.mjs",
-        "tests/runtime-skill-export.test.mjs"
-      ],
-      "tests": [
-        "tests/release-version.test.mjs",
-        "tests/runtime-skill-export.test.mjs"
-      ],
-      "fixtures": []
     }
   ],
   "delivery_policy": {
-    "sla_seconds": 300,
+    "sla_seconds": 180,
     "clock_owner": "build_host",
     "clock_start": "original_insertion",
     "completion": "verified_remote_git",
     "retries_reset_clock": false,
-    "reasoning_effort": "medium",
+    "reasoning_effort": "low",
     "maximum_reasoning_effort": "medium"
   },
-  "contract_sha256": "67aa3170ea2e1bd9bd78b9866675744a57ed8597151bf8447b7aeb6cf6c593df",
-  "seal": "3c0ea3c7e04bdc6139da90509fe71c48ac76f1837e224a4fa85670a2e50d2517"
+  "contract_sha256": "874388cc3eb77c1fbfc53ffd54e700aa3b48b18fb40edd680ace2cddb4d6f748",
+  "seal": "d0a15764ce0c957b06f762bb4645d39a697158bfc62bd2d14fce78937aefd7c9"
 }
