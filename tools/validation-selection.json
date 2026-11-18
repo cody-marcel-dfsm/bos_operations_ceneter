@@ -6,26 +6,58 @@
     "model": "claude-opus-5-5",
     "oracle_sha256": "a9fe3d5142f622f993eee31ad2089b21a9e3c2e4c3147eb81f92e48524b83133",
     "host": "Codys-MacBook-Pro.local",
-    "time": "2026-11-18T03:48:57Z",
+    "time": "2026-11-18T03:59:03Z",
     "origin_main": "c3869d89f50bbf3c77424048abaf1e3d5aa72e05",
-    "request_sha256": "f5a4531cecb65309ce821608824058a8ffa5a0ad3a556e998d656ca64af6283b",
-    "proposal_sha256": "b7be6f123f73095e89f49a99e57e53b48abab52b40fcdc6047082b36a6b3c8a0"
+    "request_sha256": "232aba6848874fa36553e9b74180f80d29975f8e546659ab5128f6469c2fe355",
+    "proposal_sha256": "73efcd1e8c8fe48822b2f070a81d9dd5ac0edcb7c40c96496ea7b150c87f0e3d"
   },
   "selection": {
     "acceptance": [
-      "The Claude reviewer launch passes the output schema with only its top-level meta-schema declaration removed, preserving every other constraint, passes a schema without that declaration unchanged, and keeps its read-only tool, MCP-free and non-persistent session restrictions.",
-      "Reviewer output supplied as an event list yields the structured answer and actual model identity of its single result event; lists with no or several result events, an error result, no structured answer or no single model identity are refused, and single-object output behaves as before.",
-      "Both repaired behaviors are covered by unchanged deterministic regressions that fail by assertion before the repair and pass after it."
+      "The restarted skill is version 0.0.6 in its canonical source, in every generated client copy, in the skill release manifest and in the packaged skill archive, and no generated surface still carries a retired 1.0.x label for it.",
+      "The release history guard accepts the restarted skill moving from any retired version 1.0.0 through 1.0.6 to a version from 0.0.6 up to (but not including) 1.0.0. It still refuses a version below 0.0.6, reuse of any retired label with changed content, and a later version that does not increase after the restart. Every other skill keeps the strict floor.",
+      "The skill importer applies the same restart rule to the root pin and to each skill's floor only when both the earlier and the new import come from the canonical repository URL and the canonical package. It refuses the restart for a non-canonical repository, a non-canonical package, a version below 0.0.6, a retired 1.0.x label used as a downgrade, and a downgrade of any other skill.",
+      "The restart definition's canonical repository equals the runtime export repository, and the runtime skill export stays consistent with the regenerated skill manifest.",
+      "The Claude reviewer launch removes only the top-level meta-schema declaration from the schema it passes, and passes a schema without that declaration unchanged. Event-list output yields the structured answer and model identity of its single result event. Output with no result event, several result events, an error result, no structured answer or no single model identity is refused, and single-object output behaves as before.",
+      "The release version markers, package files, product manifests, client plugin manifests and README all carry the same new release version."
     ],
     "acceptance_tests": [
       {
         "covers": [
           0,
-          1,
-          2
+          1
+        ],
+        "module": "tests/versioned-skills.test.mjs",
+        "purpose": "Checks the restarted skill version in the manifest and generated identities, and checks the release history guard: the canonical restart is accepted, and versions below the restart floor, retired-label reuse, non-increasing later versions and other-skill downgrades are refused."
+      },
+      {
+        "covers": [
+          2,
+          3
+        ],
+        "module": "tests/skill-import.test.mjs",
+        "purpose": "Checks that import version floors allow the restart only for the canonical repository and package and refuse non-canonical sources, out-of-range versions and other-skill downgrades, and that the canonical repository equals the runtime export repository."
+      },
+      {
+        "covers": [
+          4
         ],
         "module": "tests/oracle-implementation-spec.test.mjs",
-        "purpose": "Run the Oracle spec suite, including the schema-argument and event-list regressions and the existing read-only command and envelope refusal cases."
+        "purpose": "Runs the Oracle spec suite, including the schema-argument and event-list regressions and the existing refusal cases."
+      },
+      {
+        "covers": [
+          5
+        ],
+        "module": "tests/release-version.test.mjs",
+        "purpose": "Checks that the new release version appears consistently in the version markers and generated package outputs."
+      },
+      {
+        "covers": [
+          0,
+          3
+        ],
+        "module": "tests/runtime-skill-export.test.mjs",
+        "purpose": "Checks that the runtime skill export reads the regenerated skill manifest consistently, including the restarted skill version."
       }
     ],
     "categories": [
@@ -42,22 +74,70 @@
         ],
         "name": "focused",
         "tests": [
+          "tests/versioned-skills.test.mjs",
+          "tests/skill-import.test.mjs",
           "tests/oracle-implementation-spec.test.mjs"
+        ]
+      },
+      {
+        "fixtures": [],
+        "name": "interactions",
+        "tests": [
+          "tests/release-version.test.mjs",
+          "tests/runtime-skill-export.test.mjs"
         ]
       }
     ],
-    "change_class": "bug_fix",
+    "change_class": "deep_bug_fix",
     "design": null,
-    "reason": "Narrow repair of the Claude reviewer launch and output reader in the Oracle tooling: drop only the top-level meta-schema declaration from the schema argument and read the single result event from event-list output while retaining every existing refusal. A small deterministic fail-before/pass-after reproduction in the existing Oracle spec suite suffices; no integration or broader regression is selected.",
-    "revision_of": "173edc9687dbf0da0b825b721db68787d9cdf1fe7cd006aae47907263e52079a",
+    "reason": "One release with three linked parts: the restart of one skill's version line, applied the same way by the release history guard and by the skill importer's version floors; the reviewer-launch and output-reader repair; and the release metadata and regenerated package outputs. Because the restart changes version-floor rules that both release history and imports from the canonical source depend on, this is a deep bug fix. Focused tests cover the restart rule, import floors and refusals, and the reviewer-tooling regressions. Interaction tests cover the release version markers and the runtime skill export, which reads the regenerated skill manifest and must use the same repository as the importer's canonical source.",
+    "revision_of": "ba4ed343709bc2174e2fb240c5bc0641c399d4041ce52b230183747ea2cebda6",
     "scope_paths": [
-      "tools/oracle_approval.py",
+      "README.md",
+      "clients/claude/plugins/bos/.bos-product.json",
+      "clients/claude/plugins/bos/.claude-plugin/plugin.json",
+      "clients/claude/plugins/bos/skills/ada/SKILL.md",
+      "clients/claude/plugins/education-center/.bos-product.json",
+      "clients/claude/plugins/education-center/.claude-plugin/plugin.json",
+      "clients/codex/plugins/bos/.bos-product.json",
+      "clients/codex/plugins/bos/.codex-plugin/plugin.json",
+      "clients/codex/plugins/bos/skills/ada/SKILL.md",
+      "clients/codex/plugins/education-center/.bos-product.json",
+      "clients/codex/plugins/education-center/.codex-plugin/plugin.json",
+      "clients/copilot/products/bos/.bos-product.json",
+      "clients/copilot/products/bos/skills/ada/SKILL.md",
+      "clients/copilot/products/education-center/.bos-product.json",
+      "clients/gemini/extensions/bos/.bos-product.json",
+      "clients/gemini/extensions/bos/gemini-extension.json",
+      "clients/gemini/extensions/bos/plugin.json",
+      "clients/gemini/extensions/bos/skills/ada/SKILL.md",
+      "clients/gemini/extensions/education-center/.bos-product.json",
+      "clients/gemini/extensions/education-center/gemini-extension.json",
+      "clients/gemini/extensions/education-center/plugin.json",
+      "clients/muse/plugins/bos/.bos-product.json",
+      "clients/muse/plugins/bos/.muse-plugin/plugin.json",
+      "clients/muse/plugins/bos/skills/ada/SKILL.md",
+      "clients/muse/plugins/education-center/.bos-product.json",
+      "clients/muse/plugins/education-center/.muse-plugin/plugin.json",
+      "package-lock.json",
+      "package-manifest.json",
+      "package.json",
+      "products/bos/openai/bos-skills.zip",
+      "products/bos/product.json",
+      "products/education-center/product.json",
+      "scripts/lib/skill-import.mjs",
+      "scripts/lib/skill-release.mjs",
+      "skill-release-manifest.json",
+      "source/platform/ada/SKILL.md",
       "tests/oracle_spec_test.py",
+      "tests/skill-import.test.mjs",
+      "tests/versioned-skills.test.mjs",
+      "tools/oracle_approval.py",
       "tools/validation-selection.json"
     ]
   },
-  "base_commit": "c3869d89f50bbf3c77424048abaf1e3d5aa72e05",
-  "base_tree": "fcd8971560211c70b32575d9eed0d75548d90b2a",
+  "base_commit": "9891a658295b81787b0a0a01291d6d9beec37979",
+  "base_tree": "31d44f42fb8e8961e5a669227080b5682725fe4a",
   "catalog_sha256": "9a96f1cd2a973457f9da681dddcc5161aa8ffda188b092d849e5bc83999391c8",
   "runtime": {
     "node": "v22.11.0",
@@ -67,8 +147,8 @@
     "architecture": "arm64",
     "options_sha256": "ebc442c160f8629073a82976daadaba1d95a60a38d768c81c8eb06598aedcac5"
   },
-  "proposal_sha256": "b7be6f123f73095e89f49a99e57e53b48abab52b40fcdc6047082b36a6b3c8a0",
-  "review_sha256": "d3e6d1ac788a7beb43b31172d3f184bd9eee803c1e7d52dfd31d080fda61a12d",
+  "proposal_sha256": "73efcd1e8c8fe48822b2f070a81d9dd5ac0edcb7c40c96496ea7b150c87f0e3d",
+  "review_sha256": "76831a77d7aeb0ebe0bc856cec514df0776a4851bb502fe46db5ad41b0497c8c",
   "commands": [
     {
       "category": "sanity",
@@ -87,9 +167,13 @@
         "--test",
         "--test-reporter=tap",
         "--test-concurrency=1",
+        "tests/versioned-skills.test.mjs",
+        "tests/skill-import.test.mjs",
         "tests/oracle-implementation-spec.test.mjs"
       ],
       "tests": [
+        "tests/versioned-skills.test.mjs",
+        "tests/skill-import.test.mjs",
         "tests/oracle-implementation-spec.test.mjs"
       ],
       "fixtures": [
@@ -97,17 +181,33 @@
         "tests/published_fixture.py",
         "tests/helpers/isolated-test-cohort.mjs"
       ]
+    },
+    {
+      "category": "interactions",
+      "argv": [
+        "node",
+        "--test",
+        "--test-reporter=tap",
+        "--test-concurrency=1",
+        "tests/release-version.test.mjs",
+        "tests/runtime-skill-export.test.mjs"
+      ],
+      "tests": [
+        "tests/release-version.test.mjs",
+        "tests/runtime-skill-export.test.mjs"
+      ],
+      "fixtures": []
     }
   ],
   "delivery_policy": {
-    "sla_seconds": 180,
+    "sla_seconds": 300,
     "clock_owner": "build_host",
     "clock_start": "original_insertion",
     "completion": "verified_remote_git",
     "retries_reset_clock": false,
-    "reasoning_effort": "low",
+    "reasoning_effort": "medium",
     "maximum_reasoning_effort": "medium"
   },
-  "contract_sha256": "ba4ed343709bc2174e2fb240c5bc0641c399d4041ce52b230183747ea2cebda6",
-  "seal": "b8a6de26f10ee995e88bc6d2f1661f4c24ded126dcbe83b1d1bf91ae4a14ae5d"
+  "contract_sha256": "ceca64f1c3d2650c6871945d7be9524518a52ef357d98f49f17644ae1121618c",
+  "seal": "c79675cfcc42a1a0f4b785907910be41728dd465f02db58514158de1eb7f8df4"
 }

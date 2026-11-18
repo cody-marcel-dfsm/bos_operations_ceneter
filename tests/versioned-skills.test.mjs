@@ -55,6 +55,17 @@ test("manifest binds supporting file modes and hashes; changed source and effect
   assert.doesNotThrow(() => assertSkillVersionTransition(bumped, original));
 });
 
+test("Ada restarts at 0.0.6 below its retired 1.0.x labels and must increase again afterwards", () => {
+  const row = version => ({ version, requires: {}, path: "source/platform/ada", files: { "SKILL.md": { sha256: "a".repeat(64), mode: 0o644 } }, effective: {} });
+  const manifest = (name, version) => ({ package: "fixture", release: "1.0.0", skills: { [name]: row(version) } });
+  for (const retired of ["1.0.0", "1.0.6"]) assert.doesNotThrow(() => assertSkillVersionTransition(manifest("ada", "0.0.6"), manifest("ada", retired)));
+  assert.doesNotThrow(() => assertSkillVersionTransition(manifest("ada", "0.0.7"), manifest("ada", "1.0.6")));
+  assert.throws(() => assertSkillVersionTransition(manifest("ada", "0.0.5"), manifest("ada", "1.0.6")), /strictly newer/);
+  assert.throws(() => assertSkillVersionTransition(manifest("ada", "1.0.3"), manifest("ada", "1.0.6")), /strictly newer/);
+  assert.throws(() => assertSkillVersionTransition(manifest("ada", "0.0.6"), manifest("ada", "0.0.7")), /strictly newer/);
+  assert.throws(() => assertSkillVersionTransition(manifest("other", "0.0.6"), manifest("other", "1.0.6")), /strictly newer/);
+});
+
 test("exact transitive requirements terminate cycles deterministically and reject missing or conflicting versions", async t => {
   const manifest = await buildSkillManifest(await fixture(t));
   assert.deepEqual(Object.keys(resolveSkillClosure(manifest, "alpha", "1.0.0")), ["alpha", "beta"]);

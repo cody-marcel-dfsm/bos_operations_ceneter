@@ -7,7 +7,8 @@ import { promisify } from "node:util";
 import test from "node:test";
 import { parseImportArguments } from "../scripts/import-skill.mjs";
 import { importReceiptFile, materializeSkillImport, maxImportFiles, maxImportSkills, readPinnedGitSkills } from "../scripts/lib/skill-import.mjs";
-import { checkSkillReleaseHistory, sha256, skillManifestFile } from "../scripts/lib/skill-release.mjs";
+import { checkSkillReleaseHistory, sha256, skillManifestFile, skillVersionRestarts } from "../scripts/lib/skill-release.mjs";
+import { runtimeRepository } from "../scripts/lib/runtime-skill-export.mjs";
 import { writeSkillMetadata } from "../scripts/lib/skill-metadata.mjs";
 import { stableJson } from "../scripts/lib/package-model.mjs";
 
@@ -21,19 +22,19 @@ async function workspace(t) {
   return base;
 }
 
-async function bareRelease(base, { version = "1.0.0", mutate, gitDirectory, parentCommit } = {}) {
+async function bareRelease(base, { version = "1.0.0", mutate, gitDirectory, parentCommit, root = "alpha", repository = "https://example.test/skills.git", packageName = "fixture" } = {}) {
   const entries = {
-    "package.json": { bytes: Buffer.from(stableJson({ name: "fixture", version: "2.0.0" })), mode: "100644" },
-    "source/alpha/SKILL.md": { bytes: Buffer.from(text("alpha", version, { beta: "1.0.0" })), mode: "100644" },
-    "source/alpha/scripts/run.sh": { bytes: Buffer.from("#!/bin/sh\nexit 0\n"), mode: "100755" },
-    "source/alpha/__proto__": { bytes: Buffer.from("An ordinary named supporting file.\n"), mode: "100644" },
+    "package.json": { bytes: Buffer.from(stableJson({ name: packageName, version: "2.0.0" })), mode: "100644" },
+    [`source/${root}/SKILL.md`]: { bytes: Buffer.from(text(root, version, { beta: "1.0.0" })), mode: "100644" },
+    [`source/${root}/scripts/run.sh`]: { bytes: Buffer.from("#!/bin/sh\nexit 0\n"), mode: "100755" },
+    [`source/${root}/__proto__`]: { bytes: Buffer.from("An ordinary named supporting file.\n"), mode: "100644" },
     "source/beta/SKILL.md": { bytes: Buffer.from(text("beta", "1.0.0")), mode: "100644" },
     "source/beta/references/read.md": { bytes: Buffer.from("Synthetic supporting reference.\n"), mode: "100644" }
   };
-  const manifest = { package: "fixture", release: "2.0.0", skills: {} };
-  for (const name of ["alpha", "beta"]) {
+  const manifest = { package: packageName, release: "2.0.0", skills: {} };
+  for (const name of [root, "beta"]) {
     const files = Object.fromEntries(Object.entries(entries).filter(([path]) => path.startsWith(`source/${name}/`)).map(([path, row]) => [path.slice(`source/${name}/`.length), { sha256: sha256(row.bytes), mode: row.mode === "100755" ? 0o755 : 0o644 }]));
-    manifest.skills[name] = { version: name === "alpha" ? version : "1.0.0", requires: name === "alpha" ? { beta: "1.0.0" } : {}, path: `source/${name}`, files, effective: { fixture: "a".repeat(64) } };
+    manifest.skills[name] = { version: name === root ? version : "1.0.0", requires: name === root ? { beta: "1.0.0" } : {}, path: `source/${name}`, files, effective: { fixture: "a".repeat(64) } };
   }
   if (mutate) mutate({ manifest, entries });
   entries[skillManifestFile] = { bytes: Buffer.from(stableJson(manifest)), mode: "100644" };
@@ -64,7 +65,7 @@ async function bareRelease(base, { version = "1.0.0", mutate, gitDirectory, pare
   const commit = await input(["commit-tree", await makeTree(tree), ...(parentCommit ? ["-p", parentCommit] : [])], "Synthetic release fixture\n");
   await exec("git", ["--git-dir", directory, "update-ref", "refs/heads/main", commit]);
   await exec("git", ["--git-dir", directory, "symbolic-ref", "HEAD", "refs/heads/main"]);
-  const pin = { repository: "https://example.test/skills.git", commit, release: "2.0.0", skill: "alpha", version };
+  const pin = { repository, commit, release: "2.0.0", skill: root, version };
   return { directory, pin, manifest };
 }
 
@@ -195,6 +196,33 @@ test("source import preserves authored conflicts, rejects same-version changes a
   assert.match(await readFile(join(target, "alpha/SKILL.md"), "utf8"), /version: "1.0.0"/);
   assert.equal((await materializeSkillImport(update, { repositoryRoot: base, target })).status, "imported");
   assert.deepEqual(await readdir(dirname(target)), ["fixture"]);
+});
+
+test("an existing Ada import from the canonical source updates from a retired 1.0.x label to the 0.0.6 restart; every other downgrade stays refused", async t => {
+  const canonical = { root: "ada", repository: skillVersionRestarts.ada.repository, packageName: skillVersionRestarts.ada.package };
+  const reader = base => async options => { const fixture = await bareRelease(base, options); return readPinnedGitSkills(fixture.directory, fixture.pin); };
+  const base = await workspace(t), read = reader(base), ada = join(base, "source/imports/ada");
+  await materializeSkillImport(await read({ ...canonical, version: "1.0.6" }), { repositoryRoot: base, target: ada });
+  for (const version of ["0.0.5", "1.0.3"]) {
+    await assert.rejects(materializeSkillImport(await read({ ...canonical, version }), { repositoryRoot: base, target: ada }), /newer version/);
+  }
+  assert.equal((await materializeSkillImport(await read({ ...canonical, version: "0.0.6" }), { repositoryRoot: base, target: ada })).status, "imported");
+  assert.match(await readFile(join(ada, "ada/SKILL.md"), "utf8"), /version: "0.0.6"/);
+  await assert.rejects(materializeSkillImport(await read({ ...canonical, version: "0.0.5" }), { repositoryRoot: base, target: ada }), /newer version/);
+  // An "ada" skill from another repository or package keeps the strict floor.
+  for (const source of [{ root: "ada" }, { ...canonical, packageName: "fixture" }]) {
+    const other = await workspace(t), readOther = reader(other), target = join(other, "source/imports/ada");
+    await materializeSkillImport(await readOther({ ...source, version: "1.0.6" }), { repositoryRoot: other, target });
+    await assert.rejects(materializeSkillImport(await readOther({ ...source, version: "0.0.6" }), { repositoryRoot: other, target }), /newer version/);
+  }
+  // Other skills keep their floors even from the canonical source.
+  const other = await workspace(t), readOther = reader(other), alpha = join(other, "source/imports/alpha");
+  await materializeSkillImport(await readOther({ repository: canonical.repository, packageName: canonical.packageName, version: "1.0.6" }), { repositoryRoot: other, target: alpha });
+  await assert.rejects(materializeSkillImport(await readOther({ repository: canonical.repository, packageName: canonical.packageName, version: "0.0.6" }), { repositoryRoot: other, target: alpha }), /newer version/);
+});
+
+test("the restart's canonical source is the runtime export repository", () => {
+  assert.equal(skillVersionRestarts.ada.repository, runtimeRepository);
 });
 
 test("imports refuse existing authored roots, symlink destinations, installed paths and mutable pin arguments", async t => {
