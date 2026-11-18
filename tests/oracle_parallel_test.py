@@ -129,6 +129,12 @@ class ParallelReview(unittest.TestCase):
                 else:
                     self.assertNotIn('command_coverage_contract', packet)
                     self.assertEqual(commands['maxItems'], 0); self.assertNotIn('enum', commands)
+                # The schema admits exactly the assigned integration concerns: none for an unassigned cohort.
+                integration = schema['properties']['integration']
+                checks = cohort['integration_checks']
+                self.assertEqual((integration.get('minItems'), integration.get('maxItems')), (len(checks), len(checks)))
+                if checks:
+                    self.assertEqual(integration['items']['properties']['concern']['enum'], checks)
                 self.assertEqual(o._pretty(base), original_base, 'Specialization cannot contaminate another cohort')
         self.assertEqual(o._pretty(self.context), original_context)
         for kind in ('package', 'environment'):

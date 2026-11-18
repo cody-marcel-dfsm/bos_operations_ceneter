@@ -6,19 +6,20 @@
     "model": "claude-opus-5-5",
     "oracle_sha256": "a9fe3d5142f622f993eee31ad2089b21a9e3c2e4c3147eb81f92e48524b83133",
     "host": "Codys-MacBook-Pro.local",
-    "time": "2026-11-18T03:59:03Z",
+    "time": "2026-11-18T15:04:31Z",
     "origin_main": "c3869d89f50bbf3c77424048abaf1e3d5aa72e05",
     "request_sha256": "232aba6848874fa36553e9b74180f80d29975f8e546659ab5128f6469c2fe355",
-    "proposal_sha256": "73efcd1e8c8fe48822b2f070a81d9dd5ac0edcb7c40c96496ea7b150c87f0e3d"
+    "proposal_sha256": "922fcbc56dccac27226fc5af1742ea5240f33762eb3934686c08bf103c2412e4"
   },
   "selection": {
     "acceptance": [
       "The restarted skill is version 0.0.6 in its canonical source, in every generated client copy, in the skill release manifest and in the packaged skill archive, and no generated surface still carries a retired 1.0.x label for it.",
       "The release history guard accepts the restarted skill moving from any retired version 1.0.0 through 1.0.6 to a version from 0.0.6 up to (but not including) 1.0.0. It still refuses a version below 0.0.6, reuse of any retired label with changed content, and a later version that does not increase after the restart. Every other skill keeps the strict floor.",
-      "The skill importer applies the same restart rule to the root pin and to each skill's floor only when both the earlier and the new import come from the canonical repository URL and the canonical package. It refuses the restart for a non-canonical repository, a non-canonical package, a version below 0.0.6, a retired 1.0.x label used as a downgrade, and a downgrade of any other skill.",
+      "The skill importer applies the same restart rule to the root pin and to each skill's floor only when both the earlier and the new import come from the canonical repository URL and the canonical package. It refuses the restart for a non-canonical repository, a non-canonical package, a version below 0.0.6, a retired 1.0.x label used as a downgrade, and a downgrade of any other skill. Once an import is in the restarted lineage, it refuses a retired 1.0.0 to 1.0.6 label for the root pin and for each closure skill, while later versions such as 0.0.7 and 1.0.7 still update.",
       "The restart definition's canonical repository equals the runtime export repository, and the runtime skill export stays consistent with the regenerated skill manifest.",
       "The Claude reviewer launch removes only the top-level meta-schema declaration from the schema it passes, and passes a schema without that declaration unchanged. Event-list output yields the structured answer and model identity of its single result event. Output with no result event, several result events, an error result, no structured answer or no single model identity is refused, and single-object output behaves as before.",
-      "The release version markers, package files, product manifests, client plugin manifests and README all carry the same new release version."
+      "The release version markers, package files, product manifests, client plugin manifests and README all carry the same new release version.",
+      "Each parallel review cohort's output schema admits exactly the integration concerns assigned to that cohort. The minimum and maximum item counts equal the assigned count, and the concern values are limited to the assigned set. A cohort with no assigned concerns admits only an empty list. Specializing one cohort leaves the shared base schema unchanged, and the full parallel review suite still runs its complete discovered membership and passes."
     ],
     "acceptance_tests": [
       {
@@ -27,7 +28,7 @@
           1
         ],
         "module": "tests/versioned-skills.test.mjs",
-        "purpose": "Checks the restarted skill version in the manifest and generated identities, and checks the release history guard: the canonical restart is accepted, and versions below the restart floor, retired-label reuse, non-increasing later versions and other-skill downgrades are refused."
+        "purpose": "Checks the restarted skill version in the manifest and generated identities. Checks the release history guard: the canonical restart is accepted, while versions below the restart floor, retired-label reuse, non-increasing later versions and other-skill downgrades are refused."
       },
       {
         "covers": [
@@ -35,7 +36,7 @@
           3
         ],
         "module": "tests/skill-import.test.mjs",
-        "purpose": "Checks that import version floors allow the restart only for the canonical repository and package and refuse non-canonical sources, out-of-range versions and other-skill downgrades, and that the canonical repository equals the runtime export repository."
+        "purpose": "Checks that import version floors allow the restart only for the canonical repository and package, and that retired labels are refused once the restarted lineage is in effect. Also refuses non-canonical sources, out-of-range versions and other-skill downgrades, and checks that the canonical repository equals the runtime export repository."
       },
       {
         "covers": [
@@ -43,6 +44,13 @@
         ],
         "module": "tests/oracle-implementation-spec.test.mjs",
         "purpose": "Runs the Oracle spec suite, including the schema-argument and event-list regressions and the existing refusal cases."
+      },
+      {
+        "covers": [
+          6
+        ],
+        "module": "tests/oracle-parallel.test.mjs",
+        "purpose": "Runs the full parallel review suite in independent processes, including the cohort schema regression. That regression checks each cohort admits exactly its assigned integration concerns and that the shared base schema stays unchanged."
       },
       {
         "covers": [
@@ -70,13 +78,17 @@
         "fixtures": [
           "tests/oracle_spec_test.py",
           "tests/published_fixture.py",
-          "tests/helpers/isolated-test-cohort.mjs"
+          "tests/helpers/isolated-test-cohort.mjs",
+          "tests/oracle_parallel_test.py",
+          "tests/oracle_review_series.py",
+          "tests/helpers/native-validation-state.mjs"
         ],
         "name": "focused",
         "tests": [
           "tests/versioned-skills.test.mjs",
           "tests/skill-import.test.mjs",
-          "tests/oracle-implementation-spec.test.mjs"
+          "tests/oracle-implementation-spec.test.mjs",
+          "tests/oracle-parallel.test.mjs"
         ]
       },
       {
@@ -90,8 +102,8 @@
     ],
     "change_class": "deep_bug_fix",
     "design": null,
-    "reason": "One release with three linked parts: the restart of one skill's version line, applied the same way by the release history guard and by the skill importer's version floors; the reviewer-launch and output-reader repair; and the release metadata and regenerated package outputs. Because the restart changes version-floor rules that both release history and imports from the canonical source depend on, this is a deep bug fix. Focused tests cover the restart rule, import floors and refusals, and the reviewer-tooling regressions. Interaction tests cover the release version markers and the runtime skill export, which reads the regenerated skill manifest and must use the same repository as the importer's canonical source.",
-    "revision_of": "ba4ed343709bc2174e2fb240c5bc0641c399d4041ce52b230183747ea2cebda6",
+    "reason": "One release with linked parts. The first restarts one skill's version line, applied the same way by the release history guard and by the skill importer's version floors, including refusal of retired labels after the restart. The second repairs the reviewer launch and output reader. The third aligns each parallel review cohort's output schema with the integration concerns the result checker accepts. The fourth is the release metadata and regenerated package outputs. The restart changes version-floor rules that both release history and canonical-source imports depend on, so this is a deep bug fix. Focused tests cover the restart rule, import floors and refusals, the reviewer-launch regressions and the cohort schema regression. Interaction tests cover the release version markers and the runtime skill export. The runtime export reads the regenerated skill manifest and must use the same repository as the importer's canonical source.",
+    "revision_of": "ceca64f1c3d2650c6871945d7be9524518a52ef357d98f49f17644ae1121618c",
     "scope_paths": [
       "README.md",
       "clients/claude/plugins/bos/.bos-product.json",
@@ -129,15 +141,17 @@
       "scripts/lib/skill-release.mjs",
       "skill-release-manifest.json",
       "source/platform/ada/SKILL.md",
+      "tests/oracle_parallel_test.py",
       "tests/oracle_spec_test.py",
       "tests/skill-import.test.mjs",
       "tests/versioned-skills.test.mjs",
       "tools/oracle_approval.py",
+      "tools/oracle_parallel.py",
       "tools/validation-selection.json"
     ]
   },
-  "base_commit": "9891a658295b81787b0a0a01291d6d9beec37979",
-  "base_tree": "31d44f42fb8e8961e5a669227080b5682725fe4a",
+  "base_commit": "a17c5b0535380081d3619beda5cebf4220df8638",
+  "base_tree": "568fe01df10abb179a0ac43c8e61ff7f2e1d0288",
   "catalog_sha256": "9a96f1cd2a973457f9da681dddcc5161aa8ffda188b092d849e5bc83999391c8",
   "runtime": {
     "node": "v22.11.0",
@@ -147,8 +161,8 @@
     "architecture": "arm64",
     "options_sha256": "ebc442c160f8629073a82976daadaba1d95a60a38d768c81c8eb06598aedcac5"
   },
-  "proposal_sha256": "73efcd1e8c8fe48822b2f070a81d9dd5ac0edcb7c40c96496ea7b150c87f0e3d",
-  "review_sha256": "76831a77d7aeb0ebe0bc856cec514df0776a4851bb502fe46db5ad41b0497c8c",
+  "proposal_sha256": "922fcbc56dccac27226fc5af1742ea5240f33762eb3934686c08bf103c2412e4",
+  "review_sha256": "8a0e338616ab44730f2e7fbd3d962e85bcc721d679411f49b68a6b0df4d11273",
   "commands": [
     {
       "category": "sanity",
@@ -169,17 +183,22 @@
         "--test-concurrency=1",
         "tests/versioned-skills.test.mjs",
         "tests/skill-import.test.mjs",
-        "tests/oracle-implementation-spec.test.mjs"
+        "tests/oracle-implementation-spec.test.mjs",
+        "tests/oracle-parallel.test.mjs"
       ],
       "tests": [
         "tests/versioned-skills.test.mjs",
         "tests/skill-import.test.mjs",
-        "tests/oracle-implementation-spec.test.mjs"
+        "tests/oracle-implementation-spec.test.mjs",
+        "tests/oracle-parallel.test.mjs"
       ],
       "fixtures": [
         "tests/oracle_spec_test.py",
         "tests/published_fixture.py",
-        "tests/helpers/isolated-test-cohort.mjs"
+        "tests/helpers/isolated-test-cohort.mjs",
+        "tests/oracle_parallel_test.py",
+        "tests/oracle_review_series.py",
+        "tests/helpers/native-validation-state.mjs"
       ]
     },
     {
@@ -208,6 +227,6 @@
     "reasoning_effort": "medium",
     "maximum_reasoning_effort": "medium"
   },
-  "contract_sha256": "ceca64f1c3d2650c6871945d7be9524518a52ef357d98f49f17644ae1121618c",
-  "seal": "c79675cfcc42a1a0f4b785907910be41728dd465f02db58514158de1eb7f8df4"
+  "contract_sha256": "67aa3170ea2e1bd9bd78b9866675744a57ed8597151bf8447b7aeb6cf6c593df",
+  "seal": "3c0ea3c7e04bdc6139da90509fe71c48ac76f1837e224a4fa85670a2e50d2517"
 }
