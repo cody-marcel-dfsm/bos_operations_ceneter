@@ -31,8 +31,18 @@ test('existing operational compatibility preserves scoped exceptions and authori
 const lifecycle = await readFile(new URL('../source/platform/bos-workflow-orchestrator/references/journey-lifecycle.md', import.meta.url), 'utf8');
 const authoring = await readFile(new URL('../source/platform/bos-workflow-orchestrator/references/bosl-authoring.md', import.meta.url), 'utf8');
 const orchestrator = await readFile(new URL('../source/platform/bos-workflow-orchestrator/SKILL.md', import.meta.url), 'utf8');
-const {createNativeBoslExecution, NATIVE_BOSL_TOOLS} = await import('../source/platform/bos-workflow-orchestrator/scripts/native-bosl-execution.mjs');
 const {interpretJourneyResponse} = await import('../source/platform/bos-workflow-orchestrator/scripts/journey-runtime-client.mjs');
+const NATIVE_BOSL_TOOLS = {register: 'lead-director.journeys.register', action: 'lead-director.journeys.action', graphExport: 'bos.graph_export.read'};
+async function createNativeBoslExecution(options) {
+  let helper;
+  try {
+    helper = await import('../source/platform/bos-workflow-orchestrator/scripts/native-bosl-execution.mjs');
+  } catch (error) {
+    assert.fail(`packaged native BOSL execution helper is unavailable: ${error.code ?? error.message}`);
+  }
+  assert.deepEqual({...helper.NATIVE_BOSL_TOOLS}, NATIVE_BOSL_TOOLS);
+  return helper.createNativeBoslExecution(options);
+}
 
 const nativeContext = {context_handle: 'bos_ctx_v2_' + 'c'.repeat(64), organization_name: 'Synthetic organization',
   application_name: 'Lead Director', installation_name: 'Synthetic installation', role_label: 'Synthetic role', is_default: true};
@@ -76,8 +86,8 @@ test('identity guidance admits exactly the owner-directed native BOSL execution 
   }
 });
 
-test('native BOSL execution preserves exact hrefs, payload rules and the empty export', () => {
-  const native = createNativeBoslExecution({context: nativeContext, catalog: nativeCatalog()});
+test('native BOSL execution preserves exact hrefs, payload rules and the empty export', async () => {
+  const native = await createNativeBoslExecution({context: nativeContext, catalog: nativeCatalog()});
   assert.deepEqual(native.action(startAction).arguments, {href: startHref});
   assert.deepEqual(native.action(stateAction).arguments, {href: stateAction.href});
   assert.equal(native.action(startAction).tool_name, 'lead-director.journeys.action');
@@ -90,17 +100,17 @@ test('native BOSL execution preserves exact hrefs, payload rules and the empty e
   assert.deepEqual(native.graphExport(), {tool_name: 'bos.graph_export.read', context_handle: nativeContext.context_handle, arguments: {}});
 });
 
-test('native BOSL tools are never invented and bind only the selected catalog', () => {
-  const partial = createNativeBoslExecution({context: nativeContext, catalog: nativeCatalog([NATIVE_BOSL_TOOLS.register])});
+test('native BOSL tools are never invented and bind only the selected catalog', async () => {
+  const partial = await createNativeBoslExecution({context: nativeContext, catalog: nativeCatalog([NATIVE_BOSL_TOOLS.register])});
   assert.equal(partial.available(NATIVE_BOSL_TOOLS.action), false);
   assert.throws(() => partial.action(startAction), error => error.code === 'host_capability_unavailable');
   assert.throws(() => partial.graphExport(), /host_capability_unavailable/);
-  assert.throws(() => createNativeBoslExecution({context: nativeContext, catalog: nativeCatalog(undefined, 'bos_ctx_v2_' + 'd'.repeat(64))}),
+  await assert.rejects(createNativeBoslExecution({context: nativeContext, catalog: nativeCatalog(undefined, 'bos_ctx_v2_' + 'd'.repeat(64))}),
     /bound to the selected handle/);
 });
 
-test('native results feed the same lifecycle interpretation after exact context verification', () => {
-  const native = createNativeBoslExecution({context: nativeContext, catalog: nativeCatalog()});
+test('native results feed the same lifecycle interpretation after exact context verification', async () => {
+  const native = await createNativeBoslExecution({context: nativeContext, catalog: nativeCatalog()});
   const response = native.unwrap(nativeResult({http_status: 202, headers: {'Retry-After': '1'},
     body: {identity: 'synthetic-journey', status: 'in_progress', current_node: {code: 'synthetic_wait', type: 'server', operation: 'synthetic.wait'},
       retry_after_seconds: 1, action: stateAction}}));
@@ -117,8 +127,8 @@ test('native results feed the same lifecycle interpretation after exact context 
     structuredContent: {contract_version: 'bos-identity-mcp/v2', context: nativeContext, result: {http_status: 200, body: {}}}}), /private uncached/);
 });
 
-test('native registration sends the unchanged document and never starts execution implicitly', () => {
-  const native = createNativeBoslExecution({context: nativeContext, catalog: nativeCatalog()});
+test('native registration sends the unchanged document and never starts execution implicitly', async () => {
+  const native = await createNativeBoslExecution({context: nativeContext, catalog: nativeCatalog()});
   const document = plainDocument();
   const registration = native.register(registrationContract, document);
   assert.equal(registration.tool_name, 'lead-director.journeys.register');
@@ -133,8 +143,8 @@ test('native registration sends the unchanged document and never starts executio
   assert.throws(() => native.register(registrationContract, {...document, token: 'synthetic'}), /registration schema|authority selector|additional/i);
 });
 
-test('native arguments reject credentials and authority selectors', () => {
-  const native = createNativeBoslExecution({context: nativeContext, catalog: nativeCatalog()});
+test('native arguments reject credentials and authority selectors', async () => {
+  const native = await createNativeBoslExecution({context: nativeContext, catalog: nativeCatalog()});
   for (const payload of [{note: 'x', organization_id: 'o'}, {note: 'x', access_token: 't'}, {note: 'x', context_handle: 'h'}]) {
     assert.throws(() => native.action({...completeAction, payload_schema: {type: 'object'}}, payload), /authority selector/);
   }
