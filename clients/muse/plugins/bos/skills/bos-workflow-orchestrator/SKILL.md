@@ -2,8 +2,8 @@
 name: bos-workflow-orchestrator
 description: Explain, compose, or operate governed deterministic workflows across the user's installed BOS service mesh, including ad hoc dynamic workflows created for the current objective. Use for multi-step or cross-service outcomes, custom journeys, requests to explain an organization's automation plugin, dependency resolution, approvals, recovery, and completion verification.
 metadata:
-  version: "1.0.13"
-  requires: "{\"bos-mcp-client\":\"1.0.12\",\"bos-visual-output\":\"1.0.13\"}"
+  version: "1.0.14"
+  requires: "{\"bos-mcp-client\":\"1.0.13\",\"bos-visual-output\":\"1.0.14\"}"
 ---
 
 
@@ -208,8 +208,11 @@ Build a concise explain plan from the discovered contracts, author raw BOSL,
 run the packaged local structural checks, and submit that same JSON document to
 the discovered registration operation. For identity-v2 deterministic HTTP,
 the BOS adapter attaches the current fresh opaque handle under the discovered
-`X-BOS-Context-Handle` header without changing the raw document. The explain
-plan remains client-side.
+`X-BOS-Context-Handle` header without changing the raw document. When the
+host supplies no authenticated HTTPS, use the freshly advertised native BOSL
+execution tools defined in `bos-mcp-client`'s identity-context reference
+(`lead-director.journeys.register` with `{document}`). The explain plan
+remains client-side.
 
 For the advertised `lead-director-journey-registration/v1`, validate registration
 as `compiled: true`, `identity`, and `actions.start`; callback submissions also
@@ -231,7 +234,10 @@ an underlying server operation while `in_progress`, or constructs a lifecycle
 route. Invoke every identity-v2 `start`, `complete`, `step`, `failed`, and
 `state` action through the packaged context-binding adapter with the current
 fresh opaque handle; keep the handle out of action payloads and dependent
-products. Legacy/v1 returned actions stay header-free. For reconnection
+products. Without host HTTPS, invoke each returned action by its exact href
+through freshly advertised `lead-director.journeys.action` as
+[journey lifecycle](references/journey-lifecycle.md) describes. Legacy/v1
+returned actions stay header-free. For reconnection
 recovery, invoke the sole exact returned `state` action and resume from its
 authoritative response.
 
@@ -267,7 +273,10 @@ discovered lifecycle and preserve receipt-based recovery and effect approvals.
    deterministic HTTPS method and path using the current schema and the
    connection's host-managed authorization. For identity-v2 HTTP execution,
    copy the advertised `X-BOS-Context-Handle` header name and attach the current
-   opaque selected handle; add no client execution state. Treat MCP discovery as capability evidence and the API result as
+   opaque selected handle; add no client execution state. Without host HTTPS,
+   use only the freshly advertised native BOSL execution tools for
+   registration, returned journey actions and the graph export
+   (`bos.graph_export.read` with `{}`). Treat MCP discovery as capability evidence and the API result as
    execution evidence.
 7. For an ordinary non-journey operation, when authorization or configuration interrupts execution, preserve the
    server-issued continuation action. After the dependency becomes ready,

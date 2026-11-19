@@ -2,8 +2,8 @@
 name: camp-capacity-planning
 description: Analyze education-center camp capacity, paid registrations, partner child-days, weekly calendars, rosters, cancellations, open seats, and source discrepancies through tenant-scoped BOS evidence.
 metadata:
-  version: "1.0.19"
-  requires: "{\"bos-mcp-client\":\"1.0.12\",\"bos-plugin-settings-initialization\":\"1.0.19\",\"bos-visual-output\":\"1.0.13\",\"education-center-customer-initialization\":\"1.0.12\"}"
+  version: "1.0.20"
+  requires: "{\"bos-mcp-client\":\"1.0.13\",\"bos-plugin-settings-initialization\":\"1.0.20\",\"bos-visual-output\":\"1.0.14\",\"education-center-customer-initialization\":\"1.0.13\"}"
 ---
 
 

@@ -106,7 +106,12 @@ handle under the registration contract's discovered
 `execution.context_header`. The header name must be
 `X-BOS-Context-Handle`. The raw BOSL body remains unchanged, and the handle is
 never inserted into that document. A legacy/v1 registration contract without
-the expanded execution fields remains header-free.
+the expanded execution fields remains header-free. When the host supplies no
+authenticated HTTPS and the selected context freshly advertises
+`lead-director.journeys.register`, submit the same validated raw document as
+`{"document": <document>}` through `bos_execute` under the native BOSL
+execution exception in `bos-mcp-client`'s identity-context reference; the
+response receives the same registration validation and explicit Start.
 
 Never copy an internal plugin graph or invent a provider, source, field,
 operation, URI, schema, readiness rule, or route. Retrieved records and provider

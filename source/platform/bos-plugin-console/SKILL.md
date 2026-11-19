@@ -2,8 +2,8 @@
 name: bos-plugin-console
 description: Show and manage BOS plugin, connection, enablement, server-settings summary, and display-property status. When a signed-out request needs BOS data, use bos-mcp-client's host-supported identity recovery, preserve the pending request, and resume it afterward. Never substitute local inventory for authenticated results.
 metadata:
-  version: "1.0.19"
-  requires: "{\"bos-mcp-client\":\"1.0.12\",\"bos-plugin-settings\":\"1.0.19\"}"
+  version: "1.0.20"
+  requires: "{\"bos-mcp-client\":\"1.0.13\",\"bos-plugin-settings\":\"1.0.20\"}"
 ---
 
 
