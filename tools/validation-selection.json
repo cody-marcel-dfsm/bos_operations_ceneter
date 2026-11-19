@@ -6,10 +6,10 @@
     "model": "gpt-6.1-sol",
     "oracle_sha256": "a9fe3d5142f622f993eee31ad2089b21a9e3c2e4c3147eb81f92e48524b83133",
     "host": "aio",
-    "time": "2026-11-19T07:06:03Z",
+    "time": "2026-11-19T07:13:58Z",
     "origin_main": "95bbc0f5a2bc3cec2399a3f8880139d2b4ce0065",
     "request_sha256": "16279904b66d2f45c9708cd4dfa1dac7ac549a999def0a77c10c3953120aba7c",
-    "proposal_sha256": "a8f7fd6a538d11181155b1bcd978711ca91e16ea71098b49426bf494f6d33923"
+    "proposal_sha256": "dd971061cc6a062fcbc84d7b96c494f12a2e402ae099e0261ce529758760f403"
   },
   "selection": {
     "acceptance": [
@@ -85,8 +85,8 @@
     ],
     "change_class": "deep_bug_fix",
     "design": null,
-    "reason": "Restore bounded native execution for hosts without authenticated HTTPS while preserving existing transport defaults, exact context verification, action schemas, lifecycle safety and package parity. Cross-area execution and recovery require focused executable failure cases plus package and graph interactions. Retain unchanged-test fail-before/pass-after evidence and distinguish source validation from published-client acceptance.",
-    "revision_of": "874388cc3eb77c1fbfc53ffd54e700aa3b48b18fb40edd680ace2cddb4d6f748",
+    "reason": "Preserve the existing native execution acceptance criteria and selected checks while admitting required skill-version dependency propagation, generated helper copies and product skill archives. Additional skill changes are limited to necessary version and requirement metadata; unrelated behavior requires separate review. Retain unchanged-test fail-before/pass-after evidence, original delivery clocks and the distinction between source validation and published-client acceptance.",
+    "revision_of": "e502178133475b383b047bb778e5c170493bc30208f79c3894fe6b9e38b250f9",
     "scope_paths": [
       "AGENTS.md",
       "README.md",
@@ -95,6 +95,7 @@
       "source/platform/bos-workflow-orchestrator/references/journey-lifecycle.md",
       "source/platform/bos-workflow-orchestrator/references/bosl-authoring.md",
       "source/platform/bos-workflow-orchestrator/scripts/native-bosl-execution.mjs",
+      "source/**/SKILL.md",
       "tests/bos-native-compatibility.test.mjs",
       "tests/journey-package-parity.test.mjs",
       "tests/package-model.test.mjs",
@@ -105,12 +106,15 @@
       "clients/*/*/*/skills/bos-workflow-orchestrator/references/bosl-authoring.md",
       "clients/*/*/*/skills/bos-workflow-orchestrator/scripts/native-bosl-execution.mjs",
       "clients/copilot/skills/bos-mcp-client/references/identity-context.md",
+      "clients/**/SKILL.md",
+      "clients/**/native-bosl-execution.mjs",
       "clients/*/*/*/.bos-product.json",
       "clients/*/*/*/.*-plugin/plugin.json",
       "clients/gemini/extensions/*/gemini-extension.json",
       "clients/gemini/extensions/*/plugin.json",
       "products/bos/product.json",
       "products/education-center/product.json",
+      "products/*/openai/*-skills.zip",
       "package.json",
       "package-lock.json",
       "package-manifest.json",
@@ -118,8 +122,8 @@
       "tools/validation-selection.json"
     ]
   },
-  "base_commit": "95bbc0f5a2bc3cec2399a3f8880139d2b4ce0065",
-  "base_tree": "33a6b820518ec2d2a2ad85b4fcc76315a97bd6ee",
+  "base_commit": "dbc2f66de789ad5789d08c659677bba873d25a99",
+  "base_tree": "67e856ba9be740f1f25c5679256f218412b37d36",
   "catalog_sha256": "9a96f1cd2a973457f9da681dddcc5161aa8ffda188b092d849e5bc83999391c8",
   "runtime": {
     "node": "v26.12.0",
@@ -129,8 +133,8 @@
     "architecture": "x86_64",
     "options_sha256": "ebc442c160f8629073a82976daadaba1d95a60a38d768c81c8eb06598aedcac5"
   },
-  "proposal_sha256": "a8f7fd6a538d11181155b1bcd978711ca91e16ea71098b49426bf494f6d33923",
-  "review_sha256": "716f40409f7728d100ba9e983cb92a2f6752947ca9dafa0c2216102dedad0220",
+  "proposal_sha256": "dd971061cc6a062fcbc84d7b96c494f12a2e402ae099e0261ce529758760f403",
+  "review_sha256": "9434b3b232da92eb776081c1d9aa65134dc120880554fc30b79c3e3be1d3dc34",
   "commands": [
     {
       "category": "sanity",
@@ -187,6 +191,6 @@
     "reasoning_effort": "medium",
     "maximum_reasoning_effort": "medium"
   },
-  "contract_sha256": "e502178133475b383b047bb778e5c170493bc30208f79c3894fe6b9e38b250f9",
-  "seal": "20ba4c4479c2582d59a5192a9153793935b3426da1badc1852787ede94e561b0"
+  "contract_sha256": "b2fac2e3f1ffe28fe453111134ca67a8f2846ac3ce58376cebd3f4ae2597b399",
+  "seal": "41b45824bfd117e822f598becf638053884339886022b8dfadb08092b8810d02"
 }
