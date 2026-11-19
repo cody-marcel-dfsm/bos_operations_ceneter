@@ -4,12 +4,12 @@
   "stamp": {
     "engine": "codex",
     "model": "gpt-6.1-sol",
-    "oracle_sha256": "a9fe3d5142f622f993eee31ad2089b21a9e3c2e4c3147eb81f92e48524b83133",
+    "oracle_sha256": "0f5f030590a469eeb5929034577f402e4dc47b5290c25170565e6508c2b18257",
     "host": "aio",
-    "time": "2026-11-19T14:49:50Z",
+    "time": "2026-11-19T15:28:53Z",
     "origin_main": "95bbc0f5a2bc3cec2399a3f8880139d2b4ce0065",
-    "request_sha256": "4fe6b8b87996e6925f8013dd6faf69f217b6145247d5478f62c187a1034f0945",
-    "proposal_sha256": "33febaf475d62a3210e2e77051b8b54fe1c1737e15003ad6a689e329a313e43a"
+    "request_sha256": "bb1bf52250f5866dd81a38ab0107299afe6aedd96c343cfcea81484a071346c4",
+    "proposal_sha256": "8d50855cd71731d4b65ed51b568d5a692576173e4be1b427fb19d7ba44d2db7d"
   },
   "selection": {
     "acceptance": [
@@ -28,7 +28,12 @@
       "Generated-output proof exports the exact candidate, removes only the declared generated namespace and runs the candidate's package generator with a bounded timeout. Complete regenerated and candidate inventories match in path, type, mode and blob identity; unexpected, missing, changed or unsupported entries, generator failure, timeout and canonical-file edits produce no deterministic coverage.",
       "Source skill metadata receives deterministic coverage only for an existing publication-baseline skill with unchanged name, file type, mode and every byte outside the permitted version and requirement values, a strictly increased valid version, an identical dependency-name set and exact current candidate dependency pins. All ambiguous metadata and every other change remain assigned to independent source review.",
       "Native deterministic coverage binds the exact candidate and publication baseline, generator command, all consumed source and history inputs, dependency and runtime identities, environment, exit status, regenerated inventory and verified paths. Missing, altered, stale, foreign or model-supplied proof cannot exclude paths or satisfy completeness; generation leaves canonical source, Git candidate and existing approval records unchanged.",
-      "Partitioning, complete-assessment admission and retained pending-path accounting consistently recognize only valid native deterministic coverage. Every other required canonical path remains independently reviewed, unresolved findings retain their existing resolution requirements, and changed inputs invalidate affected proof without carrying approval or rewriting historical outcomes."
+      "Partitioning, complete-assessment admission and retained pending-path accounting consistently recognize only valid native deterministic coverage. Every other required canonical path remains independently reviewed, unresolved findings retain their existing resolution requirements, and changed inputs invalidate affected proof without carrying approval or rewriting historical outcomes.",
+      "Interrupted cohorts retain an ordered, typed checkpoint journal under existing managed metadata custody. Every admitted observation binds its plan, packet and actual consumed input identities; clean coverage includes its assigned primary path, and findings retain the complete actionable schema and stable identity. Foreign assignments, unknown inputs, stale digests, invalid prefixes and conflicting duplicates grant no coverage. Replay stops at malformed or truncated records while preserving the preceding valid observations and original execution outcome.",
+      "Journal reconciliation retains established findings as open ledger entries and prevents later findings or withdrawals from leaving earlier affected clean coverage eligible. Interrupted work remains ERROR or INCOMPLETE and cannot issue approval. Real controller-to-aggregate-to-series tests demonstrate retained observations, immutable original artifacts, unfinished-path reassignment and unchanged receipt gates.",
+      "Integration reuse admits only REVIEWED or justified NOT_APPLICABLE observations with matching consumed inputs, candidate tree, publication-range digest, required-path identity digest, open-finding ledger digest and observation guards. Candidate additions, deletions, mode or type changes, baseline movement, relevant finding changes and guard changes reassign concerns. UNREVIEWED observations never satisfy completion; all six concerns and a fresh complete-range classification remain mandatory.",
+      "Every cohort receives complete authoritative document bytes with exact path and digest provenance in its sealed governance input. The actual reviewer prompt preserves precedence and instructs consumption of those supplied texts without redundant fetching. Missing, altered, truncated or oversized mandatory governance fails closed rather than substituting summaries; any authority change changes the bundle and packet bindings.",
+      "Non-crosscutting assignments contain at most six primary paths per cohort with distinct cohort identities and noncolliding new-finding prefixes. Splitting preserves every required assignment exactly once, specialist authority restrictions and the crosscutting classification role. Execution retains at most three concurrent reviewers, the existing reviewer deadline, original request clocks and complete-candidate approval requirements."
     ],
     "acceptance_tests": [
       {
@@ -83,7 +88,8 @@
           8,
           9,
           10,
-          11
+          11,
+          17
         ],
         "module": "tests/oracle-lifecycle.test.mjs",
         "purpose": "Preserve independent admission chains, concurrent owner election, process-birth checks, orphan reviewer protection, result custody and checkpoint admission."
@@ -97,6 +103,28 @@
         ],
         "module": "tests/oracle-generated-proof.test.mjs",
         "purpose": "Exercise matching regeneration, inventory and canonical-file failures, strict metadata equivalence, exact proof bindings, stale or tampered proof rejection, unchanged repository state and actual partition, completeness and pending-path integration."
+      },
+      {
+        "covers": [
+          16,
+          17,
+          18,
+          19,
+          20
+        ],
+        "module": "tests/oracle-cohort-checkpoint.test.mjs",
+        "purpose": "Exercise typed journal replay, malformed and foreign records, findings and withdrawals, exact integration reuse, complete governance bytes and bounded partitioning through actual production consumers."
+      },
+      {
+        "covers": [
+          16,
+          17,
+          18,
+          19,
+          20
+        ],
+        "module": "tests/oracle-parallel.test.mjs",
+        "purpose": "Verify actual cohort dispatch, interrupted-result recovery, aggregation and retained context reuse while preserving assignment authority, concurrency, custody and complete-review gates."
       }
     ],
     "categories": [
@@ -108,13 +136,15 @@
       {
         "fixtures": [
           "tests/oracle_relocation_test.py",
-          "tests/oracle_generated_proof_test.py"
+          "tests/oracle_generated_proof_test.py",
+          "tests/oracle_cohort_checkpoint_test.py"
         ],
         "name": "focused",
         "tests": [
           "tests/bos-native-compatibility.test.mjs",
           "tests/oracle-relocation.test.mjs",
-          "tests/oracle-generated-proof.test.mjs"
+          "tests/oracle-generated-proof.test.mjs",
+          "tests/oracle-cohort-checkpoint.test.mjs"
         ]
       },
       {
@@ -122,21 +152,23 @@
           "tests/helpers/synthetic-bos-discovery-service.mjs",
           "tests/helpers/lead-graph-acceptance.mjs",
           "tests/oracle_lifecycle_test.py",
-          "tests/helpers/isolated-test-cohort.mjs"
+          "tests/helpers/isolated-test-cohort.mjs",
+          "tests/oracle_parallel_test.py"
         ],
         "name": "interactions",
         "tests": [
           "tests/journey-package-parity.test.mjs",
           "tests/package-model.test.mjs",
           "tests/lead-graph-regression.test.mjs",
-          "tests/oracle-lifecycle.test.mjs"
+          "tests/oracle-lifecycle.test.mjs",
+          "tests/oracle-parallel.test.mjs"
         ]
       }
     ],
     "change_class": "deep_bug_fix",
     "design": null,
-    "reason": "Add deterministic generated-output and mechanical metadata proof to address review fan-out while preserving all existing criteria, tests, fixtures and mappings. Review custody and completeness changes require adversarial proof-binding checks and lifecycle interactions. Retain unchanged-test fail-before/pass-after evidence, original clocks and historical failures. Deterministic proof establishes derivation, while canonical source assessment and fresh complete-candidate approval remain independent. Synthetic checks do not establish published-client acceptance. Complete every selected category and reuse native validation only with eligible actual dependency and environment bindings.",
-    "revision_of": "5b52e62d538f1326461d9f5e118bb546dd92b509a8123eb19fe212fa5812f600",
+    "reason": "Add interruption-safe cohort continuity, exact integration reuse, complete governance delivery and bounded assignments while retaining every existing criterion, selected module and fixture. Review custody and completeness require adversarial focused checks and actual parallel-controller and lifecycle interactions. Preserve unchanged-test fail-before/pass-after evidence, prior failures, original clocks and the existing deadline. Reuse eligible native validation only with matching actual inputs, dependencies, environment and retained outputs; synthetic checks establish no published-client acceptance.",
+    "revision_of": "dc1bb0c36c63f2e54a9de9855fccbd6a8c06e067ce6c6c66abdaeb7ca5d3bae0",
     "scope_paths": [
       "AGENTS.md",
       "README.md",
@@ -179,11 +211,16 @@
       "tools/oracle_approval.py",
       "tools/oracle_parallel.py",
       "tests/oracle-generated-proof.test.mjs",
-      "tests/oracle_generated_proof_test.py"
+      "tests/oracle_generated_proof_test.py",
+      "tests/oracle-cohort-checkpoint.test.mjs",
+      "tests/oracle_cohort_checkpoint_test.py",
+      "tests/oracle-parallel.test.mjs",
+      "tests/oracle_parallel_test.py",
+      "tests/helpers/isolated-test-cohort.mjs"
     ]
   },
-  "base_commit": "5ab937878c09a9095a2832b7fe1718585e852c15",
-  "base_tree": "42235b1eeee08116062b0f28654c2e72ed412207",
+  "base_commit": "7eb8162b1082b0108b64f76fa4db79a776b50cc9",
+  "base_tree": "5dc4a5526ec28348da1d9b6772b98d97fbcd7250",
   "catalog_sha256": "9a96f1cd2a973457f9da681dddcc5161aa8ffda188b092d849e5bc83999391c8",
   "runtime": {
     "node": "v26.12.0",
@@ -193,8 +230,8 @@
     "architecture": "x86_64",
     "options_sha256": "ebc442c160f8629073a82976daadaba1d95a60a38d768c81c8eb06598aedcac5"
   },
-  "proposal_sha256": "33febaf475d62a3210e2e77051b8b54fe1c1737e15003ad6a689e329a313e43a",
-  "review_sha256": "21b957592b2c794e74c1543aa02bdd5bcc66cdc82c2c662802ef611c5d8e60ed",
+  "proposal_sha256": "8d50855cd71731d4b65ed51b568d5a692576173e4be1b427fb19d7ba44d2db7d",
+  "review_sha256": "b647e79b1acde20b4a6b2ea1455eb28c4d644cc3c75b143dd159e869fd2b9b46",
   "commands": [
     {
       "category": "sanity",
@@ -215,16 +252,19 @@
         "--test-concurrency=1",
         "tests/bos-native-compatibility.test.mjs",
         "tests/oracle-relocation.test.mjs",
-        "tests/oracle-generated-proof.test.mjs"
+        "tests/oracle-generated-proof.test.mjs",
+        "tests/oracle-cohort-checkpoint.test.mjs"
       ],
       "tests": [
         "tests/bos-native-compatibility.test.mjs",
         "tests/oracle-relocation.test.mjs",
-        "tests/oracle-generated-proof.test.mjs"
+        "tests/oracle-generated-proof.test.mjs",
+        "tests/oracle-cohort-checkpoint.test.mjs"
       ],
       "fixtures": [
         "tests/oracle_relocation_test.py",
-        "tests/oracle_generated_proof_test.py"
+        "tests/oracle_generated_proof_test.py",
+        "tests/oracle_cohort_checkpoint_test.py"
       ]
     },
     {
@@ -237,19 +277,22 @@
         "tests/journey-package-parity.test.mjs",
         "tests/package-model.test.mjs",
         "tests/lead-graph-regression.test.mjs",
-        "tests/oracle-lifecycle.test.mjs"
+        "tests/oracle-lifecycle.test.mjs",
+        "tests/oracle-parallel.test.mjs"
       ],
       "tests": [
         "tests/journey-package-parity.test.mjs",
         "tests/package-model.test.mjs",
         "tests/lead-graph-regression.test.mjs",
-        "tests/oracle-lifecycle.test.mjs"
+        "tests/oracle-lifecycle.test.mjs",
+        "tests/oracle-parallel.test.mjs"
       ],
       "fixtures": [
         "tests/helpers/synthetic-bos-discovery-service.mjs",
         "tests/helpers/lead-graph-acceptance.mjs",
         "tests/oracle_lifecycle_test.py",
-        "tests/helpers/isolated-test-cohort.mjs"
+        "tests/helpers/isolated-test-cohort.mjs",
+        "tests/oracle_parallel_test.py"
       ]
     }
   ],
@@ -262,6 +305,6 @@
     "reasoning_effort": "medium",
     "maximum_reasoning_effort": "medium"
   },
-  "contract_sha256": "dc1bb0c36c63f2e54a9de9855fccbd6a8c06e067ce6c6c66abdaeb7ca5d3bae0",
-  "seal": "8bcf89cd485fc0865e050b921fdc1ee8213673d3f4fd3c40bdac4604a5c9c33a"
+  "contract_sha256": "fcc1a1936b3a2b47dee06ddfe685ea7fd2bcee0e629390e01fe04eb71df837e9",
+  "seal": "2bd68916711d0553249e74376dd138f24c575c0fd393c8f7a2453ac1efa9ea68"
 }
