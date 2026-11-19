@@ -2308,6 +2308,17 @@ def _generated_covered(context: dict) -> set:
     return generated.covered_paths(context)
 
 
+def _coverage_complete(context: dict, coverage: Sequence[dict]) -> bool:
+    """Every required path is covered by an admitted row or the exact native proof."""
+    return set(context["required_coverage_paths"]).issubset(
+        {item["path"] for item in coverage} | _generated_covered(context))
+
+
+def _pending_review_paths(context: dict, verified: Sequence[dict]) -> list[str]:
+    return sorted(set(context["required_coverage_paths"]) - {item["path"] for item in verified}
+                  - _generated_covered(context))
+
+
 def _review_context(root: Path, tree: str, paths: list, binding: dict, evidence: dict,
                     proposal_record: Path | None = None) -> dict:
     directory = _series_directory(root, binding["base_commit"])
@@ -2740,12 +2751,7 @@ def _validate_completed_review(root: Path, review: dict, context: dict, evidence
     # UNREVIEWED entry is in seen and therefore cannot be silently carried.
     coverage += [dict(item, status="CARRIED_FORWARD") for item in context["reusable_coverage"]
                  if item["path"] not in seen]
-    if __package__:
-        from . import oracle_generated_proof as generated
-    else:
-        import oracle_generated_proof as generated
-    if status == "COMPLETE" and not set(context["required_coverage_paths"]).issubset(
-            {item["path"] for item in coverage} | generated.covered_paths(context)):
+    if status == "COMPLETE" and not _coverage_complete(context, coverage):
         raise OracleReviewIncomplete("Oracle did not finish coverage of every changed path")
     ledger = json.loads(json.dumps(context["prior_findings"]))
     open_ids = {key for key, item in ledger.items() if item["state"] == "OPEN"}
@@ -2899,9 +2905,8 @@ def _prepare_round(root: Path, context: dict, review: dict, outcome: str, *, cov
                    finding_ledger=current_ledger, validation_invalidations=invalidations,
                    is_repair_round=context["is_repair_round"], failed_repair_rounds=failed_repairs,
                    repair_plan_file=plan_path, repair_plan_sha256=plan_digest,
-                   pending_review_paths=sorted(set(context["required_coverage_paths"]) -
-                                               {item["path"] for item in verified_coverage} -
-                                               _generated_covered(context)) if outcome in {"INCOMPLETE", "ERROR"} else [],
+                   pending_review_paths=_pending_review_paths(context, verified_coverage)
+                                        if outcome in {"INCOMPLETE", "ERROR"} else [],
                    verified_coverage=verified_coverage,
                    verified_validations=validations)
     if raw_assessment is not None:

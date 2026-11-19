@@ -184,7 +184,8 @@ def prove(o, root, tree, baseline, required_paths, run_dir, *, generator=None, t
         raise o.OracleApprovalError(f"Generated-output proof generator exited {result.returncode}; see {log}")
     if link.is_symlink():
         link.unlink()
-    shutil.rmtree(target / "tmp", ignore_errors=True)
+    # Every regenerated file, including scratch output, joins the comparison:
+    # nothing outside the candidate inventory is discarded before it is compared.
     regenerated = _regenerated(root, target)
     differing = sorted(name for name in set(candidate) | set(regenerated)
                        if candidate.get(name) != regenerated.get(name))

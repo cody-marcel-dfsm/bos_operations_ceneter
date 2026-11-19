@@ -1314,7 +1314,7 @@ def publish(root, ref, pr=None):
     if value.get('spec_mode') != 'native':
         raise ValueError('Publication requires the local native spec execution receipt')
     version = json.loads(blob(root, value['source'], 'package.json'))['version']
-    if ref != 'codex/release-v' + version:
+    if ref != 'release/' + version:
         raise ValueError('Exact version-bound release ref required')
     destinations = native.git(root, 'remote', 'get-url', '--push', '--all', 'origin').splitlines()
     owned = {'https://github.com/' + native.REPOSITORY + '.git',
@@ -1405,7 +1405,7 @@ def verify_published(root, source, read=github_read):
         raise ValueError('Exact 40-character published commit required')
     native.git(root, 'merge-base', '--is-ancestor', source, 'origin/main')
     version = json.loads(blob(root, source, 'package.json'))['version']
-    observation = ci_observation(source, 'codex/release-v' + version, read)
+    observation = ci_observation(source, 'release/' + version, read)
     return {'status': 'PUBLISHED_VERIFIED', 'source': source, 'version': version,
             'run': observation['run']['id']}
 
@@ -1415,7 +1415,7 @@ def promote(root, ref):
     if value.get('spec_mode') != 'native':
         raise ValueError('Publication requires the local native spec execution receipt')
     version = json.loads(blob(root, value['source'], 'package.json'))['version']
-    if ref != 'codex/release-v' + version:
+    if ref != 'release/' + version:
         raise ValueError('Exact version-bound release ref required')
     destinations = native.git(root, 'remote', 'get-url', '--push', '--all', 'origin').splitlines()
     owned = {'https://github.com/' + native.REPOSITORY + '.git',

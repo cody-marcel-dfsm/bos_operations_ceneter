@@ -254,7 +254,7 @@ def _prepared_record(root: Path, prepared: Path) -> tuple[dict, str, list[str]]:
             or record.get("remote_url") != o.PUBLICATION_REMOTE
             or record.get("push_url", record.get("remote_url")) not in public_status.OWNED_REMOTES + (o.PUBLICATION_REMOTE,)
             or not re.fullmatch(r"[0-9a-f]{40}", record.get("source_commit", ""))
-            or not re.fullmatch(r"refs/heads/(main|codex/release-v[0-9]+\.[0-9]+\.[0-9]+)", record.get("target_ref", ""))):
+            or not re.fullmatch(r"refs/heads/(main|release/[0-9]+\.[0-9]+\.[0-9]+)", record.get("target_ref", ""))):
         raise o.OracleApprovalError("Publication requires its immutable owner-local prepared Git inputs")
     if "push_url" in record:
         expected = record.get("expected_remote_commit")
@@ -330,7 +330,8 @@ def publish_prepared(root: Path, prepared: Path, *, execute=subprocess.run) -> d
 def plan(root: Path, candidate: str, release_ref: str, operation: str, *, refresh: bool = True) -> dict:
     if operation not in {"review-push", "main-promotion"}:
         raise o.OracleApprovalError("Unknown publication operation")
-    if not re.fullmatch(r"codex/release-v[0-9]+\.[0-9]+\.[0-9]+", release_ref):
+    # Owner direction (Cody): one version-named release branch, never IDE specific.
+    if not re.fullmatch(r"release/[0-9]+\.[0-9]+\.[0-9]+", release_ref):
         raise o.OracleApprovalError("Publication requires the resolved release review ref")
     public_status.fetch_url(root)
     if refresh:

@@ -2,8 +2,8 @@
 name: education-center-director-daily-planner
 description: Create daily plans and multi-area weekly director summaries from tenant-scoped Education Center BOS data. Use when asked for a director daily plan, opening brief, weekly summary, weekly director report, week-in-review, new-lead call list, scheduled trials, follow-ups, wins, risks, next-week priorities, or a combined Education Center operating update. Use Education Center Class Operations for a standalone class or camp roster, enrollment report, or family contact list.
 metadata:
-  version: "1.0.21"
-  requires: "{\"bos-mcp-client\":\"1.0.14\",\"bos-plugin-settings-initialization\":\"1.0.21\",\"bos-visual-output\":\"1.0.15\",\"education-center-class-operations\":\"1.0.21\",\"education-center-customer-initialization\":\"1.0.14\",\"education-center-service-routing\":\"1.0.21\",\"education-center-student-operations\":\"1.0.21\",\"email-account-routing\":\"1.0.14\"}"
+  version: "1.0.22"
+  requires: "{\"bos-mcp-client\":\"1.0.14\",\"bos-plugin-settings-initialization\":\"1.0.22\",\"bos-visual-output\":\"1.0.15\",\"education-center-class-operations\":\"1.0.22\",\"education-center-customer-initialization\":\"1.0.14\",\"education-center-service-routing\":\"1.0.22\",\"education-center-student-operations\":\"1.0.22\",\"email-account-routing\":\"1.0.14\"}"
 ---
 
 
