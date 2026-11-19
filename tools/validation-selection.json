@@ -6,10 +6,10 @@
     "model": "gpt-6.1-sol",
     "oracle_sha256": "a9fe3d5142f622f993eee31ad2089b21a9e3c2e4c3147eb81f92e48524b83133",
     "host": "aio",
-    "time": "2026-11-19T07:13:58Z",
+    "time": "2026-11-19T14:15:34Z",
     "origin_main": "95bbc0f5a2bc3cec2399a3f8880139d2b4ce0065",
-    "request_sha256": "16279904b66d2f45c9708cd4dfa1dac7ac549a999def0a77c10c3953120aba7c",
-    "proposal_sha256": "dd971061cc6a062fcbc84d7b96c494f12a2e402ae099e0261ce529758760f403"
+    "request_sha256": "a3a0c3ef6e57de2210a180bee2628f06fd94ddb186d9163ecebf99ba83f2a45d",
+    "proposal_sha256": "344eb9a6380dffd4e9ef3387746312b767b9e20bfdafc336aaec286e048de213"
   },
   "selection": {
     "acceptance": [
@@ -18,7 +18,13 @@
       "Native results are accepted only after exact selected-context verification. HTTP status, body or error and Retry-After are preserved for existing registration and lifecycle validation; malformed envelopes, mismatched contexts and refusals cannot become success.",
       "Registration does not implicitly start execution. Explicit returned Start, effect approvals, server-owned progression, uncertain-outcome recovery and terminal behavior remain intact. Throttling preserves the existing explicit-request requirement for a later registration attempt.",
       "Canonical guidance and every applicable generated package include the helper and equivalent scoped execution instructions while preserving existing operational compatibility, credential containment and product ownership boundaries.",
-      "CRM detail delivery retains graph completion after clarification, all intermediate nodes and edges on the selected route, compact app-ranked or shortest structural presentation, precise partial graphs, ranking provenance and explicit format overrides. Labels remain plain text, native inline visualization takes priority, unsupported Mermaid and ASCII do not complete delivery, and the focused student-workflow exception remains intact."
+      "CRM detail delivery retains graph completion after clarification, all intermediate nodes and edges on the selected route, compact app-ranked or shortest structural presentation, precise partial graphs, ranking provenance and explicit format overrides. Labels remain plain text, native inline visualization takes priority, unsupported Mermaid and ASCII do not complete delivery, and the focused student-workflow exception remains intact.",
+      "A renamed synthetic checkout fails admission before repair and admits a fresh controller after explicit append-only retirement. The first new admission links to the retired head, completes normally and leaves every pre-existing record byte-identical.",
+      "Relocation records form a canonical numbered hash chain with contiguous roots, cumulative per-chain retirement boundaries and the current real Git directory identity. Existing source paths, identical or unknown roots, unsupported Git directory types, malformed chains, tampering, empty retirement and copied post-relocation directories fail closed. Repeated renames preserve cumulative retirement correctly.",
+      "Each admission chain is classified independently. Old-root segments may retire; empty and wholly current-root segments remain unchanged with their existing checks. Mixed or foreign-root segments reject, and records beyond a retired boundary cannot evade current identity validation.",
+      "Retirement refuses live controllers and registered reviewer groups, including orphan descendants. Only validated old-to-current controller-directory mapping is used for liveness inspection; malformed, unreadable or indeterminate liveness evidence refuses retirement.",
+      "Retired admissions never provide live ownership, terminal results, children, checkpoint eligibility or historical approval. A pre-relocation copy receives only fresh admission capability and requires new reviews and receipts. Existing current-chain owner and checkpoint protections remain effective.",
+      "Relocation uses an exclusively held, safely admitted metadata lock and immutable publication, rechecks all chain heads before publication and fails closed on concurrent movement. Interrupted or competing operations cannot rewrite records, expose retired results or admit an unchecked owner."
     ],
     "acceptance_tests": [
       {
@@ -55,6 +61,28 @@
         ],
         "module": "tests/lead-graph-regression.test.mjs",
         "purpose": "Preserve shared graph handoffs and response contracts across canonical and generated entrypoints, including compact routes, complete intermediate topology, partial evidence, plain labels and native renderer selection."
+      },
+      {
+        "covers": [
+          6,
+          7,
+          8,
+          9,
+          10,
+          11
+        ],
+        "module": "tests/oracle-relocation.test.mjs",
+        "purpose": "Run the synthetic relocation suite through real admission and completion paths, covering immutable retirement, repeated renames, copy rejection, mixed chains, live descendants, malformed evidence and controlled publication races."
+      },
+      {
+        "covers": [
+          8,
+          9,
+          10,
+          11
+        ],
+        "module": "tests/oracle-lifecycle.test.mjs",
+        "purpose": "Preserve independent admission chains, concurrent owner election, process-birth checks, orphan reviewer protection, result custody and checkpoint admission."
       }
     ],
     "categories": [
@@ -64,29 +92,35 @@
         "tests": []
       },
       {
-        "fixtures": [],
+        "fixtures": [
+          "tests/oracle_relocation_test.py"
+        ],
         "name": "focused",
         "tests": [
-          "tests/bos-native-compatibility.test.mjs"
+          "tests/bos-native-compatibility.test.mjs",
+          "tests/oracle-relocation.test.mjs"
         ]
       },
       {
         "fixtures": [
           "tests/helpers/synthetic-bos-discovery-service.mjs",
-          "tests/helpers/lead-graph-acceptance.mjs"
+          "tests/helpers/lead-graph-acceptance.mjs",
+          "tests/oracle_lifecycle_test.py",
+          "tests/helpers/isolated-test-cohort.mjs"
         ],
         "name": "interactions",
         "tests": [
           "tests/journey-package-parity.test.mjs",
           "tests/package-model.test.mjs",
-          "tests/lead-graph-regression.test.mjs"
+          "tests/lead-graph-regression.test.mjs",
+          "tests/oracle-lifecycle.test.mjs"
         ]
       }
     ],
     "change_class": "deep_bug_fix",
     "design": null,
-    "reason": "Preserve the existing native execution acceptance criteria and selected checks while admitting required skill-version dependency propagation, generated helper copies and product skill archives. Additional skill changes are limited to necessary version and requirement metadata; unrelated behavior requires separate review. Retain unchanged-test fail-before/pass-after evidence, original delivery clocks and the distinction between source validation and published-client acceptance.",
-    "revision_of": "e502178133475b383b047bb778e5c170493bc30208f79c3894fe6b9e38b250f9",
+    "reason": "Add narrowly scoped controller-retirement repair and adversarial lifecycle checks while retaining every existing native-execution criterion, module and mapping. Custody and concurrency impact require deep validation. Preserve unchanged-test fail-before/pass-after evidence, original delivery clocks and historical failures. Historical observations and synthetic checks grant neither custody adoption nor published-client acceptance. Complete every selected category; reuse native evidence only when its actual dependency and environment bindings remain eligible.",
+    "revision_of": "b2fac2e3f1ffe28fe453111134ca67a8f2846ac3ce58376cebd3f4ae2597b399",
     "scope_paths": [
       "AGENTS.md",
       "README.md",
@@ -119,11 +153,16 @@
       "package-lock.json",
       "package-manifest.json",
       "skill-release-manifest.json",
-      "tools/validation-selection.json"
+      "tools/validation-selection.json",
+      "tools/oracle_lifecycle.py",
+      "tests/oracle-relocation.test.mjs",
+      "tests/oracle_relocation_test.py",
+      "tests/oracle-lifecycle.test.mjs",
+      "tests/oracle_lifecycle_test.py"
     ]
   },
-  "base_commit": "dbc2f66de789ad5789d08c659677bba873d25a99",
-  "base_tree": "67e856ba9be740f1f25c5679256f218412b37d36",
+  "base_commit": "02ca14ca1dd25be595be1bc67110294ec653c733",
+  "base_tree": "70fbc9cc1529f53b8de787d720218bba9aa6d0ef",
   "catalog_sha256": "9a96f1cd2a973457f9da681dddcc5161aa8ffda188b092d849e5bc83999391c8",
   "runtime": {
     "node": "v26.12.0",
@@ -133,8 +172,8 @@
     "architecture": "x86_64",
     "options_sha256": "ebc442c160f8629073a82976daadaba1d95a60a38d768c81c8eb06598aedcac5"
   },
-  "proposal_sha256": "dd971061cc6a062fcbc84d7b96c494f12a2e402ae099e0261ce529758760f403",
-  "review_sha256": "9434b3b232da92eb776081c1d9aa65134dc120880554fc30b79c3e3be1d3dc34",
+  "proposal_sha256": "344eb9a6380dffd4e9ef3387746312b767b9e20bfdafc336aaec286e048de213",
+  "review_sha256": "d133a2f82eb2a63c7f1a0cb192f3d287bdba6936e4b4737a57d41f4b5a87d01f",
   "commands": [
     {
       "category": "sanity",
@@ -153,12 +192,16 @@
         "--test",
         "--test-reporter=tap",
         "--test-concurrency=1",
-        "tests/bos-native-compatibility.test.mjs"
+        "tests/bos-native-compatibility.test.mjs",
+        "tests/oracle-relocation.test.mjs"
       ],
       "tests": [
-        "tests/bos-native-compatibility.test.mjs"
+        "tests/bos-native-compatibility.test.mjs",
+        "tests/oracle-relocation.test.mjs"
       ],
-      "fixtures": []
+      "fixtures": [
+        "tests/oracle_relocation_test.py"
+      ]
     },
     {
       "category": "interactions",
@@ -169,16 +212,20 @@
         "--test-concurrency=1",
         "tests/journey-package-parity.test.mjs",
         "tests/package-model.test.mjs",
-        "tests/lead-graph-regression.test.mjs"
+        "tests/lead-graph-regression.test.mjs",
+        "tests/oracle-lifecycle.test.mjs"
       ],
       "tests": [
         "tests/journey-package-parity.test.mjs",
         "tests/package-model.test.mjs",
-        "tests/lead-graph-regression.test.mjs"
+        "tests/lead-graph-regression.test.mjs",
+        "tests/oracle-lifecycle.test.mjs"
       ],
       "fixtures": [
         "tests/helpers/synthetic-bos-discovery-service.mjs",
-        "tests/helpers/lead-graph-acceptance.mjs"
+        "tests/helpers/lead-graph-acceptance.mjs",
+        "tests/oracle_lifecycle_test.py",
+        "tests/helpers/isolated-test-cohort.mjs"
       ]
     }
   ],
@@ -191,6 +238,6 @@
     "reasoning_effort": "medium",
     "maximum_reasoning_effort": "medium"
   },
-  "contract_sha256": "b2fac2e3f1ffe28fe453111134ca67a8f2846ac3ce58376cebd3f4ae2597b399",
-  "seal": "41b45824bfd117e822f598becf638053884339886022b8dfadb08092b8810d02"
+  "contract_sha256": "5b52e62d538f1326461d9f5e118bb546dd92b509a8123eb19fe212fa5812f600",
+  "seal": "e530ade0c82499720cd31f31a68726401951dea64120f51a248d796f0580c650"
 }
