@@ -29,7 +29,10 @@ body identity. Generated parity groups bind the existing package-check proof and
 every member's before/after content and mode identities. Read each identical body
 once, assess canonical semantics and transformation dependencies, and explicitly
 cover every assigned output path. Missing or stale grouping proof retains ordinary
-source inspection; preparation never grants coverage. Current eligible validation
+source inspection; preparation never grants coverage. Paths in the sealed native
+deterministic_coverage proof were regenerated from canonical sources and
+byte-compared by the native gate; they are not assigned, and no cohort may claim
+or grant that coverage. Current eligible validation
 proofs are adopted completely by the native gate when omitted from model rows.
 Keep their immutable evidence references; never project their input lists or
 reclassify a current VERIFIED proof as REUSED. Report concrete invalidations when
@@ -182,7 +185,13 @@ def _criterion_context(context, plan):
 def partition(context, binding, digest):
     """Assign only missing/affected coverage; native eligible coverage stays carried."""
     reusable = {item["path"] for item in context["reusable_coverage"]}
-    pending = sorted(set(context["required_coverage_paths"]) - reusable)
+    # Derived outputs proven by native regeneration take no model time; the
+    # cohorts review only canonical deltas (owner direction 2026-10-15).
+    if __package__:
+        from . import oracle_generated_proof as generated
+    else:
+        import oracle_generated_proof as generated
+    pending = sorted(set(context["required_coverage_paths"]) - reusable - generated.covered_paths(context))
     retained = _retained_criteria(context, set(pending), digest)
     adopted_paths = {context['invalidated_coverage'][index]['path'] for group in retained
                      for index in group['original_coverage_indices']}
