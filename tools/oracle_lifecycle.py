@@ -28,7 +28,7 @@ REVIEWER_SECONDS = 180
 STRUCTURAL_WAIT_SECONDS = REVIEWER_SECONDS
 REVIEWER_OUTPUT_BYTES = 8 * 1024 * 1024
 
-def bounded_reviewer_output(o, run, process, token, record):
+def bounded_reviewer_output(o, run, process, token, record, *, stdin_payload=None):
     """Drain both private streams continuously; expose only bounded counts/timing."""
     start=time.monotonic();lock=threading.Lock();chunks=[[],[]];counts=[0,0];overflow=threading.Event();errors=[]
     def drain(stream,index):
@@ -46,7 +46,17 @@ def bounded_reviewer_output(o, run, process, token, record):
     for thread in threads:thread.start()
     failure=None;last=0
     try:
-        process.stdin.write((token+'\n').encode());process.stdin.flush();process.stdin.close();process.stdin=None
+        # The gate consumes only the token line; a sealed payload follows it as
+        # the reviewer's <stdin> block, written concurrently so a full pipe
+        # can never stall the deadline loop.
+        stdin=process.stdin;process.stdin=None;payload=(token+'\n').encode()+(stdin_payload or b'')
+        def feed():
+            try:stdin.write(payload);stdin.flush()
+            except (BrokenPipeError,OSError,ValueError):pass
+            finally:
+                try:stdin.close()
+                except OSError:pass
+        writer=threading.Thread(target=feed,daemon=True);writer.start()
         while True:
             elapsed=time.monotonic()-start
             with lock:current=list(counts)
@@ -153,7 +163,7 @@ def _active_children(o, root, identity):
     return active
 
 
-def reviewer_process(o, root, run, command, environment, controller):
+def reviewer_process(o, root, run, command, environment, controller, *, stdin_payload=None):
     # The shell waits for its private stdin acknowledgement. Parent loss before
     # immutable registration closes that pipe and cannot start a reviewer.
     token = uuid.uuid4().hex
@@ -174,7 +184,7 @@ def reviewer_process(o, root, run, command, environment, controller):
                    "evidence": o._files(root, [str(run / "model.json"), str(run / "request.txt")])}
         record = dict(payload, record_sha256=o._sha(o._canonical(payload)))
         _publish(o, root, path, record)
-        stdout, stderr = bounded_reviewer_output(o,run,process,token,record)
+        stdout, stderr = bounded_reviewer_output(o,run,process,token,record,stdin_payload=stdin_payload)
         _active_children(o, root, controller.identity)
         _publish(o, root, path.with_suffix(".outcome.json"),
                  {"record_sha256": record["record_sha256"], "exit_code": process.returncode})
