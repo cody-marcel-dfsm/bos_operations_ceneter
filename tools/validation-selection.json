@@ -2,30 +2,59 @@
   "schema": "boc.validation-contract/v2",
   "kind": "oracle-spec/1",
   "stamp": {
-    "engine": "claude",
-    "model": "claude-opus-5-5",
+    "engine": "codex",
+    "model": "gpt-6.1-sol",
     "oracle_sha256": "a9fe3d5142f622f993eee31ad2089b21a9e3c2e4c3147eb81f92e48524b83133",
-    "host": "Codys-MacBook-Pro.local",
-    "time": "2026-11-18T15:46:22Z",
-    "origin_main": "e670840594e40ef37cd0f6951ba05d36a5d67d03",
-    "request_sha256": "0a634e911800b410fdf702cbe30f6ab7b9bbc913bebef3f61bb3c32585b3a930",
-    "proposal_sha256": "01d3db9aed4454e6fb9a615700e7953e72875580399ad1bc4e1bb62777457de3"
+    "host": "aio",
+    "time": "2026-11-19T07:06:03Z",
+    "origin_main": "95bbc0f5a2bc3cec2399a3f8880139d2b4ce0065",
+    "request_sha256": "16279904b66d2f45c9708cd4dfa1dac7ac549a999def0a77c10c3953120aba7c",
+    "proposal_sha256": "a8f7fd6a538d11181155b1bcd978711ca91e16ea71098b49426bf494f6d33923"
   },
   "selection": {
     "acceptance": [
-      "When a follow-commits review stops because structural inputs are missing, has no evidence paths, and sees no queued evidence and no source change, it ends with a terminal INCOMPLETE outcome within the configured structural wait deadline. The deadline defaults to the reviewer deadline. The process then exits instead of waiting indefinitely, and no approval is recorded.",
-      "During that bounded wait the reviewer is not dispatched again, and the controller writes one notice to standard error. The notice names the missing structural inputs reported by the stopped review and explains how to supply them with --evidence.",
-      "When qualifying evidence is attached to the live controller during the wait, the review still resumes with that evidence and completes as before."
+      "HTTPS remains the default. Native BOSL execution is selected only when authenticated HTTPS is unavailable and the exact required tool and schema are freshly advertised for the selected authorized context; stale, missing or merely similar descriptors fail closed.",
+      "Registration sends the unchanged locally validated BOSL document as document, graph export sends an empty object, and returned actions preserve the exact href. Action payloads satisfy the returned schema and are omitted for bodyless actions. Business arguments reject context handles, credentials and authority selectors.",
+      "Native results are accepted only after exact selected-context verification. HTTP status, body or error and Retry-After are preserved for existing registration and lifecycle validation; malformed envelopes, mismatched contexts and refusals cannot become success.",
+      "Registration does not implicitly start execution. Explicit returned Start, effect approvals, server-owned progression, uncertain-outcome recovery and terminal behavior remain intact. Throttling preserves the existing explicit-request requirement for a later registration attempt.",
+      "Canonical guidance and every applicable generated package include the helper and equivalent scoped execution instructions while preserving existing operational compatibility, credential containment and product ownership boundaries.",
+      "CRM detail delivery retains graph completion after clarification, all intermediate nodes and edges on the selected route, compact app-ranked or shortest structural presentation, precise partial graphs, ranking provenance and explicit format overrides. Labels remain plain text, native inline visualization takes priority, unsupported Mermaid and ASCII do not complete delivery, and the focused student-workflow exception remains intact."
     ],
     "acceptance_tests": [
       {
         "covers": [
           0,
           1,
-          2
+          2,
+          3
         ],
-        "module": "tests/oracle-lifecycle.test.mjs",
-        "purpose": "Runs every native lifecycle case in its own process. This includes the regression in which a review missing structural inputs, with no arrivals, ends INCOMPLETE within a shortened deadline, dispatches the reviewer once and prints a notice naming --evidence. It also includes the unchanged case in which queued evidence arriving during the wait resumes the review to approval."
+        "module": "tests/bos-native-compatibility.test.mjs",
+        "purpose": "Exercise transport selection and executable helper behavior with synthetic descriptors, exact action URIs, payload validation, context mismatch, malformed results, refusals, explicit Start and throttling."
+      },
+      {
+        "covers": [
+          1,
+          2,
+          3,
+          4
+        ],
+        "module": "tests/journey-package-parity.test.mjs",
+        "purpose": "Verify generated helper execution and lifecycle parity across supported packages, including unchanged HTTPS framing and native result consumption."
+      },
+      {
+        "covers": [
+          4,
+          5
+        ],
+        "module": "tests/package-model.test.mjs",
+        "purpose": "Verify package composition, canonical guidance parity, authority-selector exclusion, credential containment and focused student workflow boundaries."
+      },
+      {
+        "covers": [
+          5
+        ],
+        "module": "tests/lead-graph-regression.test.mjs",
+        "purpose": "Preserve shared graph handoffs and response contracts across canonical and generated entrypoints, including compact routes, complete intermediate topology, partial evidence, plain labels and native renderer selection."
       }
     ],
     "categories": [
@@ -35,67 +64,73 @@
         "tests": []
       },
       {
-        "fixtures": [
-          "tests/oracle_lifecycle_test.py",
-          "tests/oracle_review_series.py",
-          "tests/helpers/isolated-test-cohort.mjs"
-        ],
+        "fixtures": [],
         "name": "focused",
         "tests": [
-          "tests/oracle-lifecycle.test.mjs"
+          "tests/bos-native-compatibility.test.mjs"
+        ]
+      },
+      {
+        "fixtures": [
+          "tests/helpers/synthetic-bos-discovery-service.mjs",
+          "tests/helpers/lead-graph-acceptance.mjs"
+        ],
+        "name": "interactions",
+        "tests": [
+          "tests/journey-package-parity.test.mjs",
+          "tests/package-model.test.mjs",
+          "tests/lead-graph-regression.test.mjs"
         ]
       }
     ],
-    "change_class": "bug_fix",
+    "change_class": "deep_bug_fix",
     "design": null,
-    "reason": "Small local fix to the native review controller. When follow-commits review stops because structural inputs are missing and no evidence was supplied, the controller waits for queued evidence or source movement with no deadline and no operator notice. The fix bounds that wait by the existing reviewer deadline, prints one notice on standard error that explains how to supply the inputs, and then ends the round as INCOMPLETE. The existing behavior of continuing when evidence arrives is kept. Authentication, public interfaces and published client behavior are unchanged, so this is a bug fix. The focused lifecycle module runs every native lifecycle case in its own process. That includes a new deterministic regression that fails by assertion before the fix and the unchanged evidence-arrival case. The release metadata is checked by the existing release tooling.",
-    "revision_of": "67aa3170ea2e1bd9bd78b9866675744a57ed8597151bf8447b7aeb6cf6c593df",
+    "reason": "Restore bounded native execution for hosts without authenticated HTTPS while preserving existing transport defaults, exact context verification, action schemas, lifecycle safety and package parity. Cross-area execution and recovery require focused executable failure cases plus package and graph interactions. Retain unchanged-test fail-before/pass-after evidence and distinguish source validation from published-client acceptance.",
+    "revision_of": "874388cc3eb77c1fbfc53ffd54e700aa3b48b18fb40edd680ace2cddb4d6f748",
     "scope_paths": [
+      "AGENTS.md",
       "README.md",
-      "clients/claude/plugins/bos/.bos-product.json",
-      "clients/claude/plugins/bos/.claude-plugin/plugin.json",
-      "clients/claude/plugins/education-center/.bos-product.json",
-      "clients/claude/plugins/education-center/.claude-plugin/plugin.json",
-      "clients/codex/plugins/bos/.bos-product.json",
-      "clients/codex/plugins/bos/.codex-plugin/plugin.json",
-      "clients/codex/plugins/education-center/.bos-product.json",
-      "clients/codex/plugins/education-center/.codex-plugin/plugin.json",
-      "clients/copilot/products/bos/.bos-product.json",
-      "clients/copilot/products/education-center/.bos-product.json",
-      "clients/gemini/extensions/bos/.bos-product.json",
-      "clients/gemini/extensions/bos/gemini-extension.json",
-      "clients/gemini/extensions/bos/plugin.json",
-      "clients/gemini/extensions/education-center/.bos-product.json",
-      "clients/gemini/extensions/education-center/gemini-extension.json",
-      "clients/gemini/extensions/education-center/plugin.json",
-      "clients/muse/plugins/bos/.bos-product.json",
-      "clients/muse/plugins/bos/.muse-plugin/plugin.json",
-      "clients/muse/plugins/education-center/.bos-product.json",
-      "clients/muse/plugins/education-center/.muse-plugin/plugin.json",
-      "package-lock.json",
-      "package-manifest.json",
-      "package.json",
+      "source/platform/bos-mcp-client/references/identity-context.md",
+      "source/platform/bos-workflow-orchestrator/SKILL.md",
+      "source/platform/bos-workflow-orchestrator/references/journey-lifecycle.md",
+      "source/platform/bos-workflow-orchestrator/references/bosl-authoring.md",
+      "source/platform/bos-workflow-orchestrator/scripts/native-bosl-execution.mjs",
+      "tests/bos-native-compatibility.test.mjs",
+      "tests/journey-package-parity.test.mjs",
+      "tests/package-model.test.mjs",
+      "tests/lead-graph-regression.test.mjs",
+      "clients/*/*/*/skills/bos-mcp-client/references/identity-context.md",
+      "clients/*/*/*/skills/bos-workflow-orchestrator/SKILL.md",
+      "clients/*/*/*/skills/bos-workflow-orchestrator/references/journey-lifecycle.md",
+      "clients/*/*/*/skills/bos-workflow-orchestrator/references/bosl-authoring.md",
+      "clients/*/*/*/skills/bos-workflow-orchestrator/scripts/native-bosl-execution.mjs",
+      "clients/copilot/skills/bos-mcp-client/references/identity-context.md",
+      "clients/*/*/*/.bos-product.json",
+      "clients/*/*/*/.*-plugin/plugin.json",
+      "clients/gemini/extensions/*/gemini-extension.json",
+      "clients/gemini/extensions/*/plugin.json",
       "products/bos/product.json",
       "products/education-center/product.json",
+      "package.json",
+      "package-lock.json",
+      "package-manifest.json",
       "skill-release-manifest.json",
-      "tests/oracle_lifecycle_test.py",
-      "tools/oracle_lifecycle.py",
       "tools/validation-selection.json"
     ]
   },
-  "base_commit": "e670840594e40ef37cd0f6951ba05d36a5d67d03",
-  "base_tree": "49cd3ac83ffba2279480b98017405fce331f2861",
+  "base_commit": "95bbc0f5a2bc3cec2399a3f8880139d2b4ce0065",
+  "base_tree": "33a6b820518ec2d2a2ad85b4fcc76315a97bd6ee",
   "catalog_sha256": "9a96f1cd2a973457f9da681dddcc5161aa8ffda188b092d849e5bc83999391c8",
   "runtime": {
-    "node": "v22.11.0",
-    "node_sha256": "b3766cc0774a690436a2bc9e3cbfd9d80c29a3f64499ae2f98ca203853b1cd85",
-    "controller_sha256": "56350e25767e19ae4469d7b3e7bda176a9ad6cba027fa95d53dc788c32791c1b",
-    "platform": "Darwin",
-    "architecture": "arm64",
+    "node": "v26.12.0",
+    "node_sha256": "caa24debe02770c92a70677e2a62ca98890150e7ac1c17bcfe31bcc98cc89943",
+    "controller_sha256": "375532f83be620283ab780c14ca6bcc5907dc379d2b621de0c5d0a112cf5458b",
+    "platform": "Linux",
+    "architecture": "x86_64",
     "options_sha256": "ebc442c160f8629073a82976daadaba1d95a60a38d768c81c8eb06598aedcac5"
   },
-  "proposal_sha256": "01d3db9aed4454e6fb9a615700e7953e72875580399ad1bc4e1bb62777457de3",
-  "review_sha256": "42e3a5cae9601f4eb91740a30f0fe43f5981eec8d81a3399e54034993f2c01e1",
+  "proposal_sha256": "a8f7fd6a538d11181155b1bcd978711ca91e16ea71098b49426bf494f6d33923",
+  "review_sha256": "716f40409f7728d100ba9e983cb92a2f6752947ca9dafa0c2216102dedad0220",
   "commands": [
     {
       "category": "sanity",
@@ -114,27 +149,44 @@
         "--test",
         "--test-reporter=tap",
         "--test-concurrency=1",
-        "tests/oracle-lifecycle.test.mjs"
+        "tests/bos-native-compatibility.test.mjs"
       ],
       "tests": [
-        "tests/oracle-lifecycle.test.mjs"
+        "tests/bos-native-compatibility.test.mjs"
+      ],
+      "fixtures": []
+    },
+    {
+      "category": "interactions",
+      "argv": [
+        "node",
+        "--test",
+        "--test-reporter=tap",
+        "--test-concurrency=1",
+        "tests/journey-package-parity.test.mjs",
+        "tests/package-model.test.mjs",
+        "tests/lead-graph-regression.test.mjs"
+      ],
+      "tests": [
+        "tests/journey-package-parity.test.mjs",
+        "tests/package-model.test.mjs",
+        "tests/lead-graph-regression.test.mjs"
       ],
       "fixtures": [
-        "tests/oracle_lifecycle_test.py",
-        "tests/oracle_review_series.py",
-        "tests/helpers/isolated-test-cohort.mjs"
+        "tests/helpers/synthetic-bos-discovery-service.mjs",
+        "tests/helpers/lead-graph-acceptance.mjs"
       ]
     }
   ],
   "delivery_policy": {
-    "sla_seconds": 180,
+    "sla_seconds": 300,
     "clock_owner": "build_host",
     "clock_start": "original_insertion",
     "completion": "verified_remote_git",
     "retries_reset_clock": false,
-    "reasoning_effort": "low",
+    "reasoning_effort": "medium",
     "maximum_reasoning_effort": "medium"
   },
-  "contract_sha256": "874388cc3eb77c1fbfc53ffd54e700aa3b48b18fb40edd680ace2cddb4d6f748",
-  "seal": "d0a15764ce0c957b06f762bb4645d39a697158bfc62bd2d14fce78937aefd7c9"
+  "contract_sha256": "e502178133475b383b047bb778e5c170493bc30208f79c3894fe6b9e38b250f9",
+  "seal": "20ba4c4479c2582d59a5192a9153793935b3426da1badc1852787ede94e561b0"
 }
