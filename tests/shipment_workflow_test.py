@@ -26,7 +26,7 @@ class ShipmentWorkflow(unittest.TestCase):
         self.fixture.git("update-ref", "refs/remotes/origin/main", self.fixture.base)
         self.fixture.release_metadata("0.0.1")
         self.fixture.git("add", ".")
-        self.ref = "codex/release-v0.0.1"
+        self.ref = "release/0.0.1"
 
     def commit(self, message="committed candidate"):
         self.fixture.git("commit", "-qm", message)

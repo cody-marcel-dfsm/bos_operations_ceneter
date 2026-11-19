@@ -20,6 +20,9 @@ for source in sorted(root.glob('source/*/SKILL.md')):
     target.write_bytes(source.read_bytes())
 names = sorted(p.parent.name for p in root.glob('source/*/SKILL.md'))
 (root / 'skill-release-manifest.json').write_text(json.dumps(names) + '\n')
+if (root / 'stray-output').exists():
+    (root / 'tmp').mkdir(exist_ok=True)
+    (root / 'tmp/unexpected').write_text('unexpected generator output\n')
 if (root / 'touch-canonical').exists():
     (root / 'source/alpha/SKILL.md').write_text('rewritten by generator\n')
 '''
@@ -172,6 +175,30 @@ class GeneratedProof(unittest.TestCase):
         self.assertEqual(oracle_parallel.partition(forged, binding, digest)['required_paths'], required)
         self.assertEqual(self.proof.covered_paths(stale), set())
 
+
+    def test_unexpected_scratch_output_outside_the_namespace_fails_closed(self):
+        self.cascade()
+        (self.root / 'stray-output').write_text('1')
+        self.commit('stray')
+        with self.assertRaisesRegex(o.OracleApprovalError, 'do not reproduce'):
+            self.prove()
+
+    def test_completeness_and_pending_accounting_use_only_a_valid_native_proof(self):
+        self.cascade()
+        result = self.prove()
+        required = sorted(self.changed())
+        canonical = [{'path': 'source/alpha/SKILL.md'}]
+        context = {'candidate_tree': self.tree(), 'required_coverage_paths': required, 'deterministic_coverage': result}
+        self.assertTrue(o._coverage_complete(context, canonical))
+        self.assertEqual(o._pending_review_paths(context, []), ['source/alpha/SKILL.md'])
+        self.assertEqual(o._pending_review_paths(context, canonical), [])
+        for proof in (None, dict(result, candidate_tree='0' * 40), dict(result, kind='model-claim'),
+                      dict(result, generator_exit_code=1)):
+            with self.subTest(proof=None if proof is None else proof.get('kind')):
+                invalid = dict(context, deterministic_coverage=proof)
+                self.assertFalse(o._coverage_complete(invalid, canonical))
+                self.assertEqual(o._pending_review_paths(invalid, canonical),
+                                 sorted(set(required) - {'source/alpha/SKILL.md'}))
 
 if __name__ == '__main__':
     unittest.main()
