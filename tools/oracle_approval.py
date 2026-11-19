@@ -2297,6 +2297,14 @@ def _path_dispositions(root: Path, context: dict, rounds: list[dict]) -> list:
     return selected
 
 
+def _generated_covered(context: dict) -> set:
+    if __package__:
+        from . import oracle_generated_proof as generated
+    else:
+        import oracle_generated_proof as generated
+    return generated.covered_paths(context)
+
+
 def _review_context(root: Path, tree: str, paths: list, binding: dict, evidence: dict,
                     proposal_record: Path | None = None) -> dict:
     directory = _series_directory(root, binding["base_commit"])
@@ -2344,6 +2352,16 @@ def _review_context(root: Path, tree: str, paths: list, binding: dict, evidence:
     required_paths = sorted(set(paths) | set(changed) | set(pending_from_prior) | raw_required)
     for name in required_paths:
         inputs.setdefault(name, None)
+    # Derived outputs are proven by regenerating the exact candidate with the
+    # repository's own generator; any difference raises and the round fails closed.
+    if __package__:
+        from . import oracle_generated_proof as generated
+    else:
+        import oracle_generated_proof as generated
+    deterministic = None
+    if generated.applies(required_paths) and publication_scope.get("baseline_commit"):
+        deterministic = generated.prove(sys.modules[__name__], root, tree, publication_scope["baseline_commit"],
+                                        required_paths, _RUN.get())
     reusable, invalidated, validations, invalid_validations = [], [], [], []
     ledger = previous.get("finding_ledger", {}) if previous else {}
     lineage = _CriterionLineage(root, rounds)
@@ -2430,6 +2448,7 @@ def _review_context(root: Path, tree: str, paths: list, binding: dict, evidence:
                "prior_rounds": [{key: item[key] for key in ("round", "candidate_tree", "outcome", "record_sha256")}
                                 for item in rounds]}
     context["publication_scope"] = publication_scope
+    context["deterministic_coverage"] = deterministic
     if __package__:
         from . import command_coverage
     else:
@@ -2440,7 +2459,8 @@ def _review_context(root: Path, tree: str, paths: list, binding: dict, evidence:
     context["attempt_delta"] = {"from_candidate": previous["candidate_tree"] if previous else None,
                                 "to_candidate": tree, "paths": changed}
     context["cumulative_pending_since_verified"] = sorted(set(required_paths) -
-                                                          {item["path"] for item in reusable})
+                                                          {item["path"] for item in reusable} -
+                                                          generated.covered_paths(context))
     _atomic_write(_RUN.get() / "review-context.json", _pretty(context))
     return context
 
@@ -2704,7 +2724,12 @@ def _validate_completed_review(root: Path, review: dict, context: dict, evidence
     # UNREVIEWED entry is in seen and therefore cannot be silently carried.
     coverage += [dict(item, status="CARRIED_FORWARD") for item in context["reusable_coverage"]
                  if item["path"] not in seen]
-    if status == "COMPLETE" and not set(context["required_coverage_paths"]).issubset({item["path"] for item in coverage}):
+    if __package__:
+        from . import oracle_generated_proof as generated
+    else:
+        import oracle_generated_proof as generated
+    if status == "COMPLETE" and not set(context["required_coverage_paths"]).issubset(
+            {item["path"] for item in coverage} | generated.covered_paths(context)):
         raise OracleReviewIncomplete("Oracle did not finish coverage of every changed path")
     ledger = json.loads(json.dumps(context["prior_findings"]))
     open_ids = {key for key, item in ledger.items() if item["state"] == "OPEN"}
@@ -2859,7 +2884,8 @@ def _prepare_round(root: Path, context: dict, review: dict, outcome: str, *, cov
                    is_repair_round=context["is_repair_round"], failed_repair_rounds=failed_repairs,
                    repair_plan_file=plan_path, repair_plan_sha256=plan_digest,
                    pending_review_paths=sorted(set(context["required_coverage_paths"]) -
-                                               {item["path"] for item in verified_coverage}) if outcome in {"INCOMPLETE", "ERROR"} else [],
+                                               {item["path"] for item in verified_coverage} -
+                                               _generated_covered(context)) if outcome in {"INCOMPLETE", "ERROR"} else [],
                    verified_coverage=verified_coverage,
                    verified_validations=validations)
     if raw_assessment is not None:
