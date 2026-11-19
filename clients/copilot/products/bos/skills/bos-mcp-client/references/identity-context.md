@@ -121,13 +121,10 @@ plugin never inherits either historical BOS default.
    advertised; it does not require host-authenticated HTTPS. Do not report `host_capability_unavailable`
    when a suitable advertised native compatibility tool is callable.
    No similar name, cached descriptor, or Describe contract establishes a native tool.
-   The semantic business-read exceptions remain exactly
+   The new semantic business-read exceptions remain exactly
    `feedback.recommendations.query`, `journeys.notifications.read` and
    `journeys.state.read`, with their existing scope and schemas; they do not
-   remove existing operational native compatibility. The owner-directed native
-   BOSL execution exception adds exactly `lead-director.journeys.register`,
-   `lead-director.journeys.action` and `bos.graph_export.read` under steps 6
-   and 7. Preserve existing native
+   remove existing operational native compatibility. Preserve existing native
    discovery/control and embedded-resource delivery. Never convert a Describe
    operation key into `tool_name` or invent an alias for an unadvertised operation.
    Keep raw org/app/install/role IDs out of business arguments and verify the returned context before using its result.
@@ -143,8 +140,7 @@ plugin never inherits either historical BOS default.
    header. The required value is `X-BOS-Context-Handle`; never construct another
    header, put the handle in the business body, or add OAuth, token, retry,
    idempotency, execution, or journey state. When the required host capability
-   is absent and no step 7 native BOSL execution tool is freshly advertised
-   for it, preserve completed discovery and report the exact unavailable
+   is absent, preserve completed discovery and report the exact unavailable
    authenticated operation as `host_capability_unavailable`. A packaged adapter
    or an acceptance-host helper establishes no native host capability. Keep
    credentials inside the host; construct no alternate transport.
@@ -154,28 +150,6 @@ plugin never inherits either historical BOS default.
    `state` action. Returned actions carry no context field; the BOS transport
    adapter binds the fresh handle only while invoking them. Preserve
    header-free behavior for legacy/v1 actions.
-   Owner-directed native BOSL execution exception (2026-11-19): when the host
-   supplies no authenticated HTTPS on the BOS connection, use these exact tools
-   only when the fresh `bos_list_context_tools` response for the selected
-   context advertises them, through `bos_execute` with that same
-   `context_handle`, before reporting `host_capability_unavailable`:
-   - `lead-director.journeys.register` with `{"document": <document>}`, the
-     complete validated raw BOSL object exactly as the HTTPS registration body;
-   - `lead-director.journeys.action` with `{"href": <href>}` for a returned
-     action whose `payload_schema` is null (including `state` and the explicit
-     Start), or `{"href": <href>, "payload": <payload>}` with the
-     schema-valid body otherwise; copy the returned href verbatim, including
-     its capability query, and never construct or alter one;
-   - `bos.graph_export.read` with exactly `{}` for the selected installation's
-     graph export.
-   Use `scripts/native-bosl-execution.mjs` from `bos-workflow-orchestrator`
-   when executable. Verify the returned context, then pass the unwrapped
-   `{http_status, body, headers}` (a refusal's `error` becomes the body's
-   `error`) to the same registration and lifecycle validation, explicit Start,
-   approvals, `Retry-After` handling and recovery as HTTPS. HTTPS remains the
-   default whenever the host supplies it. Never invent these tools when they
-   are not advertised, and never put the handle, a context or another
-   authority selector in their arguments.
 8. Preserve the selected scope with approvals, versions, caches, server-owned
    operation references, and exact returned recovery actions. Refresh handles after context changes; never persist handles as
    defaults. Keep concurrent requests independent. A denial or missing operation

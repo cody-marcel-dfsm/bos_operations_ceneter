@@ -14,15 +14,6 @@ only `X-BOS-Context-Handle`; the action envelope, payload, cache, dependent
 product, and presentation never receive or store the handle. Registration uses
 the same current handle through its discovered deterministic HTTPS contract.
 Legacy/v1 actions remain header-free through `buildActionRequest`.
-When the host supplies no authenticated HTTPS and the selected context freshly
-advertises the native BOSL execution tools, invoke registration and each
-returned action through `scripts/native-bosl-execution.mjs` instead:
-`lead-director.journeys.action` receives the exact href and, only for a
-non-null `payload_schema`, the schema-valid payload; a null-schema action,
-including Start and `state`, sends no payload. Its unwrapped
-`{http_status, body, headers}` result goes through `interpretJourneyResponse`
-exactly like an HTTPS response. The handle stays in `bos_execute`'s
-`context_handle`, never in arguments.
 
 For `payload_schema: null`, supply no caller payload. The BOS transport sends
 POST actions as exactly `{}` with `Content-Type: application/json`; GET actions
