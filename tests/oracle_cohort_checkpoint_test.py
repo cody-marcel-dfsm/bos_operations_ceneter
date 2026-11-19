@@ -104,6 +104,36 @@ class Journal(unittest.TestCase):
         self.assertEqual(merged['journal_reconciliation'][0]['cohort_id'], 'implementation-consumers')
 
 
+    def test_virtual_criterion_paths_and_virtual_identities_are_never_admitted(self):
+        virtual = '@retained-criterion/' + 'a' * 64
+        self.plan['retained_criteria'] = [{'path': virtual, 'original_coverage_indices': []}]
+        cohort = dict(self.cohort, required_paths=[virtual, 'source/a.md'])
+        effective = parallel._criterion_context(self.context, self.plan)
+        virtual_inputs = [{'path': virtual, 'digest': effective['input_hashes'][virtual]}]
+        result = self.replay(
+            self.row('coverage', path=virtual, inputs=virtual_inputs, reason='Virtual.'),
+            self.row('coverage', path='source/a.md', inputs=self.inputs('source/a.md') + virtual_inputs, reason='Mixed.'),
+            cohort=cohort)
+        self.assertEqual(result['coverage'], [])
+
+    def test_interrupted_cohort_with_failed_preparation_integrity_contributes_nothing(self):
+        with tempfile.TemporaryDirectory() as temp:
+            child = Path(temp)
+            packets = {self.cohort['id']: b'k'}
+            self.packet = o._sha(b'k')
+            line = self.row('coverage', path='source/a.md', inputs=self.inputs('source/a.md'), reason='Clean.')
+            (child / parallel.JOURNAL_NAME).write_text(line + '\n')
+            base = {'review_status': 'ERROR', 'verdict': 'ERROR', 'coverage': [], 'findings': [], 'limitations': ['x']}
+            with patch_root(child):
+                admitted, _ = parallel.recover_interrupted(o, base, [(self.cohort, child)], self.plan, self.context,
+                                                           {}, packets, blocked=set())
+                blocked, _ = parallel.recover_interrupted(o, base, [(self.cohort, child)], self.plan, self.context,
+                                                          {}, packets, blocked={self.cohort['id']})
+            self.assertEqual([row['path'] for row in admitted['coverage']], ['source/a.md'])
+            self.assertEqual(blocked['coverage'], [])
+            self.assertEqual(blocked['journal_reconciliation'][0]['eligibility'], 'NONE')
+            self.assertTrue((child / 'checkpoint-journal-original.jsonl').exists())
+
 class Integration(unittest.TestCase):
     def scope(self, **changes):
         values = dict(candidate_tree='t' * 40, publication_scope={'range_sha256': 'r' * 64},
