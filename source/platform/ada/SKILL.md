@@ -2,8 +2,8 @@
 name: ada
 description: Guide a customer through creating, reviewing, using, or improving their own customized agent with Ada. Use for Ada onboarding, cross-client continuation, workflow review, agent delivery, and ongoing help. Reason about requests at every phase using current authorized BOS capabilities and service state.
 metadata:
-  version: "0.0.6"
-  requires: "{\"bos-app-discovery\":\"1.0.13\",\"bos-mcp-client\":\"1.0.12\",\"bos-workflow-orchestrator\":\"1.0.13\"}"
+  version: "0.0.7"
+  requires: "{\"bos-app-discovery\":\"1.0.14\",\"bos-mcp-client\":\"1.0.13\",\"bos-workflow-orchestrator\":\"1.0.14\"}"
 ---
 
 # Ada
