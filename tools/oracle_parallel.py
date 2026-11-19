@@ -110,9 +110,18 @@ def _finding_valid(item, prefix):
 
 
 def replay_journal(o, text, plan, cohort, context, packet_sha256):
-    """Replay an interrupted cohort's ordered journal; only exactly bound rows survive."""
-    effective = _criterion_context(context, plan)
-    assigned, concerns = set(cohort["required_paths"]), set(cohort.get("integration_checks", []))
+    """Replay an interrupted cohort's ordered journal; only exactly bound rows survive.
+
+    Rows bind real assigned paths and real sealed input identities only; virtual
+    retained-criterion paths belong to native expansion and are never admitted.
+    """
+    effective = {"input_hashes": {name: value for name, value in context["input_hashes"].items()
+                                  if not name.startswith("@retained-criterion/")}}
+    virtual = {group["path"] for group in plan.get("retained_criteria", [])}
+    assigned = {name for name in cohort["required_paths"]
+                if name not in virtual and not name.startswith("@retained-criterion/")
+                and name in effective["input_hashes"]}
+    concerns = set(cohort.get("integration_checks", []))
     coverage, findings, integration, withdrawn, rejected = {}, {}, {}, set(), []
     conflicted, stopped = set(), None
     for number, line in enumerate(text.split("\n"), 1):
@@ -166,6 +175,45 @@ def replay_journal(o, text, plan, cohort, context, packet_sha256):
     return {"coverage": [entry for name, entry in coverage.items() if name not in affected],
             "findings": list(findings.values()), "integration": list(integration.values()),
             "rejected": rejected, "stopped_at_line": stopped}
+
+
+def recover_interrupted(o, result, jobs, plan, context, envelopes, original_packets, *, blocked):
+    """Admit journals only from interrupted cohorts whose preparation stayed intact."""
+    current = []
+    for cohort, child in jobs:
+        if cohort["id"] in envelopes or result.get("review_status") == "COMPLETE":
+            continue
+        journal = child / JOURNAL_NAME
+        try:
+            raw = journal.read_bytes() if journal.is_file() and not journal.is_symlink() else b""
+        except OSError as exc:
+            result = copy.deepcopy(result)
+            result.setdefault("journal_reconciliation", []).append(
+                {"cohort_id": cohort["id"], "error": str(exc), "eligibility": "NONE"})
+            continue
+        if raw:
+            o._atomic_write(child / "checkpoint-journal-original.jsonl", raw)
+        if cohort["id"] in blocked:
+            result = copy.deepcopy(result)
+            result.setdefault("journal_reconciliation", []).append(
+                {"cohort_id": cohort["id"], "error": "Prepared or shared integrity failed; raw journal retained only",
+                 "journal_bytes": len(raw), "eligibility": "NONE"})
+            continue
+        try:
+            if len(raw) > JOURNAL_MAX_BYTES:
+                raise ValueError("journal exceeds its bound")
+            packet = original_packets[cohort["id"]]
+            packet_sha256 = o._sha(packet if isinstance(packet, bytes) else packet.encode())
+            admitted = replay_journal(o, raw.decode("utf-8", errors="replace"), plan, cohort, context, packet_sha256)
+        except (ValueError, KeyError, TypeError, o.OracleApprovalError) as exc:
+            result = copy.deepcopy(result)
+            result.setdefault("journal_reconciliation", []).append(
+                {"cohort_id": cohort["id"], "error": str(exc), "eligibility": "NONE"})
+            continue
+        result = merge_journal(result, cohort["id"], admitted)
+        if cohort["id"] == AREAS[0]:
+            current += admitted["integration"]
+    return result, current
 
 
 def merge_journal(result, cohort_id, admitted):
@@ -1130,6 +1178,7 @@ def review(o, root, tree, paths, evidence, owner):
         seal_manifest_current = o._custody_read(root, seals_path)[1] == seals_raw
     except (OSError, ValueError, o.OracleApprovalError):
         seal_manifest_current = False
+    integrity_blocked = set()
     for cohort, child in jobs:
         expected = prepared_seals[cohort['id']]
         try:
@@ -1149,6 +1198,7 @@ def review(o, root, tree, paths, evidence, owner):
                     failures.append(cohort['id'] + ': final output remains unavailable/unbound: ' + str(recovery))
             if retained is not None:
                 retained['prepared_integrity_error'] = reason
+            integrity_blocked.add(cohort['id'])
             envelopes.pop(cohort['id'], None)
             o._atomic_write(child / 'prepared-source-error.json', o._pretty({
                 'cohort_id': cohort['id'], 'original_seal': expected,
@@ -1162,6 +1212,7 @@ def review(o, root, tree, paths, evidence, owner):
         reason = 'Shared preparation integrity failed; prepared partition plan or source context changed during assessment'
         failures.append(reason)
         envelopes.clear()
+        integrity_blocked.update(cohort['id'] for cohort, _ in jobs)
         unadopted = list(pending_unadopted.values())
         for retained in unadopted:
             retained['prepared_integrity_error'] = reason
@@ -1178,26 +1229,9 @@ def review(o, root, tree, paths, evidence, owner):
                    for row in envelopes[AREAS[0]]["integration"]
                    if isinstance(row, dict) and row.get("concern") in cross["integration_checks"]]
     # Interrupted cohorts keep only their exactly bound journal observations.
-    for cohort, child in jobs:
-        if cohort["id"] in envelopes or result.get("review_status") == "COMPLETE":
-            continue
-        journal = child / JOURNAL_NAME
-        try:
-            raw = journal.read_bytes() if journal.is_file() and not journal.is_symlink() else b""
-            if len(raw) > JOURNAL_MAX_BYTES:
-                raise ValueError("journal exceeds its bound")
-            packet_sha256 = o._sha(original_packets[cohort["id"]] if isinstance(original_packets[cohort["id"]], bytes)
-                                   else original_packets[cohort["id"]].encode())
-            admitted = replay_journal(o, raw.decode("utf-8", errors="replace"), plan, cohort, context, packet_sha256)
-        except (OSError, ValueError, KeyError, TypeError, o.OracleApprovalError) as exc:
-            result.setdefault("journal_reconciliation", []).append(
-                {"cohort_id": cohort["id"], "error": str(exc), "eligibility": "NONE"})
-            continue
-        if raw:
-            o._atomic_write(child / "checkpoint-journal-original.jsonl", raw)
-        result = merge_journal(result, cohort["id"], admitted)
-        if cohort["id"] == AREAS[0]:
-            current += [dict(row, scope=scope) for row in admitted["integration"]]
+    result, recovered = recover_interrupted(o, result, jobs, plan, context, envelopes, original_packets,
+                                            blocked=integrity_blocked)
+    current += [dict(row, scope=scope) for row in recovered]
     result["integration_checkpoints"] = [*reused, *[row for row in current
                                                     if row["concern"] not in {item["concern"] for item in reused}]]
     if result.get("review_status") == "COMPLETE" and not integration_complete(reused, current):

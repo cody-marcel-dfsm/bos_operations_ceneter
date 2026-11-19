@@ -88,7 +88,7 @@ class PublicationAdmission(unittest.TestCase, ClaudeCodeAuthorityFixture):
         self.fixture.git("update-ref", "refs/remotes/origin/main", self.fixture.base)
         self.fixture.release_metadata("0.0.1")
         self.fixture.git("add", ".")
-        self.ref = "codex/release-v0.0.1"
+        self.ref = "release/0.0.1"
         self.remote = owned_remote(self, self.root, self.fixture.base)
         self.commands = []
         self.host_sessions = self.root / "Vault/tmp/synthetic-host-sessions"
@@ -746,6 +746,12 @@ class PublicationAdmission(unittest.TestCase, ClaudeCodeAuthorityFixture):
                        dict(row, creator={"login": "untrusted"}, issuer=status.ATTESTATION_ISSUER)):
             with self.subTest(forged=forged), self.assertRaises(o.OracleApprovalError):
                 status.verify_publication(self.root, "HEAD", execute=self.execute, read=lambda path: [forged], wait_seconds=0)
+
+    def test_ide_specific_release_refs_are_refused(self):
+        for ref in ("codex/release-v0.0.1", "claude/release-v0.0.1", "release/v0.0.1", "release/0.0"):
+            with self.subTest(ref=ref):
+                with self.assertRaisesRegex(o.OracleApprovalError, "release review ref"):
+                    publication.plan(self.root, "HEAD", ref, "main-promotion", refresh=False)
 
     def test_ssh_instruction_question_names_the_exact_release_ref_commit_and_tree(self):
         self.submit(True)

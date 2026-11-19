@@ -391,7 +391,7 @@ requested outcome.
 ## Create the release branch
 
 1. Never push a release commit directly to the default branch. A merged release pull request provides an auditable release boundary and supplies Claude's organization-marketplace trigger when that distribution path is configured.
-2. Work on canonical main throughout implementation, validation, review and commit. Resolve the release ref name `codex/release-v<next-version>` before changing version metadata, then create that branch ref at the final approved release commit without switching the checkout.
+2. Work on canonical main throughout implementation, validation, review and commit. Resolve the release ref name `release/<next-version>` (the single version-named release branch; never an IDE- or client-specific name) before changing version metadata, then create that branch ref at the final approved release commit without switching the checkout.
 3. If the checkout is on another branch, preserve all work and reconcile that state with the controlling canonical-main requirement before implementation or release. Existing branch names supply no authority for branch switching or a new worktree.
 4. Stop if the release branch already exists locally or remotely and cannot be identified as the current release safely. Never delete, reset, or overwrite an existing branch.
 
