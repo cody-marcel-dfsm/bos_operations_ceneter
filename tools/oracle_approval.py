@@ -2373,7 +2373,10 @@ def _review_context(root: Path, tree: str, paths: list, binding: dict, evidence:
     else:
         import oracle_generated_proof as generated
     deterministic = None
-    if generated.applies(required_paths) and publication_scope.get("baseline_commit"):
+    # Without a declared generator nothing is proven and every path stays with
+    # the model cohorts; a generator that runs and differs still raises.
+    if (generated.applies(required_paths) and publication_scope.get("baseline_commit")
+            and generated.generator_declared(root, tree)):
         deterministic = generated.prove(sys.modules[__name__], root, tree, publication_scope["baseline_commit"],
                                         required_paths, _RUN.get())
     reusable, invalidated, validations, invalid_validations = [], [], [], []

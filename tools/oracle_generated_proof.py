@@ -233,5 +233,15 @@ def covered_paths(context) -> set:
     return set(generated) | set(metadata)
 
 
+def generator_declared(root, tree) -> bool:
+    """Only a candidate declaring the package generator can prove derived outputs."""
+    try:
+        manifest = json.loads(_git(root, "show", f"{tree}:package.json"))
+    except (RuntimeError, ValueError):
+        return False
+    return isinstance(manifest, dict) and isinstance(manifest.get("scripts"), dict) and \
+        isinstance(manifest["scripts"].get("build:packages"), str)
+
+
 def applies(paths) -> bool:
     return any(generated_path(name) or (name.startswith("source/") and name.endswith("/SKILL.md")) for name in paths)

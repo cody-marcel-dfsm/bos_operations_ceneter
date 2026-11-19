@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 import copy
 import hashlib
 import json
+import os
 from pathlib import Path
 import re
 import time
@@ -192,7 +193,12 @@ def recover_interrupted(o, result, jobs, plan, context, envelopes, original_pack
                 {"cohort_id": cohort["id"], "error": str(exc), "eligibility": "NONE"})
             continue
         if raw:
-            o._atomic_write(child / "checkpoint-journal-original.jsonl", raw)
+            # Preserve the reviewer's original bytes beside its journal, write-once.
+            original = child / "checkpoint-journal-original.jsonl"
+            if not original.exists():
+                descriptor = os.open(original, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+                with os.fdopen(descriptor, "wb") as handle:
+                    handle.write(raw)
         if cohort["id"] in blocked:
             result = copy.deepcopy(result)
             result.setdefault("journal_reconciliation", []).append(
