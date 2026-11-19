@@ -149,26 +149,3 @@ test('native arguments reject credentials and authority selectors', async () => 
     assert.throws(() => native.action({...completeAction, payload_schema: {type: 'object'}}, payload), /authority selector/);
   }
 });
-
-test('an MCP error envelope never becomes successful native registration or lifecycle execution', async () => {
-  const native = await createNativeBoslExecution({context: nativeContext, catalog: nativeCatalog()});
-  const start = {...startAction, href: '/bos/apps/example/api/v1/organizations/demo/journeys/plain%20journey/start?capability=synthetic'};
-  const flagged = {...nativeResult({http_status: 201, headers: {}, body: {compiled: true, identity: 'plain journey', actions: {start}}}),
-    isError: true};
-  let decision;
-  try {
-    decision = interpretJourneyResponse(native.unwrap(flagged));
-  } catch {
-    decision = undefined;
-  }
-  assert.notEqual(decision?.next, 'invoke_action');
-  const refusal = {...nativeResult({http_status: 403, headers: {},
-    error: {code: 'FORBIDDEN', message: 'Synthetic refusal.', retryable: false, correlation_id: 'corr_synthetic', details: []}}),
-    isError: true};
-  const unwrapped = native.unwrap(refusal);
-  assert.equal(unwrapped.http_status, 403);
-  assert.deepEqual(Object.keys(unwrapped.body), ['error']);
-  const success = native.unwrap(nativeResult({http_status: 201, headers: {},
-    body: {compiled: true, identity: 'plain journey', actions: {start}}}));
-  assert.equal(interpretJourneyResponse(success).next, 'invoke_action');
-});

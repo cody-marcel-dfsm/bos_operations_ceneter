@@ -4,12 +4,12 @@
   "stamp": {
     "engine": "codex",
     "model": "gpt-6.1-sol",
-    "oracle_sha256": "eebeae46078371bfb1a82ef28474aba8e2162bb0c1398dfd1f0974ddfa4a0539",
+    "oracle_sha256": "0f5f030590a469eeb5929034577f402e4dc47b5290c25170565e6508c2b18257",
     "host": "aio",
-    "time": "2026-11-19T16:16:04Z",
+    "time": "2026-11-19T15:28:53Z",
     "origin_main": "95bbc0f5a2bc3cec2399a3f8880139d2b4ce0065",
-    "request_sha256": "e70f107ea7a8cb9d81c468722cef8667bc37edecf3258920ca5c77f87bc018e3",
-    "proposal_sha256": "680d5ac53c4901d23bbfb238460a00b303a24af06b9ecef2da1c77ad57d6b8f9"
+    "request_sha256": "bb1bf52250f5866dd81a38ab0107299afe6aedd96c343cfcea81484a071346c4",
+    "proposal_sha256": "8d50855cd71731d4b65ed51b568d5a692576173e4be1b427fb19d7ba44d2db7d"
   },
   "selection": {
     "acceptance": [
@@ -33,11 +33,7 @@
       "Journal reconciliation retains established findings as open ledger entries and prevents later findings or withdrawals from leaving earlier affected clean coverage eligible. Interrupted work remains ERROR or INCOMPLETE and cannot issue approval. Real controller-to-aggregate-to-series tests demonstrate retained observations, immutable original artifacts, unfinished-path reassignment and unchanged receipt gates.",
       "Integration reuse admits only REVIEWED or justified NOT_APPLICABLE observations with matching consumed inputs, candidate tree, publication-range digest, required-path identity digest, open-finding ledger digest and observation guards. Candidate additions, deletions, mode or type changes, baseline movement, relevant finding changes and guard changes reassign concerns. UNREVIEWED observations never satisfy completion; all six concerns and a fresh complete-range classification remain mandatory.",
       "Every cohort receives complete authoritative document bytes with exact path and digest provenance in its sealed governance input. The actual reviewer prompt preserves precedence and instructs consumption of those supplied texts without redundant fetching. Missing, altered, truncated or oversized mandatory governance fails closed rather than substituting summaries; any authority change changes the bundle and packet bindings.",
-      "Non-crosscutting assignments contain at most six primary paths per cohort with distinct cohort identities and noncolliding new-finding prefixes. Splitting preserves every required assignment exactly once, specialist authority restrictions and the crosscutting classification role. Execution retains at most three concurrent reviewers, the existing reviewer deadline, original request clocks and complete-candidate approval requirements.",
-      "Release preparation, prepared-record validation, deterministic publication and published-state verification consistently use release/<major>.<minor>.<patch>. Legacy IDE-specific release refs and malformed release refs are rejected for new operations. Publication safety admits release/* push events and resolves their gate base from origin/main while preserving existing main, source-ref and tag handling, exact-source CI, leased promotion and remote readback. Existing remote legacy refs remain untouched.",
-      "An exact-context native envelope marked isError:true cannot expose a successful registration, lifecycle action or graph result, even with a success-shaped body and successful HTTP status. Preserve a valid returned public error when present; otherwise refuse the envelope. Valid isError:false responses and existing refusal handling remain compatible.",
-      "Journal observations become eligible only for interrupted cohorts with intact original per-cohort preparation seals and intact shared plan and context. Altered source pages, schema, governance, context, seals or shared preparation admit neither clean coverage nor integration observations. Retain original raw journal bytes and unfinished or error outcomes without approval.",
-      "Journal coverage names only real assigned paths present in the sealed input inventory, and every consumed input binds a real current identity with its exact digest. Virtual retained-criterion paths and input identities never enter replayed source coverage; native criterion expansion remains responsible for those obligations."
+      "Non-crosscutting assignments contain at most six primary paths per cohort with distinct cohort identities and noncolliding new-finding prefixes. Splitting preserves every required assignment exactly once, specialist authority restrictions and the crosscutting classification role. Execution retains at most three concurrent reviewers, the existing reviewer deadline, original request clocks and complete-candidate approval requirements."
     ],
     "acceptance_tests": [
       {
@@ -45,8 +41,7 @@
           0,
           1,
           2,
-          3,
-          22
+          3
         ],
         "module": "tests/bos-native-compatibility.test.mjs",
         "purpose": "Exercise transport selection and executable helper behavior with synthetic descriptors, exact action URIs, payload validation, context mismatch, malformed results, refusals, explicit Start and throttling."
@@ -115,9 +110,7 @@
           17,
           18,
           19,
-          20,
-          23,
-          24
+          20
         ],
         "module": "tests/oracle-cohort-checkpoint.test.mjs",
         "purpose": "Exercise typed journal replay, malformed and foreign records, findings and withdrawals, exact integration reuse, complete governance bytes and bounded partitioning through actual production consumers."
@@ -128,47 +121,10 @@
           17,
           18,
           19,
-          20,
-          23,
-          24
+          20
         ],
         "module": "tests/oracle-parallel.test.mjs",
         "purpose": "Verify actual cohort dispatch, interrupted-result recovery, aggregation and retained context reuse while preserving assignment authority, concurrency, custody and complete-review gates."
-      },
-      {
-        "covers": [
-          21
-        ],
-        "module": "tests/publication-safety.test.mjs",
-        "purpose": "Verify release push triggers and publication-base selection while preserving existing source, main, tag and required-check protections."
-      },
-      {
-        "covers": [
-          21
-        ],
-        "module": "tests/publication-admission.test.mjs",
-        "purpose": "Exercise release planning and immutable prepared-record consumers with neutral refs, rejected legacy refs, exact candidate binding and unchanged publication safeguards."
-      },
-      {
-        "covers": [
-          21
-        ],
-        "module": "tests/deterministic-lanes.test.mjs",
-        "purpose": "Exercise deterministic package publication, promotion and published-state verification through the existing complete Python-suite runner, preserving source-lane and receipt boundaries."
-      },
-      {
-        "covers": [
-          21
-        ],
-        "module": "tests/command-coverage.test.mjs",
-        "purpose": "Verify neutral release refs in prepared publication and command-evidence consumers while retaining fast-forward, divergence and native validation safeguards."
-      },
-      {
-        "covers": [
-          21
-        ],
-        "module": "tests/shipment-workflow.test.mjs",
-        "purpose": "Verify neutral release refs through shipment preparation and publication consumers while preserving immutable decisions, concurrent authorship and failure handling."
       }
     ],
     "categories": [
@@ -188,8 +144,7 @@
           "tests/bos-native-compatibility.test.mjs",
           "tests/oracle-relocation.test.mjs",
           "tests/oracle-generated-proof.test.mjs",
-          "tests/oracle-cohort-checkpoint.test.mjs",
-          "tests/publication-safety.test.mjs"
+          "tests/oracle-cohort-checkpoint.test.mjs"
         ]
       },
       {
@@ -198,15 +153,7 @@
           "tests/helpers/lead-graph-acceptance.mjs",
           "tests/oracle_lifecycle_test.py",
           "tests/helpers/isolated-test-cohort.mjs",
-          "tests/oracle_parallel_test.py",
-          "tests/publication_admission_test.py",
-          "tests/deterministic_package_test.py",
-          "tests/deterministic_source_test.py",
-          "tests/helpers/native-validation-git.mjs",
-          "tests/helpers/native-validation-state.mjs",
-          "tests/command_coverage_test.py",
-          "tests/shipment_workflow_test.py",
-          "tests/oracle_review_series.py"
+          "tests/oracle_parallel_test.py"
         ],
         "name": "interactions",
         "tests": [
@@ -214,18 +161,14 @@
           "tests/package-model.test.mjs",
           "tests/lead-graph-regression.test.mjs",
           "tests/oracle-lifecycle.test.mjs",
-          "tests/oracle-parallel.test.mjs",
-          "tests/publication-admission.test.mjs",
-          "tests/deterministic-lanes.test.mjs",
-          "tests/command-coverage.test.mjs",
-          "tests/shipment-workflow.test.mjs"
+          "tests/oracle-parallel.test.mjs"
         ]
       }
     ],
     "change_class": "deep_bug_fix",
     "design": null,
-    "reason": "Retain every existing acceptance criterion, selected module and fixture. Add the two directly affected publication-consumer runners and their supporting fixtures for release-ref test-data changes. Cross-area publication and review-evidence custody require adversarial focused cases and actual completeness, pending-path, controller, lifecycle and publication interactions. No unrelated recurrence suite is selected. Preserve unchanged-test fail-before/pass-after evidence, historical outcomes, original request clocks, existing reviewer deadlines and the 300-second delivery budget. Native validation reuse requires matching consumed inputs, dependency closure, environment and retained outputs; synthetic checks establish no published-client acceptance.",
-    "revision_of": "31532772f0b404294cc2e08b54ce79805f6d05aaafe5540956dbfbaf4fa25b3a",
+    "reason": "Add interruption-safe cohort continuity, exact integration reuse, complete governance delivery and bounded assignments while retaining every existing criterion, selected module and fixture. Review custody and completeness require adversarial focused checks and actual parallel-controller and lifecycle interactions. Preserve unchanged-test fail-before/pass-after evidence, prior failures, original clocks and the existing deadline. Reuse eligible native validation only with matching actual inputs, dependencies, environment and retained outputs; synthetic checks establish no published-client acceptance.",
+    "revision_of": "dc1bb0c36c63f2e54a9de9855fccbd6a8c06e067ce6c6c66abdaeb7ca5d3bae0",
     "scope_paths": [
       "AGENTS.md",
       "README.md",
@@ -273,28 +216,11 @@
       "tests/oracle_cohort_checkpoint_test.py",
       "tests/oracle-parallel.test.mjs",
       "tests/oracle_parallel_test.py",
-      "tests/helpers/isolated-test-cohort.mjs",
-      "tools/publication_admission.py",
-      "tools/deterministic_package.py",
-      ".github/workflows/publication-safety.yml",
-      ".agents/skills/ship-it/SKILL.md",
-      "tools/deterministic-package.md",
-      "tests/publication-safety.test.mjs",
-      "tests/publication-admission.test.mjs",
-      "tests/publication_admission_test.py",
-      "tests/deterministic-lanes.test.mjs",
-      "tests/deterministic_package_test.py",
-      "tests/deterministic_source_test.py",
-      "tests/helpers/native-validation-git.mjs",
-      "tests/helpers/native-validation-state.mjs",
-      "tests/command_coverage_test.py",
-      "tests/shipment_workflow_test.py",
-      "tests/command-coverage.test.mjs",
-      "tests/shipment-workflow.test.mjs"
+      "tests/helpers/isolated-test-cohort.mjs"
     ]
   },
-  "base_commit": "41b91fe03bc9a190d13551e5e36894d9b179ea66",
-  "base_tree": "79d114c61fb9cb6c217745dc68d587e18fb2a6bd",
+  "base_commit": "7eb8162b1082b0108b64f76fa4db79a776b50cc9",
+  "base_tree": "5dc4a5526ec28348da1d9b6772b98d97fbcd7250",
   "catalog_sha256": "9a96f1cd2a973457f9da681dddcc5161aa8ffda188b092d849e5bc83999391c8",
   "runtime": {
     "node": "v26.12.0",
@@ -304,8 +230,8 @@
     "architecture": "x86_64",
     "options_sha256": "ebc442c160f8629073a82976daadaba1d95a60a38d768c81c8eb06598aedcac5"
   },
-  "proposal_sha256": "680d5ac53c4901d23bbfb238460a00b303a24af06b9ecef2da1c77ad57d6b8f9",
-  "review_sha256": "13ead8399b8588e8004f8ffedfeb2bb1f2c6f60f81154a85e1b7550c88456320",
+  "proposal_sha256": "8d50855cd71731d4b65ed51b568d5a692576173e4be1b427fb19d7ba44d2db7d",
+  "review_sha256": "b647e79b1acde20b4a6b2ea1455eb28c4d644cc3c75b143dd159e869fd2b9b46",
   "commands": [
     {
       "category": "sanity",
@@ -327,15 +253,13 @@
         "tests/bos-native-compatibility.test.mjs",
         "tests/oracle-relocation.test.mjs",
         "tests/oracle-generated-proof.test.mjs",
-        "tests/oracle-cohort-checkpoint.test.mjs",
-        "tests/publication-safety.test.mjs"
+        "tests/oracle-cohort-checkpoint.test.mjs"
       ],
       "tests": [
         "tests/bos-native-compatibility.test.mjs",
         "tests/oracle-relocation.test.mjs",
         "tests/oracle-generated-proof.test.mjs",
-        "tests/oracle-cohort-checkpoint.test.mjs",
-        "tests/publication-safety.test.mjs"
+        "tests/oracle-cohort-checkpoint.test.mjs"
       ],
       "fixtures": [
         "tests/oracle_relocation_test.py",
@@ -354,37 +278,21 @@
         "tests/package-model.test.mjs",
         "tests/lead-graph-regression.test.mjs",
         "tests/oracle-lifecycle.test.mjs",
-        "tests/oracle-parallel.test.mjs",
-        "tests/publication-admission.test.mjs",
-        "tests/deterministic-lanes.test.mjs",
-        "tests/command-coverage.test.mjs",
-        "tests/shipment-workflow.test.mjs"
+        "tests/oracle-parallel.test.mjs"
       ],
       "tests": [
         "tests/journey-package-parity.test.mjs",
         "tests/package-model.test.mjs",
         "tests/lead-graph-regression.test.mjs",
         "tests/oracle-lifecycle.test.mjs",
-        "tests/oracle-parallel.test.mjs",
-        "tests/publication-admission.test.mjs",
-        "tests/deterministic-lanes.test.mjs",
-        "tests/command-coverage.test.mjs",
-        "tests/shipment-workflow.test.mjs"
+        "tests/oracle-parallel.test.mjs"
       ],
       "fixtures": [
         "tests/helpers/synthetic-bos-discovery-service.mjs",
         "tests/helpers/lead-graph-acceptance.mjs",
         "tests/oracle_lifecycle_test.py",
         "tests/helpers/isolated-test-cohort.mjs",
-        "tests/oracle_parallel_test.py",
-        "tests/publication_admission_test.py",
-        "tests/deterministic_package_test.py",
-        "tests/deterministic_source_test.py",
-        "tests/helpers/native-validation-git.mjs",
-        "tests/helpers/native-validation-state.mjs",
-        "tests/command_coverage_test.py",
-        "tests/shipment_workflow_test.py",
-        "tests/oracle_review_series.py"
+        "tests/oracle_parallel_test.py"
       ]
     }
   ],
@@ -397,6 +305,6 @@
     "reasoning_effort": "medium",
     "maximum_reasoning_effort": "medium"
   },
-  "contract_sha256": "9b2dfa9e931e6915a59ab3df931955b5a0c32eecf1f3266cf7c4facd01637025",
-  "seal": "d87d6b72219bca6a743dc1638483bcc03508f03e3cbdd144a8f4cb549551bd77"
+  "contract_sha256": "fcc1a1936b3a2b47dee06ddfe685ea7fd2bcee0e629390e01fe04eb71df837e9",
+  "seal": "2bd68916711d0553249e74376dd138f24c575c0fd393c8f7a2453ac1efa9ea68"
 }

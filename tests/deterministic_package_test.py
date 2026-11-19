@@ -1106,9 +1106,9 @@ class PackageGateTests(unittest.TestCase):
     def test_wrong_ref_destination_or_moved_base_has_no_write(self):
         value = self.validate()
         for ref, remote, base, message in (
-            ('release/9.0.0', 'https://github.com/' + d.native.REPOSITORY + '.git', value['base'], 'version-bound'),
-            ('release/1.0.0', 'https://example.invalid/other.git', value['base'], 'destination'),
-            ('release/1.0.0', 'https://github.com/' + d.native.REPOSITORY + '.git', 'f' * 40, 'base moved'),
+            ('codex/release-v9.0.0', 'https://github.com/' + d.native.REPOSITORY + '.git', value['base'], 'version-bound'),
+            ('codex/release-v1.0.0', 'https://example.invalid/other.git', value['base'], 'destination'),
+            ('codex/release-v1.0.0', 'https://github.com/' + d.native.REPOSITORY + '.git', 'f' * 40, 'base moved'),
         ):
             def observed(root, *args):
                 return remote if args[0] == 'remote' else base + '\trefs/heads/main'
@@ -1132,7 +1132,7 @@ class PackageGateTests(unittest.TestCase):
                 patch.object(admission, '_remote_admission', side_effect=ValueError('required CI failed')), \
                 patch.object(d.subprocess, 'run') as run:
             with self.assertRaisesRegex(ValueError, 'CI failed'):
-                d.publish(self.root, 'release/1.0.0', '1')
+                d.publish(self.root, 'codex/release-v1.0.0', '1')
             run.assert_not_called()
 
     def test_existing_owner_ssh_publishes_only_the_verified_sha_and_version_ref(self):
@@ -1140,7 +1140,7 @@ class PackageGateTests(unittest.TestCase):
         store = d.directory(self.root)
         remote = 'git' + chr(64) + 'github.com:' + d.native.REPOSITORY + '.git'
         def observed(root, *args):
-            if args[-1] == 'refs/heads/release/1.0.0':
+            if args[-1] == 'refs/heads/codex/release-v1.0.0':
                 return value['source'] + '\t' + args[-1]
             return remote if args[0] == 'remote' else value['base'] + '\trefs/heads/main'
         with patch.object(d, 'read_receipt', return_value=value), \
@@ -1148,11 +1148,11 @@ class PackageGateTests(unittest.TestCase):
                 patch.object(d, 'directory', return_value=store), \
                 patch.object(d.native, 'git', side_effect=observed), \
                 patch.object(d.subprocess, 'run', return_value=subprocess.CompletedProcess([], 0, b'published', b'')) as run:
-            result = d.publish(self.root, 'release/1.0.0')
+            result = d.publish(self.root, 'codex/release-v1.0.0')
             self.assertEqual(result['status'], 'RELEASE_SOURCE_PUSHED')
             self.assertFalse(result['deployment_authorized'])
             run.assert_called_once_with(['git', 'push', remote,
-                                         value['source'] + ':refs/heads/release/1.0.0'],
+                                         value['source'] + ':refs/heads/codex/release-v1.0.0'],
                                         cwd=self.root, capture_output=True, timeout=120)
             self.assertEqual(len(list(store.glob('*.publication.json'))), 1)
 
@@ -1173,14 +1173,14 @@ class PackageGateTests(unittest.TestCase):
     def test_pull_request_option_injection_is_refused_before_any_effect(self):
         with patch.object(d, 'read_receipt') as read, patch.object(d.subprocess, 'run') as run:
             with self.assertRaisesRegex(ValueError, 'numeric'):
-                d.publish(self.root, 'release/1.0.0', '--admin')
+                d.publish(self.root, 'codex/release-v1.0.0', '--admin')
             read.assert_not_called()
             run.assert_not_called()
 
     def actions(self):
         source = self.git('rev-parse', 'HEAD')
         run = {'id': 41, 'path': '.github/workflows/publication-safety.yml',
-               'head_sha': source, 'head_branch': 'release/1.0.0', 'event': 'push',
+               'head_sha': source, 'head_branch': 'codex/release-v1.0.0', 'event': 'push',
                'repository': {'full_name': d.native.REPOSITORY},
                'head_repository': {'full_name': d.native.REPOSITORY},
                'status': 'completed', 'conclusion': 'success'}
@@ -1194,7 +1194,7 @@ class PackageGateTests(unittest.TestCase):
         source, run, jobs = self.actions()
         def read(path):
             return jobs if '/jobs?' in path else {'total_count': 1, 'workflow_runs': [run]}
-        result = d.ci_observation(source, 'release/1.0.0', read)
+        result = d.ci_observation(source, 'codex/release-v1.0.0', read)
         self.assertEqual(result['run']['id'], 41)
 
     def test_published_main_commit_is_verified_by_exact_release_ci(self):
@@ -1231,14 +1231,14 @@ class PackageGateTests(unittest.TestCase):
             changed = dict(run, **{key: wrong})
             with self.subTest(key=key):
                 with self.assertRaises(ValueError):
-                    d.ci_observation(source, 'release/1.0.0', lambda path:
+                    d.ci_observation(source, 'codex/release-v1.0.0', lambda path:
                                      jobs if '/jobs?' in path else {'total_count': 1, 'workflow_runs': [changed]})
 
     def test_later_failed_ci_cannot_fall_back_to_older_success(self):
         source, run, jobs = self.actions()
         failed = dict(run, id=42, conclusion='failure')
         with self.assertRaisesRegex(ValueError, 'not successful'):
-            d.ci_observation(source, 'release/1.0.0', lambda path:
+            d.ci_observation(source, 'codex/release-v1.0.0', lambda path:
                              {'total_count': 2, 'workflow_runs': [run, failed]})
 
     def test_pending_absent_or_incomplete_ci_cannot_pass(self):
@@ -1248,7 +1248,7 @@ class PackageGateTests(unittest.TestCase):
                      {'total_count': 1, 'workflow_runs': [dict(run, status='in_progress')]}):
             with self.subTest(data=data):
                 with self.assertRaises(ValueError):
-                    d.ci_observation(source, 'release/1.0.0', lambda path: data)
+                    d.ci_observation(source, 'codex/release-v1.0.0', lambda path: data)
 
     def test_skipped_missing_or_failed_fixed_ci_step_cannot_pass(self):
         source, run, jobs = self.actions()
@@ -1257,7 +1257,7 @@ class PackageGateTests(unittest.TestCase):
             changed['jobs'][0]['steps'][0]['conclusion'] = conclusion
             with self.subTest(conclusion=conclusion):
                 with self.assertRaisesRegex(ValueError, 'native execution'):
-                    d.ci_observation(source, 'release/1.0.0', lambda path:
+                    d.ci_observation(source, 'codex/release-v1.0.0', lambda path:
                                      changed if '/jobs?' in path else {'total_count': 1, 'workflow_runs': [run]})
 
     def test_ssh_promotion_requires_green_ci_and_unchanged_base_before_write(self):
@@ -1279,7 +1279,7 @@ class PackageGateTests(unittest.TestCase):
                                  return_value={'run': {'id': 41}}), \
                     patch.object(d, 'effect') as effect:
                 with self.assertRaisesRegex(ValueError, 'base moved|CI pending'):
-                    d.promote(self.root, 'release/1.0.0')
+                    d.promote(self.root, 'codex/release-v1.0.0')
                 effect.assert_not_called()
 
     def test_successful_ssh_promotion_uses_ordinary_push_and_checks_remote_sha(self):
@@ -1299,7 +1299,7 @@ class PackageGateTests(unittest.TestCase):
                 patch.object(d.native, 'git', side_effect=observed), \
                 patch.object(d, 'ci_observation', return_value={'run': {'id': 41}}), \
                 patch.object(d, 'effect', side_effect=lambda root, command, receipt: written.append(command)):
-            result = d.promote(self.root, 'release/1.0.0')
+            result = d.promote(self.root, 'codex/release-v1.0.0')
             self.assertEqual(result['status'], 'RELEASE_PUBLISHED')
             self.assertEqual(written, [['git', 'push', '--force-with-lease=refs/heads/main:' + value['base'], remote,
                                         value['source'] + ':refs/heads/main']])

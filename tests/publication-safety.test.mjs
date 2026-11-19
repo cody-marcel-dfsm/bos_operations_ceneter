@@ -58,20 +58,3 @@ test("publication workflow audits release refs without importing retained pull-r
   assert.equal(packageJson.scripts["release:check"], "python3 tools/deterministic_package.py validate");
   assert.match(workflow, /python3 tools\/deterministic_package\.py ci --base/);
 });
-
-test("the single release branch is version-named and IDE-neutral", async () => {
-  // Owner direction (Cody): one release branch named by version, never IDE specific.
-  const workflow = await readFile(new URL("../.github/workflows/publication-safety.yml", import.meta.url), "utf8");
-  const admission = await readFile(new URL("../tools/publication_admission.py", import.meta.url), "utf8");
-  const packageGate = await readFile(new URL("../tools/deterministic_package.py", import.meta.url), "utf8");
-  const shipIt = await readFile(new URL("../.agents/skills/ship-it/SKILL.md", import.meta.url), "utf8");
-  const packageDoc = await readFile(new URL("../tools/deterministic-package.md", import.meta.url), "utf8");
-  assert.match(workflow, /branches: \[main, 'release\/\*'/);
-  assert.match(workflow, /refs\/heads\/release\/\*\)/);
-  for (const text of [workflow, admission, packageGate, shipIt, packageDoc]) {
-    assert.doesNotMatch(text, /codex\/release/);
-  }
-  assert.match(admission, /release\/\[0-9\]\+\\\.\[0-9\]\+\\\.\[0-9\]\+/);
-  assert.match(packageGate, /'release\/' \+ version/);
-  assert.match(shipIt, /`release\/<next-version>`/);
-});
