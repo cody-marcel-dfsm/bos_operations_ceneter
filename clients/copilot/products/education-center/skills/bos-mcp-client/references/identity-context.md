@@ -168,8 +168,8 @@ plugin never inherits either historical BOS default.
      its capability query, and never construct or alter one;
    - `bos.graph_export.read` with exactly `{}` for the selected installation's
      graph export.
-   Use `scripts/native-bosl-execution.mjs` from `bos-workflow-orchestrator`
-   when executable. Verify the returned context, then pass the unwrapped
+   Use the BOS workflow orchestrator skill's packaged
+   `scripts/native-bosl-execution.mjs` when executable. Verify the returned context, then pass the unwrapped
    `{http_status, body, headers}` (a refusal's `error` becomes the body's
    `error`) to the same registration and lifecycle validation, explicit Start,
    approvals, `Retry-After` handling and recovery as HTTPS. HTTPS remains the
