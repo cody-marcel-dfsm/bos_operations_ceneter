@@ -995,7 +995,7 @@ def _dispatch_budget(command: Sequence[str], context_raw: bytes, schema_raw: byt
 
 @_metadata_owner
 def _review_process(root: Path, prompt: str, prefix: str, *, schema_path: Path | None = None,
-                    cohort_policy: str | None = None) -> dict:
+                    cohort_policy: str | None = None, stdin_payload: bytes | None = None) -> dict:
     run = _RUN.get()
     if run is None:
         raise OracleApprovalError("Independent Oracle must run under a native controller attempt")
@@ -1034,6 +1034,8 @@ def _review_process(root: Path, prompt: str, prefix: str, *, schema_path: Path |
     _atomic_write(run / "model.json", _pretty(metadata))
     prompt += "\nReviewer process configuration:\n" + json.dumps(metadata, sort_keys=True)
     _atomic_write(run / "request.txt", prompt.encode())
+    if stdin_payload is not None:
+        _atomic_write(run / "request-stdin.txt", stdin_payload)
     cmd = ["codex", "exec", "--ephemeral", "--ignore-user-config", "--model", model,
            "-c", "developer_instructions=" + json.dumps(developer_instructions),
            "--sandbox", "danger-full-access", "--cd", str(root), "--output-schema",
@@ -1068,10 +1070,11 @@ def _review_process(root: Path, prompt: str, prefix: str, *, schema_path: Path |
         else:
             import oracle_lifecycle
         completed = _timed(prefix + "_seconds", lambda: oracle_lifecycle.reviewer_process(
-            sys.modules[__name__], root, run, cmd, environment, controller))
+            sys.modules[__name__], root, run, cmd, environment, controller, stdin_payload=stdin_payload))
     else:
         completed = _timed(prefix + "_seconds", lambda: subprocess.run(
-            cmd, cwd=root, capture_output=True, text=True, env=environment))
+            cmd, cwd=root, capture_output=True, text=True, env=environment,
+            input=stdin_payload.decode() if stdin_payload is not None else None))
     process_record = {"exit_code": completed.returncode}
     if hasattr(completed, "native_registration"):
         process_record["native_registration"] = completed.native_registration
@@ -2449,6 +2452,19 @@ def _review_context(root: Path, tree: str, paths: list, binding: dict, evidence:
                                 for item in rounds]}
     context["publication_scope"] = publication_scope
     context["deterministic_coverage"] = deterministic
+    # Completed integration concerns carry forward only for the identical
+    # candidate, publication range, required identities, open findings and guards.
+    reusable_integration = []
+    if previous:
+        if __package__:
+            from . import oracle_parallel as integration
+        else:
+            import oracle_parallel as integration
+        reusable_integration = integration.reusable_integration(
+            (previous.get("review") or {}).get("integration_checkpoints", []), candidate_tree=tree,
+            publication_scope=publication_scope, required_paths=required_paths, input_hashes=inputs,
+            prior_findings=ledger, guard_changes=_observation_guard_changes(root, guards, previous))
+    context["reusable_integration"] = reusable_integration
     if __package__:
         from . import command_coverage
     else:

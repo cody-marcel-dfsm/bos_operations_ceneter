@@ -8,6 +8,7 @@ import copy
 import hashlib
 import json
 from pathlib import Path
+import re
 import time
 
 
@@ -15,6 +16,173 @@ AREAS = ("crosscutting-integration", "implementation-consumers", "verification-r
 INTEGRATION_CHECKS = ("governing-criteria", "entrypoints", "dependencies", "consumers", "publication", "failure-recovery")
 RETAINED_NAVIGATION_MAX_BYTES = 32 * 1024
 COHORT_PACKET_MAX_BYTES = 256 * 1024
+
+
+MAX_COHORT_PATHS = 6
+# Complete authoritative texts every cohort receives verbatim, in precedence
+# order. The first four are the sealed controlling authorities.
+GOVERNANCE_PATHS = (".agents/skills/oracle/SKILL.md", ".agents/skills/oracle/review-output.schema.json",
+                    "AGENTS.md", "Vault/docs/CONSTITUTION.md", "Vault/docs/architecture.md",
+                    "tools/validation-contract.md")
+GOVERNANCE_MAX_BYTES = 512 * 1024
+JOURNAL_MAX_BYTES = 4 * 1024 * 1024
+JOURNAL_NAME = "checkpoint.jsonl"
+_FINDING_REQUIRED = ("severity", "file", "line", "message", "id", "root_cause", "reproduction", "required_behavior",
+                     "recommendation", "affected_paths", "acceptance_checks", "origin", "origin_reason")
+
+
+def governance_bundle(o, root, context):
+    """Complete current governing bytes with exact provenance; never a summary."""
+    authorities = context.get("guards", {}).get("authority_digests", {})
+    parts, documents, total = [], [], 0
+    for path in GOVERNANCE_PATHS:
+        try:
+            raw = o._custody_read(root, Path(root) / path)[1]
+        except (OSError, o.OracleApprovalError) as exc:
+            raise o.OracleReviewIncomplete("Mandatory governance document is missing: " + path) from exc
+        sha = hashlib.sha256(raw).hexdigest()
+        if path in authorities and authorities[path] != sha:
+            raise o.OracleReviewIncomplete("Mandatory governance changed after the sealed context: " + path)
+        header = ("=== GOVERNANCE " + path + " sha256=" + sha + " bytes=" + str(len(raw)) + " ===\n").encode()
+        parts += [header, raw, b"" if raw.endswith(b"\n") else b"\n",
+                  ("=== END GOVERNANCE " + path + " ===\n").encode()]
+        documents.append({"path": path, "sha256": sha, "bytes": len(raw)})
+        total += len(raw)
+        if total > GOVERNANCE_MAX_BYTES:
+            raise o.OracleReviewIncomplete("Mandatory governance exceeds its bounded size; no summary is substituted")
+    payload = b"".join(parts)
+    return payload, {"kind": "boc-cohort-governance-bundle-v1", "sha256": hashlib.sha256(payload).hexdigest(),
+                     "bytes": len(payload), "documents": documents, "complete": True}
+
+
+def _canonical_digest(value):
+    return hashlib.sha256(json.dumps(value, sort_keys=True, separators=(",", ":"),
+                                     ensure_ascii=False).encode()).hexdigest()
+
+
+def integration_scope(candidate_tree, publication_scope, required_paths, input_hashes, prior_findings):
+    """The complete scope an integration concern assessed; any change reassigns it."""
+    return {"candidate_tree": candidate_tree,
+            "publication_range_sha256": (publication_scope or {}).get("range_sha256"),
+            "required_identity_sha256": _canonical_digest({name: input_hashes.get(name) for name in sorted(required_paths)}),
+            "open_findings_sha256": _canonical_digest({key: value for key, value in sorted(prior_findings.items())
+                                                       if isinstance(value, dict) and value.get("state") == "OPEN"})}
+
+
+def reusable_integration(rows, *, candidate_tree, publication_scope, required_paths, input_hashes, prior_findings,
+                         guard_changes):
+    """Retained REVIEWED/NOT_APPLICABLE concerns bound to the identical scope and guards."""
+    if guard_changes:
+        return []
+    scope = integration_scope(candidate_tree, publication_scope, required_paths, input_hashes, prior_findings)
+    result, seen = [], set()
+    for row in rows or []:
+        if (not isinstance(row, dict) or row.get("concern") not in INTEGRATION_CHECKS or row["concern"] in seen
+                or row.get("status") not in {"REVIEWED", "NOT_APPLICABLE"} or row.get("scope") != scope
+                or not isinstance(row.get("reason"), str) or not row["reason"].strip()
+                or not isinstance(row.get("inputs"), list) or not row["inputs"]
+                or any(not isinstance(item, dict) or input_hashes.get(item.get("path")) != item.get("digest")
+                       or item.get("digest") is None for item in row["inputs"])):
+            continue
+        seen.add(row["concern"])
+        result.append(copy.deepcopy(row))
+    return result
+
+
+def integration_complete(reused, current):
+    done = {row.get("concern") for row in [*reused, *current]
+            if isinstance(row, dict) and row.get("status") in {"REVIEWED", "NOT_APPLICABLE"}}
+    return done >= set(INTEGRATION_CHECKS)
+
+
+def _finding_valid(item, prefix):
+    if not isinstance(item, dict) or set(item) != set(_FINDING_REQUIRED):
+        return False
+    text = ("file", "message", "root_cause", "reproduction", "required_behavior", "recommendation", "origin_reason")
+    lists = ("affected_paths", "acceptance_checks")
+    return (item["severity"] in {"critical", "high", "medium", "low"}
+            and item["origin"] in {"INITIAL", "REPAIR", "MISSED", "REOPENED"}
+            and isinstance(item["line"], int) and not isinstance(item["line"], bool) and item["line"] >= 1
+            and all(isinstance(item[key], str) and item[key].strip() for key in text)
+            and all(isinstance(item[key], list) and all(isinstance(v, str) and v for v in item[key]) for key in lists)
+            and isinstance(item["id"], str) and re.fullmatch(prefix[:-3] + r"[0-9]{3}", item["id"]) is not None
+            and item["id"] != prefix)
+
+
+def replay_journal(o, text, plan, cohort, context, packet_sha256):
+    """Replay an interrupted cohort's ordered journal; only exactly bound rows survive."""
+    effective = _criterion_context(context, plan)
+    assigned, concerns = set(cohort["required_paths"]), set(cohort.get("integration_checks", []))
+    coverage, findings, integration, withdrawn, rejected = {}, {}, {}, set(), []
+    conflicted, stopped = set(), None
+    for number, line in enumerate(text.split("\n"), 1):
+        if not line.strip():
+            continue
+        try:
+            row = json.loads(line)
+            if not isinstance(row, dict):
+                raise ValueError("not an object")
+        except ValueError:
+            stopped = number
+            break
+        if row.get("plan_sha256") != plan["plan_sha256"] or row.get("packet_sha256") != packet_sha256:
+            rejected.append({"line": number, "reason": "foreign plan or packet"}); continue
+        kind = row.get("type")
+        try:
+            if kind == "coverage":
+                name = row.get("path")
+                if name not in assigned or not isinstance(row.get("reason"), str) or not row["reason"].strip():
+                    raise ValueError("unassigned path or missing reason")
+                o._checked_inputs(row.get("inputs"), effective, required_path=name)
+                entry = {"path": name, "status": "REVIEWED", "inputs": row["inputs"], "reason": row["reason"]}
+                if name in coverage and coverage[name] != entry:
+                    conflicted.add(name)
+                coverage.setdefault(name, entry)
+            elif kind == "finding":
+                item = row.get("finding")
+                if not _finding_valid(item, cohort["new_finding_prefix"]):
+                    raise ValueError("finding violates the review schema or cohort prefix")
+                if item["id"] in findings and findings[item["id"]] != item:
+                    raise ValueError("conflicting duplicate finding")
+                findings[item["id"]] = item
+            elif kind == "withdraw":
+                if row.get("path") not in assigned:
+                    raise ValueError("unassigned withdrawal")
+                withdrawn.add(row["path"])
+            elif kind == "integration":
+                if row.get("concern") not in concerns or row.get("status") not in {"REVIEWED", "NOT_APPLICABLE", "UNREVIEWED"}:
+                    raise ValueError("unassigned integration concern")
+                if not isinstance(row.get("reason"), str) or not row["reason"].strip():
+                    raise ValueError("integration concern lacks a reason")
+                o._checked_inputs(row.get("inputs"), effective)
+                integration.setdefault(row["concern"], {key: row[key] for key in ("concern", "status", "inputs", "reason")})
+            else:
+                raise ValueError("unknown journal type")
+        except (ValueError, KeyError, TypeError, o.OracleApprovalError) as exc:
+            rejected.append({"line": number, "reason": str(exc)})
+    affected = set(withdrawn) | set(conflicted)
+    for item in findings.values():
+        affected.update([item["file"], *item["affected_paths"]])
+    return {"coverage": [entry for name, entry in coverage.items() if name not in affected],
+            "findings": list(findings.values()), "integration": list(integration.values()),
+            "rejected": rejected, "stopped_at_line": stopped}
+
+
+def merge_journal(result, cohort_id, admitted):
+    """Add admitted journal observations to an unfinished aggregate; it stays unfinished."""
+    merged = copy.deepcopy(result)
+    if merged.get("review_status") == "COMPLETE":
+        raise ValueError("Journal observations belong only to an unfinished aggregate")
+    have = {row["path"] for row in merged.get("coverage", [])}
+    merged.setdefault("coverage", []).extend(row for row in admitted["coverage"] if row["path"] not in have)
+    ids = {item["id"] for item in merged.get("findings", [])}
+    merged.setdefault("findings", []).extend(item for item in admitted["findings"] if item["id"] not in ids)
+    merged.setdefault("journal_reconciliation", []).append({
+        "cohort_id": cohort_id, "admitted_coverage": [row["path"] for row in admitted["coverage"]],
+        "admitted_findings": [item["id"] for item in admitted["findings"]],
+        "admitted_integration": [row["concern"] for row in admitted["integration"]],
+        "rejected": admitted["rejected"], "stopped_at_line": admitted["stopped_at_line"], "eligibility": "UNFINISHED"})
+    return merged
 
 
 class CohortPacketBudgetError(ValueError):
@@ -199,10 +367,16 @@ def partition(context, binding, digest):
     groups = {area: [] for area in AREAS}
     for path in assigned:
         groups[_area(path)].append(path)
-    cohorts = [{"id": area, "required_paths": groups[area],
-                "integration_checks": list(INTEGRATION_CHECKS) if area == AREAS[0] else [],
-                "new_finding_prefix": f"F{index + 1}000"}
-               for index, area in enumerate(AREAS) if groups[area] or area == AREAS[0]]
+    reused = {row.get("concern") for row in context.get("reusable_integration", [])
+              if isinstance(row, dict) and row.get("status") in {"REVIEWED", "NOT_APPLICABLE"}}
+    cohorts = [{"id": AREAS[0], "required_paths": groups[AREAS[0]],
+                "integration_checks": [name for name in INTEGRATION_CHECKS if name not in reused],
+                "new_finding_prefix": "F1000"}]
+    for area in AREAS[1:]:
+        chunks = [groups[area][start:start + MAX_COHORT_PATHS] for start in range(0, len(groups[area]), MAX_COHORT_PATHS)]
+        for part, chunk in enumerate(chunks, 1):
+            cohorts.append({"id": area if len(chunks) == 1 else f"{area}-{part}", "required_paths": chunk,
+                            "integration_checks": [], "new_finding_prefix": f"F{len(cohorts) + 1}000"})
     plan = {"kind": "boc-parallel-review-plan-v1", "candidate_commit": context["base_commit"],
             "candidate_tree": context["candidate_tree"], "input_binding_sha256": digest(binding),
             "context_sha256": digest(context), "required_paths": assigned, "cohorts": cohorts,
@@ -840,6 +1014,10 @@ def review(o, root, tree, paths, evidence, owner):
         'digest_encoding': 'canonical-json-v1', 'json_pointer': '/caller_evidence',
         'value_sha256': digest(caller), 'navigation_only': True, 'eligibility': 'NONE'}
     caller_paged = len(_serialized(caller_navigation(caller, caller_original))) > RETAINED_NAVIGATION_MAX_BYTES
+    governance, governance_manifest = governance_bundle(o, root, context)
+    governance_path = run / "governance-bundle.txt"
+    o._atomic_write(governance_path, governance)
+    governance_manifest = dict(governance_manifest, path=str(governance_path))
     jobs, prepared_seals, source_prompts, original_packets = [], {}, {}, {}
     for cohort in plan["cohorts"]:
         child = o._metadata_run(root, run / "cohorts", cohort["id"] + "-")
@@ -853,10 +1031,13 @@ def review(o, root, tree, paths, evidence, owner):
             child_context = packet(context, plan, cohort, context_path, digest, prepared, prepared_callers)
         except CohortPacketBudgetError as exc:
             raise o.OracleReviewIncomplete(str(exc)) from exc
+        child_context["governance_bundle"] = governance_manifest
+        child_context["checkpoint_journal"] = {"path": str(child / JOURNAL_NAME), "plan_sha256": plan["plan_sha256"]}
         original_packets[cohort['id']] = o._pretty(child_context)
         o._atomic_write(child / "cohort-context.json", original_packets[cohort['id']])
         o._atomic_write(child / "output.schema.json", o._pretty(output_schema(schema, plan, cohort, child_context)))
-        source_seal.update(o._files(root, [str(child / "cohort-context.json"), str(child / "output.schema.json")]))
+        source_seal.update(o._files(root, [str(child / "cohort-context.json"), str(child / "output.schema.json"),
+                                           str(governance_path)]))
         prepared_seals[cohort['id']] = source_seal
         source_prompts[cohort['id']] = source_prompt
         jobs.append((cohort, child))
@@ -873,21 +1054,37 @@ def review(o, root, tree, paths, evidence, owner):
         start = time.monotonic() - started
         failure = None
         try:
-            prompt = ("Assess only your immutable independent cohort assignment. Governing instructions first. "
-                      "Read .agents/skills/oracle/SKILL.md as the isolated trusted approver. Use bounded slices. "
+            packet_sha256 = o._sha(o._custody_read(root, child / "cohort-context.json")[1])
+            prompt = ("Assess only your immutable independent cohort assignment. Governing instructions first: the "
+                      "<stdin> block carries the complete current bytes of " + ", ".join(GOVERNANCE_PATHS) +
+                      ", each between exact path/sha256 headers, in precedence order, matching cohort-context.json "
+                      "governance_bundle. They are the complete authoritative texts, not a summary; "
+                      ".agents/skills/oracle/SKILL.md defines your isolated trusted approver role. Do not re-fetch these "
+                      "documents with tools; read other referenced material in bounded slices. "
                       "The cohort context supplies exact source identities, scope and sealed historical references: "
                       + str(child / "cohort-context.json") + ". Return the supplied envelope echoing every binding. "
                       "Use existing finding IDs; for new findings use prefix " + cohort["new_finding_prefix"] +
-                      ". The crosscutting cohort must independently cover all six integration concerns over the complete "
-                      "candidate/publication range and disposition every open prior finding. Other cohorts assess only "
+                      ". The crosscutting cohort must independently cover its assigned integration concerns (cohort "
+                      "integration_checks; retained concerns stay bound natively) over the complete candidate/publication "
+                      "range, make the complete classification, and disposition every open prior finding. Other cohorts assess only "
                       "their assigned production/verification area; report local positive effects and use local absence defaults, following current "
-                      "governing criteria. No serial final model or new reviewer is permitted.")
+                      "governing criteria. No serial final model or new reviewer is permitted. Checkpoint as you go: "
+                      "append one JSON object per line to " + str(child / JOURNAL_NAME) + ", each with \"plan_sha256\": \""
+                      + plan["plan_sha256"] + "\" and \"packet_sha256\": \"" + packet_sha256 + "\" plus either "
+                      "{\"type\":\"coverage\",\"path\",\"inputs\",\"reason\"} for an assigned path finished with no finding "
+                      "(inputs are the exact consumed {path,digest} identities and include the path), "
+                      "{\"type\":\"finding\",\"finding\"} with the complete schema finding, "
+                      "{\"type\":\"withdraw\",\"path\"} to retract an earlier clean row, or "
+                      "{\"type\":\"integration\",\"concern\",\"status\",\"inputs\",\"reason\"} for a finished assigned concern. "
+                      "The journal is retained only if you are interrupted; it never approves.")
             prompt += ("\nMechanically prepared immutable source pages follow. They provide navigation, grant no coverage or approval, "
                        "and preserve mandatory governing-original reads. Complete unit/page and original-source locators, budget gaps "
                        "and unresolved construction dependencies remain in source-frontier.json. Read remaining pages only as needed.\n"
                        + source_prompts[cohort['id']])
+            if o._sha(o._custody_read(root, governance_path)[1]) != governance_manifest["sha256"]:
+                raise o.OracleApprovalError("Sealed governance bundle changed before dispatch")
             envelope = o._review_process(root, prompt, "reviewer", schema_path=child / "output.schema.json",
-                                         cohort_policy=COHORT_POLICY)
+                                         cohort_policy=COHORT_POLICY, stdin_payload=governance)
             return envelope
         except Exception as exc:
             failure = type(exc).__name__ + ": " + str(exc)
@@ -971,6 +1168,45 @@ def review(o, root, tree, paths, evidence, owner):
     result = aggregate(o, plan, context, envelopes, failures, root=root)
     if unadopted:
         result["unadopted_cohort_assessments"] = unadopted
+    scope = integration_scope(context["candidate_tree"], context.get("publication_scope"),
+                              context["required_coverage_paths"], context["input_hashes"], context.get("prior_findings", {}))
+    reused = copy.deepcopy(context.get("reusable_integration", []))
+    current = []
+    cross = next((cohort for cohort, _ in jobs if cohort["id"] == AREAS[0]), None)
+    if cross is not None and AREAS[0] in envelopes and isinstance(envelopes[AREAS[0]].get("integration"), list):
+        current = [dict({key: row[key] for key in ("concern", "status", "inputs", "reason")}, scope=scope)
+                   for row in envelopes[AREAS[0]]["integration"]
+                   if isinstance(row, dict) and row.get("concern") in cross["integration_checks"]]
+    # Interrupted cohorts keep only their exactly bound journal observations.
+    for cohort, child in jobs:
+        if cohort["id"] in envelopes or result.get("review_status") == "COMPLETE":
+            continue
+        journal = child / JOURNAL_NAME
+        try:
+            raw = journal.read_bytes() if journal.is_file() and not journal.is_symlink() else b""
+            if len(raw) > JOURNAL_MAX_BYTES:
+                raise ValueError("journal exceeds its bound")
+            packet_sha256 = o._sha(original_packets[cohort["id"]] if isinstance(original_packets[cohort["id"]], bytes)
+                                   else original_packets[cohort["id"]].encode())
+            admitted = replay_journal(o, raw.decode("utf-8", errors="replace"), plan, cohort, context, packet_sha256)
+        except (OSError, ValueError, KeyError, TypeError, o.OracleApprovalError) as exc:
+            result.setdefault("journal_reconciliation", []).append(
+                {"cohort_id": cohort["id"], "error": str(exc), "eligibility": "NONE"})
+            continue
+        if raw:
+            o._atomic_write(child / "checkpoint-journal-original.jsonl", raw)
+        result = merge_journal(result, cohort["id"], admitted)
+        if cohort["id"] == AREAS[0]:
+            current += [dict(row, scope=scope) for row in admitted["integration"]]
+    result["integration_checkpoints"] = [*reused, *[row for row in current
+                                                    if row["concern"] not in {item["concern"] for item in reused}]]
+    if result.get("review_status") == "COMPLETE" and not integration_complete(reused, current):
+        result.update(review_status="INCOMPLETE", verdict="INCOMPLETE",
+                      limitations=[*result.get("limitations", []),
+                                   "Integration concerns remain unfinished: " + ", ".join(
+                                       name for name in INTEGRATION_CHECKS if name not in
+                                       {row["concern"] for row in result["integration_checkpoints"]
+                                        if row.get("status") in {"REVIEWED", "NOT_APPLICABLE"}})])
     artifacts = o._files(root, [str(path) for _, child in jobs for path in child.iterdir() if path.is_file()])
     artifacts.update(o._files(root, [str(plan_path), str(seals_path)]))
     spans = [json.loads(o._custody_read(root, child / "cohort-timing.json")[1]) for _, child in jobs]
