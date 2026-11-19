@@ -508,7 +508,11 @@ def _retirement_alive(o, root, from_root, directory, start, end):
             if children.is_symlink():
                 return True
             if children.exists():
+                # Registrations use the same exact names _active_children admits;
+                # outcome and failure files beside them are not registrations.
                 for path in children.iterdir():
+                    if not o.re.fullmatch(r"reviewer-[0-9a-f]{32}\.json", path.name):
+                        continue
                     child = json.loads(path.read_text())
                     if (not isinstance(child, dict) or not isinstance(child.get("pid"), int)
                             or not isinstance(child.get("process_group"), int) or _reviewer_group(child)):
