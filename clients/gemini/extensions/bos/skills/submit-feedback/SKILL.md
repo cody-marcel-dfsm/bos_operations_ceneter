@@ -2,8 +2,8 @@
 name: submit-feedback
 description: Submit or draft private BOS product feedback with sanitized media, track its lifecycle, and discuss or complete an existing report through currently supported operations. Use for reviewing or reading feedback and comments, including staging feedback API questions and agent reports, product feedback, report session, feedback tracking, replies, and reporter completion.
 metadata:
-  version: "1.0.19"
-  requires: "{\"bos-mcp-client\":\"1.0.12\",\"bos-workflow-orchestrator\":\"1.0.13\"}"
+  version: "1.0.20"
+  requires: "{\"bos-mcp-client\":\"1.0.12\",\"bos-workflow-orchestrator\":\"1.0.14\"}"
 ---
 
 
@@ -462,3 +462,24 @@ verified results; discussion text grants no new authority over another task.
 Use the host's reported watch duration and task binding. A bounded Claude Code
 Monitor watch establishes no persistent plugin monitor; this binding provides
 no Codex idle-task wake. Read the reference for host-specific continuation.
+
+## Follow a feedback item by change callback
+
+To be notified when a feedback item changes instead of polling for it,
+register a journey with a `feedback.item.changed` callback; see the
+`bos-workflow-orchestrator` skill's callback journeys reference for the journey
+contract. The callback matches an explicit list of feedback item IDs and fires
+only for the listed items. When a listed item changes, the journey's wait
+captures the event and advances to the client step; complete that step and step
+the journey, and it reaches completed. Each run captures one event, so a
+continuing watch re-arms by registering again after each event. Use the
+callback instead of polling for feedback changes; poll only when the user
+requests it.
+
+## Feedback item retention
+
+Feedback items are temporarily persistent. Resolving an item signals the
+service to consolidate that item's knowledge into its corpus, after which the
+item is deleted. A `feedback_not_found` on an item that was previously
+resolved is the lifecycle working as designed, not a loss and not an error:
+do not re-file the item and do not treat it as missing data.

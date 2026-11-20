@@ -2,8 +2,8 @@
 name: education-center-class-operations
 description: Handle Education Center class rosters, schedules, capacity, camp enrollment reports, family contact rosters, and camp-assignment scenarios through tenant-scoped BOS data plus Care.com confirmations from the configured customer mailbox. Use when asked for students enrolled in a class or camp by day, family phone numbers, classes, camps, enrollment reports, rosters, attendance dates, open seats, Bright Horizons or Care.com placement, or assigning students to camps.
 metadata:
-  version: "1.0.19"
-  requires: "{\"bos-mcp-client\":\"1.0.12\",\"bos-visual-output\":\"1.0.13\",\"camp-capacity-planning\":\"1.0.19\",\"education-center-invoice-operations\":\"1.0.19\",\"education-center-service-routing\":\"1.0.19\",\"email-account-routing\":\"1.0.12\"}"
+  version: "1.0.20"
+  requires: "{\"bos-mcp-client\":\"1.0.12\",\"bos-visual-output\":\"1.0.13\",\"camp-capacity-planning\":\"1.0.20\",\"education-center-invoice-operations\":\"1.0.20\",\"education-center-service-routing\":\"1.0.20\",\"email-account-routing\":\"1.0.12\"}"
 ---
 
 # Education Center Class Operations

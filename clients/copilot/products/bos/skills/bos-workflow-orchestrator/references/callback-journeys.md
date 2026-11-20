@@ -13,7 +13,14 @@ Bootstrap declares named callbacks with a source,
 its typed business inputs and a bounded match predicate. Source inputs use
 literal or journey-input bindings. The first source is the configured Gmail
 inbox; readiness and eligible match/deduplication fields come from its current
-contract. Author no provider URL, handler, executable code or authority selector.
+contract. Another source is the feedback queue: `feedback.item.changed` fires
+when a feedback item in the authorized queue changes. Its match is an explicit
+list of feedback item IDs; the callback fires only for the listed items, so
+watching a new item means adding its ID and re-registering. Deduplication is
+on the feedback item, the change, and the status. Check the source's readiness
+through its current status read before registering; a source that reports
+not-ready needs its grant or configuration completed before registration can
+succeed. Author no provider URL, handler, executable code or authority selector.
 
 Before upload or Start, obtain the source's full current `api.contract.get`
 response and matching read-only `service.describe` contact. Call
