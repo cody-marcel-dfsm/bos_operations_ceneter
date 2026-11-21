@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import {createHash} from "node:crypto";
 import {spawnSync} from "node:child_process";
 import {readFile} from "node:fs/promises";
 import {join} from "node:path";
@@ -106,12 +107,12 @@ test("markup, directives, URLs and graph syntax remain inert quoted labels", () 
   model.journeys[0].graph.nodes[0].label = attack;
   model.journeys[0].graph.edges[0].label = attack;
   const encoded = mermaidLabel(attack); const output = renderJourneyView(model);
-  assert(output.includes(encoded));
+  assert(output.replaceAll("<br/>", "").includes(encoded));
   for (const token of ['javascript:', '<script>', '%%{', 'click root "', '"] --> root;']) assert(!output.includes(token), token);
   // Every node has only generated IDs/static classes; no raw data can break quotes.
   const nodes = output.split("\n").filter(line => /^  n\d+\[/.test(line));
   assert(nodes.length > 10);
-  assert(nodes.every(line => /^  n\d+\["[^"<>]*"\]:::(neutral|achieved|blocked)$/.test(line)));
+  assert(nodes.every(line => /^  n\d+\["(?:[^"<>]|<br\/>)*"\]:::(neutral|achieved|blocked)$/.test(line)));
   for (const invalid of ["bad\nlabel", "bad\u001blabel", "bad\u202elabel"]) {
     const value = example(); value.title = invalid; assert.throws(() => renderJourneyView(value));
   }
@@ -127,6 +128,44 @@ test("bounds and empty/unknown state fail safely without invented journeys", () 
   const wide = example(); wide.journeys[0].label = "x".repeat(512);
   wide.journeys[0].ownerApp = "y".repeat(512); wide.journeys[0].customerLabel = "z".repeat(512);
   assert(renderJourneyView(wide).length > 1000);
+});
+
+test("diagram ordering is invisible and preserves every supplied visible relationship", () => {
+  const model = example(); const output = renderJourneyView(model);
+  const ids = [...output.matchAll(/^  (n\d+)\[/gm)].map(row => row[1]).sort((a, b) => Number(a.slice(1)) - Number(b.slice(1)));
+  const layout = [...output.matchAll(/^  (n\d+) ~~~ (n\d+)$/gm)].map(row => [row[1], row[2]]);
+  assert.deepEqual(layout, ids.slice(1).map((id, index) => [ids[index], id]));
+  assert.equal((output.match(/^  n\d+ -->/gm) ?? []).length, model.journeys.reduce((count, row) => count + row.graph.edges.length, 0));
+  assert.equal((output.match(/^  n\d+ -\.->/gm) ?? []).length, model.journeys.reduce((count, row) => count + row.work.reduce((total, work) => total + work.blockedBy.length, 0), 0));
+  assert(!output.includes("linkStyle"));
+});
+
+test("bounded Unicode diagram lines preserve encoded text and only generated breaks", () => {
+  const model = example(); model.title = "🐙".repeat(100) + 'x"<br/> & !'.repeat(15);
+  model.journeys[0].ownerApp = "UnbrokenOwner".repeat(30);
+  model.journeys[0].graph.edges[0].label = "Long edge: " + "z".repeat(200);
+  const output = renderJourneyView(model);
+  const labels = [...output.matchAll(/\["([^"\n]*)"\]|\|"([^"\n]*)"\|/g)].map(row => row[1] ?? row[2]);
+  assert(labels.some(label => label.includes("<br/>")));
+  for (const label of labels) for (const line of label.split("<br/>")) {
+    const decoded = line.replace(/#(\d+);/g, (_, point) => String.fromCodePoint(Number(point)));
+    assert([...decoded].length <= 40, `Line exceeds bounded display width: ${[...decoded].length}`);
+  }
+  assert(output.replaceAll("<br/>", "").includes(mermaidLabel(model.title + " | display only | freshness: current")));
+  assert(output.replaceAll("<br/>", "").includes(mermaidLabel(model.journeys[0].graph.edges[0].label)));
+  assert(!output.includes("<br/> &"));
+});
+
+test("diagram layout leaves current stale and unknown text output byte-identical", () => {
+  const expected = {
+    current: "791d0efcc083acff6dba54543e4180399cb332b0be285f5280f2a90065cc6162",
+    stale: "5df3e0b79fce2cd3762c14f171b01b82b367ea76ed570b87f0ab83caf4581bc8",
+    unknown: "901030dec32a9a676b40ee5a1087b0147f032438dd847b4eed65e4d9672e80c1"
+  };
+  for (const [freshness, hash] of Object.entries(expected)) {
+    const model = example(); model.freshness = freshness;
+    assert.equal(createHash("sha256").update(renderJourneyView(model, {format: "text"})).digest("hex"), hash);
+  }
 });
 
 test("stdin CLI emits deterministic model views, rejects invalid/oversized input without data echo", () => {
