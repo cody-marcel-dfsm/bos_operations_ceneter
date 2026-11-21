@@ -365,6 +365,17 @@ class PackageGateTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'configuration'):
             self.validate()
 
+    def test_exact_implementation_skill_body_is_admitted(self):
+        path = self.root / 'source/platform/implementation/SKILL.md'
+        path.parent.mkdir(parents=True)
+        path.write_text('---\nname: implementation\nmetadata:\n  version: "1.0.0"\n---\nbase guidance\n')
+        self.commit()
+        baseline = self.git('rev-parse', 'HEAD')
+        path.write_text('---\nname: implementation\nmetadata:\n  version: "1.0.1"\n---\nupdated guidance\n')
+        self.commit()
+        self.assertIn(str(path.relative_to(self.root)),
+                      d.scope(self.root, baseline, self.git('rev-parse', 'HEAD')))
+
     def test_unknown_skill_body_cannot_hide_behind_pin_change(self):
         path = self.root / 'source/other/SKILL.md'
         path.parent.mkdir(parents=True)
