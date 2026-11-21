@@ -6,10 +6,10 @@
     "model": "gpt-6.1-sol",
     "oracle_sha256": "a9fe3d5142f622f993eee31ad2089b21a9e3c2e4c3147eb81f92e48524b83133",
     "host": "Codys-MacBook-Pro.local",
-    "time": "2026-11-21T22:30:32Z",
+    "time": "2026-11-21T22:40:03Z",
     "origin_main": "95bbc0f5a2bc3cec2399a3f8880139d2b4ce0065",
     "request_sha256": "2422e6d25fff07446de9438bcedd9a9d5cba713ae85bd148ad1ef9a9487c703b",
-    "proposal_sha256": "9d0ab888c81223e2019409fbf2471b24c64744ff6af128c541ca6bf1f0a12284"
+    "proposal_sha256": "150bb4eac65db864e00bb3f2c0b5fd549a0fcaffe78e14e9554a8ce29bdc8707"
   },
   "selection": {
     "acceptance": [
@@ -102,7 +102,7 @@
     "change_class": "deep_bug_fix",
     "design": null,
     "reason": "Retain the complete prior admission, versioning and package contract while adding bounded diagram readability correction and generated-consumer interactions. Capture unchanged-test fail-before/pass-after layout and wrapping reproductions. Preserve all existing security and state assertions; normalization may remove only trusted generated line-break markers. Supplement deterministic checks with actual installed strict-renderer before/after metrics and visual inspection at desktop and mobile widths for current, stale and hostile-label examples, with root and nested HTML labels disabled and no executable SVG, anchors or foreign objects. Existing complete deterministic package, privacy, generation and publication checks remain mandatory. Source and synthetic rendering evidence establish no installed-host or provider acceptance. Preserve original failures and delivery clocks; add no dependency, live provider call or automatic recurrence registry expansion.",
-    "revision_of": "6bf32a270da188f4032a9b182ca01c4517639cc5b5354307c420f90ef4218e0d",
+    "revision_of": "286f69a748cb146d0e9cc93bfbfb10d0fade4ec6ac1103a217f89e034e87c88b",
     "scope_paths": [
       "source/platform/implementation/SKILL.md",
       "tools/deterministic_package.py",
@@ -164,8 +164,8 @@
       "clients/muse/plugins/bos/skills/ada/references/journey-view.md"
     ]
   },
-  "base_commit": "bc6c7da1f0cc0b4ff2138f6fe3368c45e4d11e67",
-  "base_tree": "c57b2ef8a30557d26aaadb599ab3c5de2cb80cfc",
+  "base_commit": "2bb3c6f770c15b55957900ba9b669b95cad4cfb4",
+  "base_tree": "cef2f9131ebc96aed8ec32698034e81a3ee386d3",
   "catalog_sha256": "9a96f1cd2a973457f9da681dddcc5161aa8ffda188b092d849e5bc83999391c8",
   "runtime": {
     "node": "v22.11.0",
@@ -175,8 +175,8 @@
     "architecture": "arm64",
     "options_sha256": "ebc442c160f8629073a82976daadaba1d95a60a38d768c81c8eb06598aedcac5"
   },
-  "proposal_sha256": "9d0ab888c81223e2019409fbf2471b24c64744ff6af128c541ca6bf1f0a12284",
-  "review_sha256": "2cf00bed8e30b1823a9fa63d9d0976f403613bf4fe1b514f104ebbef02953d7d",
+  "proposal_sha256": "150bb4eac65db864e00bb3f2c0b5fd549a0fcaffe78e14e9554a8ce29bdc8707",
+  "review_sha256": "09735a7bbf24dc121d083c0b57e584d2e2e6e119da38d6b4ebf17104c3729dba",
   "commands": [
     {
       "category": "sanity",
@@ -241,6 +241,6 @@
     "reasoning_effort": "medium",
     "maximum_reasoning_effort": "medium"
   },
-  "contract_sha256": "286f69a748cb146d0e9cc93bfbfb10d0fade4ec6ac1103a217f89e034e87c88b",
-  "seal": "b94a3225f8d1cae52f5ef1404b70818966af4bab47300193cec9cc5d84937d34"
+  "contract_sha256": "99ea5783bbc4478986caaef35218e8ec0f8b7e205e33ab34c2e69a6c1a80eb38",
+  "seal": "ec9c564af3aafd4615f49ca2110d399e6a81099a689e6f477fc42e021b502fbc"
 }
