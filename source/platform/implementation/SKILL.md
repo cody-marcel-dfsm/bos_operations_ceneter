@@ -2,7 +2,7 @@
 name: implementation
 description: Implement application-neutral Business Operating System platform changes while preserving tenant isolation, explicit app scope, PO/GO data boundaries, server-owned runtime behavior, and fail-closed execution. Use for shared BOS runtime, MCP, plugin, authentication-context, provider, migration, or cross-application infrastructure changes.
 metadata:
-  version: "1.0.12"
+  version: "1.0.13"
   requires: "{}"
 ---
 
@@ -72,6 +72,25 @@ requested outcome.
    durable platform rule.
 8. Run focused tests, boundary contracts, security checks, and packaging checks.
 9. Review the actual diff against the architecture before handoff.
+
+## Retell development iterations
+
+Reuse the existing Retell agent for implementation iterations and live tests.
+Discover and bind its exact agent ID and associated engine ID in the authorized
+account before editing. Preserve those bindings across sessions, retries and
+checks; verify that the agent still references the intended engine.
+
+Update the same existing draft with the provider's advertised update/PATCH
+contract. Publish a version on that same agent ID only when the reviewed change
+requires an authorized deployment. Missing or ambiguous IDs require account-scoped
+lookup and resolution before mutation. Create a new agent only when the user
+explicitly requests a brand-new agent.
+
+Inspect implementation helpers for create-on-missing and create-after-error
+fallbacks and remove those fallbacks within the authorized implementation scope.
+Use synthetic fixtures and mocked provider calls by default. Explicitly authorized
+live tests reuse the bound existing test agent and engine; they preserve the
+same IDs and the provider's existing account and deployment controls.
 
 ## Required boundaries
 
