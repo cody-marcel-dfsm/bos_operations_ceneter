@@ -980,12 +980,12 @@
       }
     },
     "implementation": {
-      "version": "1.0.13",
+      "version": "1.0.14",
       "requires": {},
       "path": "source/platform/implementation",
       "files": {
         "SKILL.md": {
-          "sha256": "6f501da12e0bf46a6ba5c2230130b4ee3bdf68e0c4739be00b8b4a42096597ef",
+          "sha256": "560ccbfe96e3c2e8ba022cc7dc51bda04a8004f71a68be725d1e11c8ef8f49b6",
           "mode": 420
         },
         "agents/openai.yaml": {
@@ -994,7 +994,7 @@
         }
       },
       "effective": {
-        "bos": "d9c2c55bc33137b5b1f23ef8a1b249a6cbae9659dc4ff0e6f3c0246b49566383"
+        "bos": "1a848e7e051200a4f8edc2ea2950de146bf725142fcb2de9db50179c54f6d516"
       }
     },
     "landing-page-copywriting": {

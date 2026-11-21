@@ -2,7 +2,7 @@
 name: implementation
 description: Implement application-neutral Business Operating System platform changes while preserving tenant isolation, explicit app scope, PO/GO data boundaries, server-owned runtime behavior, and fail-closed execution. Use for shared BOS runtime, MCP, plugin, authentication-context, provider, migration, or cross-application infrastructure changes.
 metadata:
-  version: "1.0.13"
+  version: "1.0.14"
   requires: "{\"bos-mcp-client\":\"1.0.12\"}"
 ---
 
@@ -166,8 +166,10 @@ checks; verify that the agent still references the intended engine.
 Update the same existing draft with the provider's advertised update/PATCH
 contract. Publish a version on that same agent ID only when the reviewed change
 requires an authorized deployment. Missing or ambiguous IDs require account-scoped
-lookup and resolution before mutation. Create a new agent only when the user
-explicitly requests a brand-new agent.
+lookup and resolution before mutation. Create a new agent or engine only when
+the user explicitly requests that new resource. Cloned or renamed replacement
+agents and replacement engines require the same explicit request; they never
+serve as iteration or error-recovery fallbacks.
 
 Inspect implementation helpers for create-on-missing and create-after-error
 fallbacks and remove those fallbacks within the authorized implementation scope.
