@@ -73,6 +73,7 @@ const bosContextHeader = "X-BOS-Context-Handle";
 // Retain the exact serialized submission only for this local request's lifetime.
 // It adds no wire field, public locator or persisted execution state.
 const registrationSubmissions = new WeakMap();
+const registrationDescriptors = new WeakMap();
 
 function requireObject(value, label) {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
@@ -314,8 +315,9 @@ export function buildDiscoveredOperationRequest(contract, contextHandle, payload
   );
 }
 
-export function buildJourneyRegistrationRequest(contract, contextHandle, document) {
-  validateApiContractResponse(contract, {operation:"lead-director.journeys.register"});
+export function buildJourneyRegistrationRequest(contract, contextHandle, document, {application} = {}) {
+  const expected = {operation:"lead-director.journeys.register", ...(application === undefined ? {} : {application})};
+  validateApiContractResponse(contract, expected);
   const execution = contract.execution;
   if (execution.method !== "POST" || execution.transport !== "https" ||
       execution.context_header !== bosContextHeader) {
@@ -330,6 +332,7 @@ export function buildJourneyRegistrationRequest(contract, contextHandle, documen
     body: JSON.stringify(document)
   }, contextHandle, execution.context_header);
   registrationSubmissions.set(request,request.body);
+  registrationDescriptors.set(request, {contract: structuredClone(contract), expected: structuredClone(expected)});
   return Object.freeze(request);
 }
 
@@ -573,6 +576,29 @@ function headerValue(headers, name) {
   return entry?.[1];
 }
 
+function declaredAdmissionError(response, error, registrationRequest) {
+  if (!["PAID_PLAN_REQUIRED", "MCP_ENTITLEMENT_UNAVAILABLE"].includes(error?.code)) return null;
+  const descriptor = registrationDescriptors.get(registrationRequest);
+  if (!descriptor || registrationSubmissions.get(registrationRequest) !== registrationRequest.body) {
+    throw new Error("Admission errors require the unchanged request and its actual validated descriptor");
+  }
+  validateApiContractResponse(descriptor.contract, descriptor.expected);
+  requireExactKeys(response.body, new Set(["error"]), "declared public error response");
+  const declared = descriptor.contract.public_errors.find(entry => entry.code === error.code);
+  const canonical = error.code === "PAID_PLAN_REQUIRED" ? {status: 403, retryable: false} : {status: 503, retryable: true};
+  if (!declared || declared.http_status !== response.http_status || declared.retryable !== error.retryable ||
+      response.http_status !== canonical.status || error.retryable !== canonical.retryable) {
+    throw new Error("Admission error code, status and retryable flag must match the actual current declaration");
+  }
+  const retryAfter = headerValue(response.headers, "retry-after");
+  if (retryAfter !== undefined && (typeof retryAfter !== "string" || retryAfter.length > 128 ||
+      /[\r\n\x00]/u.test(retryAfter) || (!/^[1-9][0-9]*$/u.test(retryAfter) && Number.isNaN(Date.parse(retryAfter))))) {
+    throw new Error("Retry-After must retain valid service-returned timing");
+  }
+  return {next: "declared_public_error", http_status: response.http_status, error,
+    ...(error.retryable && retryAfter !== undefined ? {retry_after: retryAfter} : {})};
+}
+
 export function interpretJourneyResponse(response, {registrationRequest} = {}) {
   requireObject(response, "HTTP response");
   if (!Number.isInteger(response.http_status)) {
@@ -593,6 +619,8 @@ export function interpretJourneyResponse(response, {registrationRequest} = {}) {
     if(Object.keys(workflow.lifecycle).length===2) return {next:"workflow_view",body:workflow};
     return {...interpretJourneyResponse({...response,body:workflow.lifecycle}),workflow};
   }
+  const admission = declaredAdmissionError(response, publicError, registrationRequest);
+  if (admission) return admission;
   const errorCode = publicError?.code?.toUpperCase();
   // Callback errors also occur inside ordinary failed/failure-caught lifecycle
   // envelopes. Their status, terminal rules and actions use the same validator
@@ -719,14 +747,14 @@ export function interpretJourneyResponse(response, {registrationRequest} = {}) {
 
 export async function runJourneyRecovery(
   initialResponse,
-  { wait, invoke, contextHandle } = {}
+  { wait, invoke, contextHandle, registrationRequest } = {}
 ) {
   if (typeof wait !== "function" || typeof invoke !== "function") {
     throw new Error("runJourneyRecovery requires wait and invoke functions");
   }
   let response = initialResponse;
   while (true) {
-    const decision = interpretJourneyResponse(response);
+    const decision = interpretJourneyResponse(response, {registrationRequest});
     if (decision.next !== "poll_state") return response;
     await wait(decision.retry_after_seconds);
     const request = contextHandle === undefined

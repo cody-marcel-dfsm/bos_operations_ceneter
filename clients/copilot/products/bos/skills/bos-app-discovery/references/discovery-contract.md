@@ -436,3 +436,27 @@ authenticated reads. Preserve a partial result when those reads succeed.
 Browser or copied-endpoint work never repairs this state.
 
 Public `location_context` and `ownership_context` output-schema properties are display labels in both operation Describe and legacy `api.contract.get` descriptors only when they are closed objects containing exactly one required `label` string with minimum length 1 and maximum length 255. Raw context selectors, credentials, altered or open shapes, and those fields in input or other descriptor positions retain rejection.
+
+
+## Selected-app current-v1 compatibility
+
+The optional client-helper `application` tuple contains independently observed
+`contact` and scoped `description`. Identity-v2 uses the literal public key from
+`getApps` as `public_application` and the directory's actual registered
+`contact: {uri}`. Match that key and URI with the description's application; infer
+no correspondence by normalizing internal app codes or display labels. Legacy rich
+contacts are accepted only with exact matching identity. A tuple validates source
+consistency and supplies no permission, freshness proof, host transport or grant.
+
+Carry the tuple into API-contract validation, discovery refresh, contract-facts
+projection and callback readiness. A projection entry may include `application`
+beside its existing `kind`, `document` and descriptive `scope`. Preserve observed
+values and provenance; scope labels cannot substitute for the tuple. Old helper
+calls remain on their existing Lead Director defaults.
+
+A new app can describe the existing `lead-director.journeys.register` operation and
+`lead-director-journey-registration/v1` schema under its own registered contact.
+Validate the complete unchanged v1 schema and the matching app/scoped contacts,
+then copy the returned URI verbatim. Construct no route or app-specific native
+alias. Registration and lifecycle HTTP execution still require actual same-binding
+host support; the existing native exception remains application-limited.

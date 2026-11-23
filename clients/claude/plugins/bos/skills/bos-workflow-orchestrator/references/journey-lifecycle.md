@@ -72,3 +72,35 @@ repeat registration.
 The client never sends or stores an execution, graph, version, digest,
 revision, occurrence, progress, retry, transition, action, or idempotency
 identifier.
+
+
+## Discovered app binding and admission errors
+
+Legacy helper calls retain their Lead Director defaults. For another published
+app, obtain an independent current directory contact, the public application key
+from `getApps`, and the scoped application description. Inside the BOS-owned
+helper use `application: {public_application, contact, description}` as the fourth
+argument option of `buildJourneyRegistrationRequest(contract, contextHandle,
+document, {application})`. The helper validates agreement and the full existing v1
+schema, then copies `contract.execution.uri`; it creates no route, native alias,
+new API version or authority. Pass the same tuple to required source-readiness
+checks. Context headers and credentials retain their existing host boundary.
+
+Preserve the actual constructed request and supply it as `registrationRequest`
+when interpreting its response or continuing `runJourneyRecovery`. For the exact
+advertised canonical commercial errors, the result is `next: declared_public_error`
+with the HTTP status and unchanged safe public error, before lifecycle parsing:
+
+- `PAID_PLAN_REQUIRED`: HTTP 403 and `retryable: false`; payment is a prerequisite.
+- `MCP_ENTITLEMENT_UNAVAILABLE`: HTTP 503 and `retryable: true`; current entitlement
+  evidence is unavailable.
+
+The actual validated request descriptor must declare the exact code/status/flag.
+Missing context, undeclared or mismatched errors, malformed envelopes and obsolete
+HTTP 402 variants fail closed. Existing authentication and special-error rules
+retain their behavior. The result contains no invented action or timing. A valid
+actual Retry-After header is retained only for a retryable error; its absence
+provides no retry schedule. The recovery loop returns this blocked response
+without waiting, logging in, paying or reissuing registration. Resume only through
+current supported service recovery or an independently authorized fresh operation;
+never replay a registration whose outcome is uncertain.

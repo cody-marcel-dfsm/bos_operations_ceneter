@@ -621,3 +621,18 @@ test("extracted BOS archive executes Draft 2020-12 journey helpers without repos
   assert.equal(adapterRequests[0].href, describedOperation.execution.uri);
   assert.equal(adapterRequests[1].headers["X-BOS-Context-Handle"], contextHandle);
 });
+
+
+test("new-app binding and declared admission errors survive all generated BOS consumers", async()=>{
+ const {readFile}=await import('node:fs/promises');
+ const f=JSON.parse(await readFile(new URL('./fixtures/current-app-registration.json',import.meta.url),'utf8'));
+ const application={public_application:'sample-work-app',contact:{uri:'bos://apps/sample-work-app/manifest'},description:f.app_describe};
+ const document={identity:'synthetic work',name:'Synthetic work',inputs:{},entry:'done',nodes:[{code:'done',type:'server',inputs:{},outputs:{},terminal:true}]};
+ for(const host of ['claude/plugins','codex/plugins','copilot/products','gemini/extensions','muse/plugins']){
+  const runtime=await import(new URL(`../clients/${host}/bos/skills/bos-workflow-orchestrator/scripts/journey-runtime-client.mjs`,import.meta.url));
+  const request=runtime.buildJourneyRegistrationRequest(f.registration_contract,'bos_ctx_v2_'+'a'.repeat(64),document,{application});
+  assert.equal(request.href,f.registration_contract.execution.uri);
+  assert.deepEqual(JSON.parse(request.body),document);
+  assert.equal(runtime.interpretJourneyResponse(f.admission_responses[0],{registrationRequest:request}).next,'declared_public_error');
+ }
+});

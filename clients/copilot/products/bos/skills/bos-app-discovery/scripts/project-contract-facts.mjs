@@ -208,14 +208,15 @@ export function projectContractFacts({documents} = {}) {
   if (!Array.isArray(documents) || !documents.length || documents.length > 128) throw new Error('Expected one to 128 observed documents');
   const operations = [];
   documents.forEach((entry, document_index) => {
-    if (!object(entry) || Object.keys(entry).sort().join(',') !== 'document,kind,scope') throw new Error('Expected exact observed document, kind and descriptive scope');
+    if (!object(entry) || !['application,document,kind,scope', 'document,kind,scope'].includes(Object.keys(entry).sort().join(','))) throw new Error('Expected observed document, kind, descriptive scope and optional selected application evidence');
+    const expected = entry.application === undefined ? {} : {application: entry.application};
     const scope = scopeOf(entry.scope), base = {kind: entry.kind, scope, document_index};
     if (entry.kind === 'operation-describe') {
-      validateOperationDescription(entry.document);
+      validateOperationDescription(entry.document, expected);
       entry.document.operations.forEach((operation, index) => operations.push(rowFacts(operation, entry.document,
         {...base, pointer: '/operations/' + index})));
     } else if (entry.kind === 'api-contract') {
-      validateApiContractResponse(entry.document, {operation: entry.document?.operation});
+      validateApiContractResponse(entry.document, {operation: entry.document?.operation, ...expected});
       operations.push(rowFacts(entry.document, entry.document, {...base, pointer: ''}));
     } else throw new Error('Unsupported observed contract kind');
   });

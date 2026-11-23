@@ -4,10 +4,10 @@ import {validatePublicError} from "./journey-runtime-client.mjs";
 
 // A source-status read never receives or replaces the pending registration.
 // Authentication, context binding and provider consent stay with the BOS host.
-export async function checkCallbackSourceReadiness({adapter, sourceContract, contact}) {
+export async function checkCallbackSourceReadiness({adapter, sourceContract, contact, application}) {
   const contract = structuredClone(sourceContract);
   const described = structuredClone(contact);
-  validateApiContractResponse(contract);
+  validateApiContractResponse(contract, application === undefined ? {} : {application});
   const descriptor = contract.input_schema["x-bos-callback-source"];
   if (!descriptor || contract.bosl_server_node !== false || contract.effect !== "read" ||
       contract.execution.method !== "GET" || contract.readiness.status !== "ready") {

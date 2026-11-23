@@ -97,7 +97,7 @@ const leadDirectorAppDescribe = Object.freeze({
 const operationIdPattern = /^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*$/u;
 const semanticOperationPattern = /^[a-z][a-z0-9_-]*(?:\.[a-z][a-z0-9_-]*)+$/u;
 const semanticVersionPattern = /^[0-9]+\.[0-9]+\.[0-9]+(?:[-+][A-Za-z0-9.-]+)?$/u;
-const leadDirectorBoslUriPattern = /^bos:\/\/apps\/lead-director\/bosl\/([a-f0-9]{32})\/(schema|reference|examples)(?:\?context_handle=(bos_ctx_v2_[a-f0-9]{64}))?$/u;
+const applicationBoslUriPattern = /^bos:\/\/apps\/([a-z][a-z0-9._-]*)\/bosl\/([a-f0-9]{32})\/(schema|reference|examples)(?:\?context_handle=(bos_ctx_v2_[a-f0-9]{64}))?$/u;
 const sha256Pattern = /^[a-f0-9]{64}$/u;
 const bosContextHeader = "X-BOS-Context-Handle";
 
@@ -290,7 +290,45 @@ export function validateGraphDescription(graph) {
   return graph;
 }
 
-export function validateAppDescribe(description) {
+function applicationForContact(contact, publicApplication) {
+  requireObject(contact, "selected application contact");
+  if (Object.hasOwn(contact, "uri")) {
+    requireExactKeys(contact, new Set(["uri"]), "selected application contact");
+    requireString(publicApplication, "selected public application key");
+    const match = /^bos:\/\/apps\/([a-z][a-z0-9._-]*)\/manifest$/u.exec(contact.uri);
+    if (!match || match[1] !== publicApplication) throw new Error("Selected application key must match its registered contact");
+    return publicApplication;
+  }
+  validateAppContact(contact);
+  if (publicApplication !== undefined && publicApplication !== contact.app_code) {
+    throw new Error("Application identifiers require explicit published correspondence; normalization is not authority");
+  }
+  if (!/^[a-z][a-z0-9._-]*$/u.test(contact.app_code)) throw new Error("Selected application contact has an invalid public application key");
+  return contact.app_code;
+}
+
+function scopedApplicationUri(uri, application, kind) {
+  const pattern = kind === "describe"
+    ? /^\/bos\/apps\/([a-z][a-z0-9._-]*)\/api\/v1\/organizations\/([A-Za-z0-9][A-Za-z0-9._~-]{0,127})\/describe$/u
+    : /^\/bos\/apps\/([a-z][a-z0-9._-]*)\/api\/v1\/organizations\/([A-Za-z0-9][A-Za-z0-9._~-]{0,127})\/journeys\/register$/u;
+  const match = typeof uri === "string" && pattern.exec(uri);
+  if (!match || match[1] !== application) throw new Error(`${kind === "describe" ? "app.describe response.describe.uri" : "journey registration contract.execution.uri"} must use the exact safe current-v1 route of the selected application`);
+  return {application: match[1], partition: match[2]};
+}
+
+// These are independently observed publication facts, never an authority grant.
+// Native identity-v2 callers copy public_application from the getApps key and
+// contact verbatim from the directory; legacy rich contacts keep exact matching.
+export function validateApplicationBinding(binding) {
+  requireObject(binding, "application binding");
+  requireExactKeys(binding, new Set(["contact", "description", "public_application"]), "application binding");
+  if (!binding.contact || !binding.description) throw new Error("Application binding requires selected contact and scoped description evidence");
+  const application = applicationForContact(binding.contact, binding.public_application);
+  validateAppDescribe(binding.description, {contact: binding.contact, public_application: binding.public_application});
+  return {application, description: binding.description};
+}
+
+export function validateAppDescribe(description, {contact, public_application} = {}) {
   requireObject(description, "app.describe response");
   rejectRawAuthority(description, "app.describe response");
   requireExactKeys(
@@ -309,8 +347,9 @@ export function validateAppDescribe(description) {
   if (description.application.platform !== "bos") {
     throw new Error("app.describe response.application.platform must be bos");
   }
-  if (description.application.application !== "lead-director") {
-    throw new Error("app.describe response.application.application must be lead-director");
+  const selectedApplication = contact === undefined ? "lead-director" : applicationForContact(contact, public_application);
+  if (description.application.application !== selectedApplication) {
+    throw new Error(`app.describe response.application.application must be ${selectedApplication}`);
   }
   requireObject(description.describe, "app.describe response.describe");
   requireExactKeys(
@@ -326,9 +365,7 @@ export function validateAppDescribe(description) {
     throw new Error(`app.describe response.describe.method must be ${leadDirectorAppDescribe.method}`);
   }
   requireString(description.describe.uri, "app.describe response.describe.uri");
-  if (!leadDirectorAppDescribe.uri.test(description.describe.uri)) {
-    throw new Error(`app.describe response.describe.uri must be ${leadDirectorAppDescribe.uri}`);
-  }
+  scopedApplicationUri(description.describe.uri, selectedApplication, "describe");
   if (description.describe.max_operations !== leadDirectorAppDescribe.maxOperations) {
     throw new Error(`app.describe response.describe.max_operations must be ${leadDirectorAppDescribe.maxOperations}`);
   }
@@ -366,7 +403,7 @@ export function validateAppDescribe(description) {
       throw new Error("app.describe response.journey_registration.contract.input.operation must be lead-director.journeys.register");
     }
   }
-  validateBoslDescriptor(description.bosl, "app.describe response.bosl");
+  validateBoslDescriptor(description.bosl, "app.describe response.bosl", selectedApplication);
   if(description.workflow_catalog!==undefined) validateWorkflowCatalogDiscovery(description.workflow_catalog);
   if(description.workflow_control!==undefined) validateWorkflowControlDiscovery(description.workflow_control);
   return description;
@@ -394,7 +431,7 @@ export function validateWorkflowControlDiscovery(value) {
   return value;
 }
 
-function validateBoslDescriptor(bosl, label) {
+function validateBoslDescriptor(bosl, label, application = "lead-director") {
   requireObject(bosl, label);
   requireExactKeys(
     bosl,
@@ -410,7 +447,8 @@ function validateBoslDescriptor(bosl, label) {
   let qualifier;
   for (const [field, expectedKind] of expectedKinds) {
     requireString(bosl[field], `${label}.${field}`);
-    const match = leadDirectorBoslUriPattern.exec(bosl[field]);
+    const raw = applicationBoslUriPattern.exec(bosl[field]);
+    const match = raw && raw[1] === application ? [raw[0], raw[2], raw[3], raw[4]] : null;
     if (!match || match[2] !== expectedKind) {
       throw new Error(`${label}.${field} must be a partitioned Lead Director BOSL ${expectedKind} URI`);
     }
@@ -687,7 +725,7 @@ export function validatePluginsList(response) {
   return response;
 }
 
-export function validateDiscoveryRefresh(response) {
+export function validateDiscoveryRefresh(response, expected = {}) {
   requireObject(response, "discovery.refresh response");
   rejectRawAuthority(response, "discovery.refresh response");
   requireExactKeys(
@@ -696,7 +734,9 @@ export function validateDiscoveryRefresh(response) {
     "discovery.refresh response"
   );
   validateApplication(response.application, "discovery.refresh response.application");
-  validateBoslDescriptor(response.bosl, "discovery.refresh response.bosl");
+  const selected = expected.application === undefined ? "lead-director" : validateApplicationBinding(expected.application).application;
+  if (response.application.application !== selected) throw new Error("Discovery refresh must match the selected application");
+  validateBoslDescriptor(response.bosl, "discovery.refresh response.bosl", selected);
   if(response.workflow_catalog!==undefined) validateWorkflowCatalogDiscovery(response.workflow_catalog);
   if(response.workflow_control!==undefined) validateWorkflowControlDiscovery(response.workflow_control);
   validateMcpPrivateMetadata(response, "discovery.refresh response");
@@ -1074,6 +1114,9 @@ export function validateJourneyRegistrationContractResponse(response, expected =
   const fields = new Set(["operation", "contract_version", "title", "description", "input_schema", "output_schema", "limits", "guarantees", "execution", "public_errors", "ttlMs", "cacheScope"]);
   requireExactKeys(response, fields, label);
   for (const field of fields) if (!Object.hasOwn(response, field)) throw new Error(`${label}.${field} is required`);
+  const binding = expected.application === undefined ? null : validateApplicationBinding(expected.application);
+  const selectedApplication = binding?.application ?? "lead-director";
+  if (binding && binding.description.journey_registration?.contract.input.operation !== response.operation) throw new Error("Registration must match the selected application registration link");
   const version = response.contract_version === "lead-director-journey-registration/v1" ? "v1" : null;
   if (response.operation !== "lead-director.journeys.register" || !version) {
     throw new Error(`${label} must declare the exact published operation and version`);
@@ -1182,9 +1225,10 @@ export function validateJourneyRegistrationContractResponse(response, expected =
   }
   requireObject(response.execution, `${label}.execution`);
   requireExactKeys(response.execution, new Set(["method", "uri", "transport", "context_header"]), `${label}.execution`);
-  if (response.execution.method !== "POST" || typeof response.execution.uri !== "string" ||
-      !new RegExp(`^/bos/apps/lead-director/api/${version}/organizations/[A-Za-z0-9][A-Za-z0-9._~-]{0,127}/journeys/register$`, "u").test(response.execution.uri)) {
-    throw new Error(`${label}.execution must use the exact safe registration POST route`);
+  if (response.execution.method !== "POST") throw new Error(`${label}.execution must use the exact safe registration POST route`);
+  const registrationScope = scopedApplicationUri(response.execution.uri, selectedApplication, "registration");
+  if (binding && registrationScope.partition !== scopedApplicationUri(binding.description.describe.uri, selectedApplication, "describe").partition) {
+    throw new Error("Registration contact must match its selected scoped application description");
   }
   if (response.execution.transport !== "https" || response.execution.context_header !== bosContextHeader) {
     throw new Error(`${label}.execution must declare HTTPS and the current context header together`);
@@ -1355,8 +1399,9 @@ export function validateApiContractResponse(response, expected = {}) {
     throw new Error(`${label}.contract_version must be semantic version text`);
   }
   validateServiceReference(response.source, `${label}.source`);
-  if (response.source.application !== "lead-director") {
-    throw new Error(`${label}.source.application must be lead-director`);
+  const selectedApplication = expected.application === undefined ? "lead-director" : validateApplicationBinding(expected.application).application;
+  if (response.source.application !== selectedApplication) {
+    throw new Error(`${label}.source.application must match the selected application`);
   }
   if (expected.source !== undefined && !sameJson(response.source, expected.source)) {
     throw new Error(`${label}.source must match the selected plugin`);
@@ -1428,7 +1473,8 @@ export function validateApiContractResponse(response, expected = {}) {
   return response;
 }
 
-export function validateOperationDescription(response) {
+export function validateOperationDescription(response, expected = {}) {
+  const selectedApplication = expected.application === undefined ? null : validateApplicationBinding(expected.application).application;
   requireObject(response, "operation Describe response");
   rejectRawAuthority(response, "operation Describe response");
   requireExactKeys(
@@ -1539,6 +1585,7 @@ export function validateOperationDescription(response) {
         sourceLabel
       );
       validateServiceReference(source.source, `${sourceLabel}.source`);
+      if (selectedApplication !== null && source.source.application !== selectedApplication) throw new Error("Operation source must match the selected application");
       if (!new Set([
         "ready",
         "authorization_required",
@@ -1859,9 +1906,18 @@ async function main() {
   if (mode === "contact") validateAppContact(parsed);
   else if (mode === "service") validateServiceDescriptor(parsed);
   else if (mode === "graph") validateGraphDescription(parsed);
-  else if (mode === "app-describe") validateAppDescribe(parsed);
+  else if (mode === "app-describe") {
+    if (parsed.response !== undefined) {
+      requireExactKeys(parsed, new Set(["response", "contact", "public_application"]), "app-describe validation input");
+      validateAppDescribe(parsed.response, {contact: parsed.contact, public_application: parsed.public_application});
+    }
+    else validateAppDescribe(parsed);
+  }
   else if (mode === "plugins") validatePluginsList(parsed);
-  else if (mode === "discovery-refresh") validateDiscoveryRefresh(parsed);
+  else if (mode === "discovery-refresh") {
+    if (parsed.response !== undefined) validateDiscoveryRefresh(parsed.response, {application: parsed.application});
+    else validateDiscoveryRefresh(parsed);
+  }
   else if (mode === "service-journey") {
     validateServiceJourneyDescription(parsed.description, parsed.compact_plugin);
   } else if (mode === "operation-describe") {
@@ -1870,7 +1926,8 @@ async function main() {
     requireObject(parsed, "api-contract validation input");
     validateApiContractResponse(parsed.response, {
       operation: parsed.operation,
-      source: parsed.source
+      source: parsed.source,
+      application: parsed.application
     });
   } else {
     throw new Error(

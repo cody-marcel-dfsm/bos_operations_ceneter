@@ -2,7 +2,7 @@
 name: bos-workflow-orchestrator
 description: Explain, compose, or operate governed deterministic workflows across the user's installed BOS service mesh, including ad hoc dynamic workflows created for the current objective. Use for multi-step or cross-service outcomes, custom journeys, requests to explain an organization's automation plugin, dependency resolution, approvals, recovery, and completion verification.
 metadata:
-  version: "1.0.15"
+  version: "1.0.16"
   requires: "{\"bos-mcp-client\":\"1.0.14\",\"bos-visual-output\":\"1.0.15\"}"
 ---
 
@@ -90,6 +90,26 @@ This is an agent instruction safeguard. Server authorization and validation
 remain required; the package does not intercept or enforce arbitrary API calls.
 
 # BOS Workflow Orchestrator
+
+## Current-v1 registration for a discovered app
+
+Use independently observed app contact and scoped description evidence from
+`bos-app-discovery` for a new app with its own MCP. Pass their validated
+`application` tuple to `buildJourneyRegistrationRequest` through the BOS-owned
+adapter. Its public operation/version and complete v1 input/output contract remain
+exactly those advertised; the request copies the discovered URI. Caller document
+fields never choose authority, and the existing native BOSL app allowlist stays
+unchanged. Use the actual host-authenticated HTTPS capability when required.
+
+Preserve the returned request object for
+`interpretJourneyResponse(response, {registrationRequest: request})` and carry it
+into `runJourneyRecovery` when that helper is used. A descriptor-advertised
+commercial admission error is handled before lifecycle state parsing. A paid-plan
+HTTP 403 prerequisite requests no login or automatic payment; an unavailable
+entitlement HTTP 503 supplies only declared retryability and actual returned
+Retry-After timing. Neither permits uncertain registration replay or fabricated
+billing actions. Read [journey lifecycle](references/journey-lifecycle.md) for the
+exact helper and recovery behavior.
 
 Turn the user's authorized operational objective into a deterministic workflow
 across the installed federated agentic service mesh. Resolve platform

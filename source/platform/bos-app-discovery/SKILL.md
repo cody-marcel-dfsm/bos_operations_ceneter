@@ -2,7 +2,7 @@
 name: bos-app-discovery
 description: Route requests through authenticated BOS app discovery, including finding skills and operations that can contribute to an ad hoc dynamic BOSL workflow. Use when app scope, service ownership, workflow composition, graph shape, or API contracts must be discovered at runtime.
 metadata:
-  version: "1.0.15"
+  version: "1.0.16"
   requires: "{\"bos-mcp-client\":\"1.0.14\"}"
 ---
 
@@ -165,6 +165,31 @@ named-contract section and the original validated source documents.
 For live `bos-identity-mcp/v2`, first apply [identity-context compatibility](../bos-mcp-client/references/identity-context.md).
 Its fresh authorized-context selection and saved-default rules govern this
 workflow; single-context grant wording below applies to legacy discovery.
+
+## Bind a newly discovered application
+
+Keep app selection independent from the contract being validated. For identity-v2,
+copy the public application key from current `getApps`, the registered `contact`
+verbatim from the current application directory, and the scoped application
+`description` from its exact advertised resource. Retain those observations as
+`application: {public_application, contact, description}` in the BOS-owned helper
+call. The contact's registered URI and description must agree with that published
+key. Legacy rich contacts retain exact `app_code` matching; never normalize an
+internal code, guess a public slug, or derive a grant from a display label.
+
+Use `validateAppDescribe(description, {contact, public_application})` and pass the
+same observation tuple as `application` to current-v1 API-contract validation,
+discovery refresh, registration construction and required readiness consumers.
+The helper defaults remain Lead Director when this independent binding is absent.
+For contract-facts projection, add the same optional `application` tuple to the
+observed document entry; descriptive `scope` labels still establish no authority.
+Copy the exact advertised registration operation, URI and schema. Shared v1
+contract names remain unchanged when the selected app has its own MCP.
+
+App discovery supplies no native execution alias or host transport. The existing
+native BOSL allowlist keeps its application boundary. An app's deterministic HTTPS
+registration requires actual authenticated HTTP through the same BOS connection;
+a package adapter or advertised contact alone supplies no such host capability.
 
 ## Requests to compare application API contracts
 
