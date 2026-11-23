@@ -15,7 +15,7 @@ import hashlib,importlib,json,pathlib,platform,stat,subprocess,sys,unittest
 sys.path.insert(0,'tests')
 module=importlib.import_module('oracle_parallel_test')
 from tools import oracle_approval as oracle
-classes=('ParallelReview','CriterionDependencyRoles','RawObservationCriterion')
+classes=('ParallelReview','CriterionDependencyRoles','RawObservationCriterion','JournalIntegrationConflict')
 assert not any(hasattr(module,name) for name in ('setUpModule','tearDownModule'))
 actual=sorted(name for name,value in vars(module).items() if isinstance(value,type) and issubclass(value,unittest.TestCase) and value.__module__==module.__name__)
 assert actual==sorted(classes)
@@ -35,8 +35,8 @@ for name in classes:
  else:
   for member in members: units[member]=[member]
 full=ids(loader.loadTestsFromModule(module))
-assert len(full)==44 and len(set(full))==44 and sorted(full)==sorted(member for members in units.values() for member in members)
-assert [len(ids(loader.loadTestsFromTestCase(getattr(module,name)))) for name in classes]==[34,3,7]
+assert len(full)==46 and len(set(full))==46 and sorted(full)==sorted(member for members in units.values() for member in members)
+assert [len(ids(loader.loadTestsFromTestCase(getattr(module,name)))) for name in classes]==[34,3,7,2]
 paths=sorted(set(oracle.REVIEW_POLICY_MODULES)|{'tests/oracle_parallel_test.py','tests/oracle_review_series.py','tests/oracle-parallel.test.mjs','tests/helpers/isolated-test-cohort.mjs','tests/helpers/native-validation-state.mjs','.agents/skills/oracle/review-output.schema.json'})
 hashes={}
 modes={}
