@@ -100,6 +100,18 @@ export function mermaidLabel(value) {
   if (typeof value !== "string" || !value || value.length > 8192 || /[\u0000-\u001f\u007f-\u009f\u202a-\u202e\u2066-\u2069]/u.test(value)) throw new Error("Invalid display label");
   return [...value].map(char => /^[a-z0-9 ]$/iu.test(char) ? char : `#${char.codePointAt(0)};`).join("");
 }
+function diagramLabel(value) {
+  // Split source code points before encoding so entities and surrogate pairs stay
+  // intact. Only this renderer supplies the trusted presentation line breaks.
+  const remaining = [...value], lines = [];
+  while (remaining.length > 32) {
+    const space = remaining.slice(0, 32).lastIndexOf(" ");
+    const end = space >= 16 ? space + 1 : 32;
+    lines.push(remaining.splice(0, end).join(""));
+  }
+  lines.push(remaining.join(""));
+  return lines.map(mermaidLabel).join("<br/>");
+}
 function describe(input) {
   const view = validateJourneyView(input);
   const labels = [], edges = [], groups = [], workIds = new Map();
@@ -149,11 +161,14 @@ export function renderJourneyView(input, {format = "mermaid"} = {}) {
   const {labels, edges, groups} = describe(input);
   if (format === "text") return labels.map(row => `${row.group ? `[${groups.find(group => group.id === row.group).label}] ` : ""}${row.label}`).join("\n") +
     "\n" + edges.map(edge => `${edge.dependency ? "Dependency" : "Graph flow"}: ${labels.find(row => row.id === edge.from).label} -> ${labels.find(row => row.id === edge.to).label}${edge.label ? ` | ${edge.label}` : ""}`).join("\n") + "\n";
-  const node = row => `  ${row.id}["${mermaidLabel(row.label)}"]:::${row.style}`;
+  const node = row => `  ${row.id}["${diagramLabel(row.label)}"]:::${row.style}`;
   const output = ["flowchart TD", ...labels.filter(row => row.group === null).map(node)];
-  for (const group of groups) output.push(`  subgraph ${group.id}["${mermaidLabel(group.label)}"]`,
+  for (const group of groups) output.push(`  subgraph ${group.id}["${diagramLabel(group.label)}"]`,
     ...labels.filter(row => row.group === group.id).map(node), "  end");
-  for (const edge of edges) output.push(`  ${edge.from} ${edge.dependency ? "-.->" : "-->"}${edge.label ? `|"${mermaidLabel(edge.label)}"|` : ""} ${edge.to}`);
+  for (const edge of edges) output.push(`  ${edge.from} ${edge.dependency ? "-.->" : "-->"}${edge.label ? `|"${diagramLabel(edge.label)}"|` : ""} ${edge.to}`);
+  // Mermaid's invisible connectors order presentation rows. Visible graph and
+  // dependency relationships come exclusively from the supplied projection.
+  for (let index = 1; index < labels.length; index++) output.push(`  ${labels[index - 1].id} ~~~ ${labels[index].id}`);
   output.push("  classDef neutral fill:#eef2f6,stroke:#526170,color:#102030",
     "  classDef achieved fill:#e0f2e5,stroke:#317044,color:#153320",
     "  classDef blocked fill:#fff0d6,stroke:#946319,color:#49300c");
