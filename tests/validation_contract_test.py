@@ -163,6 +163,30 @@ class Contracts(unittest.TestCase):
   self.assertEqual(len(v.admit(self.root,tree,{'validation_contract':c})['results']),2)
   self.assertEqual(list(v.originals(self.root,c,'before'))[0]['record_sha256'],before[0]['record_sha256'])
   self.assertEqual(cc.requirements(self.root,tree)[1]['command'],['python3','tools/validation_contract.py','run','--category','focused'])
+ def revised_after_reproduction(self,archive=True):
+  c=self.publish();(self.root/'tests/reproduction.test.mjs').write_text("import test from 'node:test';import assert from 'node:assert/strict';import value from '../source.mjs';test('reproduction',()=>assert.equal(value,true));");self.commit()
+  self.assertEqual(v.execute(self.root,'focused','before'),0)
+  (self.root/'source.mjs').write_text('export default true;\n');self.commit()
+  revised=self.selection();revised['revision_of']=c['contract_sha256']
+  r=self.seal(revised,'synthetic revision',{'verdict':'APPROVED'});v.write_selection(self.root,r);self.commit()
+  if archive:
+   folder=self.root/'.git/oracle/proposals';folder.mkdir(parents=True,exist_ok=True)
+   raw=json.dumps({'validation_contract':c}).encode();(folder/(hashlib.sha256(raw).hexdigest()+'.json')).write_bytes(raw)
+  # Native archive authentication has its own suite; here it admits exactly the prior contract.
+  native=patch.object(v,'native_proposal_record',side_effect=lambda root,path,contract,head:contract==c);native.start();self.addCleanup(native.stop)
+  return c,r
+ def test_revision_retains_identical_prior_reproduction_without_withdrawing_the_fix(self):
+  c,r=self.revised_after_reproduction()
+  self.assertEqual(list(v.originals(self.root,r,'before')),[])
+  self.assertEqual([x['contract_sha256'] for x in v.revision_chain(self.root,r,self.git('rev-parse','HEAD'))],[r['contract_sha256'],c['contract_sha256']])
+  self.assertEqual(v.execute(self.root,'focused'),0)
+ def test_revision_rejects_prior_reproduction_of_changed_tests_or_without_its_archive(self):
+  self.revised_after_reproduction(archive=False)
+  with self.assertRaisesRegex(ValueError,'unchanged-test'):v.execute(self.root,'focused')
+ def test_revision_rejects_prior_reproduction_once_the_test_bytes_change(self):
+  self.revised_after_reproduction()
+  (self.root/'tests/reproduction.test.mjs').write_text("import test from 'node:test';import assert from 'node:assert/strict';import value from '../source.mjs';test('changed reproduction',()=>assert.equal(value,true));");self.commit()
+  with self.assertRaisesRegex(ValueError,'unchanged-test'):v.execute(self.root,'focused')
  def test_rejected_mutating_before_cannot_supply_reproduction(self):
   c=self.publish();(self.root/'tests/reproduction.test.mjs').write_text("import test from 'node:test';import assert from 'node:assert/strict';import{writeFileSync}from'node:fs';import value from '../source.mjs';test('mutation is not reproduction',()=>{if(!value)writeFileSync(new URL('../source.mjs',import.meta.url),'export default true;');assert.equal(value,true);});");self.commit()
   self.assertEqual(v.execute(self.root,'focused','before'),1)
