@@ -6,10 +6,10 @@
     "model": "gpt-6.1-sol",
     "oracle_sha256": "1aa6c13dc8f50cb495a3b9e857b951fa445a731070804f5c7f6cff0f7dcbf145",
     "host": "aio",
-    "time": "2026-11-23T04:54:46Z",
+    "time": "2026-11-23T06:02:56Z",
     "origin_main": "d6f6dac91af5e962ddc7acaf39efaa302708408b",
     "request_sha256": "e70f107ea7a8cb9d81c468722cef8667bc37edecf3258920ca5c77f87bc018e3",
-    "proposal_sha256": "1a874555e0db09a901eee3c70ab1944cf5adb6d03dd1b2e612c47174eb32fb3b"
+    "proposal_sha256": "3c88b1af1cf4d8ef501b5d317306c13067133f12d010e05112a895d4ee6e1bb7"
   },
   "selection": {
     "acceptance": [
@@ -40,7 +40,9 @@
       "Journal coverage names only real assigned paths present in the sealed input inventory, and every consumed input binds a real current identity with its exact digest. Virtual retained-criterion paths and input identities never enter replayed source coverage; native criterion expansion remains responsible for those obligations.",
       "The sealed cohort packet digest includes its final governance-bundle and checkpoint-journal bindings. An intact interrupted cohort can recover its eligible observations through the actual recovery consumer; changing either binding rejects adoption while preserving original artifacts and execution status.",
       "Synthetic review workspaces supply every mandatory governing document and imported executable dependency, including the generated-output proof module, and reviewer stubs accept and forward the governance stdin payload. The immutable fourteen-module review-policy inventory remains unchanged. Review-series, governance, performance, source-frontier and publication-admission runners discover and execute their complete declared cases without skips, weakened assertions or substituted production behavior; publication admission declares all 36 cases.",
-      "Focused reproduction evidence may carry forward only from the current contract or a prior revision reached through authenticated immutable APPROVED native proposal archives. Admission requires an unchanged selected command, identical selected test and fixture blobs, identical runtime, a reproduced commit ancestral to the current candidate, intact original execution custody, and a complete nonempty assertion-failure run without skipped, cancelled or todo cases. Missing or altered archives, changed inputs, unrelated or cyclic revisions, infrastructure failures and non-ancestral reproductions supply no evidence. Validation execution and deterministic source admission apply the same rule without withdrawing fixes, modifying historical records or resetting request clocks."
+      "Focused reproduction evidence may carry forward only from the current contract or a prior revision reached through authenticated immutable APPROVED native proposal archives. Admission requires an unchanged selected command, identical selected test and fixture blobs, identical runtime, a reproduced commit ancestral to the current candidate, intact original execution custody, and a complete nonempty assertion-failure run without skipped, cancelled or todo cases. Missing or altered archives, changed inputs, unrelated or cyclic revisions, infrastructure failures and non-ancestral reproductions supply no evidence. Validation execution and deterministic source admission apply the same rule without withdrawing fixes, modifying historical records or resetting request clocks.",
+      "Native lifecycle actions use the same exported payload validator as HTTPS in canonical source and every generated package. Invalid schema-constrained payloads, including invalid date-time values, fail before an invocation is produced; valid payloads preserve the exact returned href and bodyless actions omit payload.",
+      "Conflicting journal integration observations for one concern produce an UNREVIEWED disposition and a recorded rejection that cannot satisfy completion. A later repeated completion cannot erase the conflict. Identical duplicate observations and a single intact observation remain eligible under the existing input and preparation checks."
     ],
     "acceptance_tests": [
       {
@@ -59,7 +61,8 @@
           1,
           2,
           3,
-          4
+          4,
+          28
         ],
         "module": "tests/journey-package-parity.test.mjs",
         "purpose": "Verify generated helper execution and lifecycle parity across supported packages, including unchanged HTTPS framing and native result consumption."
@@ -133,7 +136,8 @@
           19,
           20,
           23,
-          24
+          24,
+          29
         ],
         "module": "tests/oracle-parallel.test.mjs",
         "purpose": "Verify actual cohort dispatch, interrupted-result recovery, aggregation and retained context reuse while preserving assignment authority, concurrency, custody and complete-review gates."
@@ -283,8 +287,8 @@
     ],
     "change_class": "deep_bug_fix",
     "design": null,
-    "reason": "Retain all existing acceptance criteria, selected modules, fixtures, mapping purposes and criterion/module pairs. Cross-area publication and review-evidence custody require the selected adversarial focused cases and recovery, completeness, pending-path, lifecycle and publication interactions. Add validation-contract interactions for narrowly authenticated reproduction reuse and exercise the same rule through deterministic source admission. Preserve the immutable fourteen-module policy inventory, complete case discovery and existing assertions. No unrelated recurrence suite is selected. Preserve unchanged-test fail-before/pass-after evidence, historical outcomes, original request clocks, existing reviewer deadlines and the 300-second delivery budget. Reuse native validation only with matching consumed inputs, dependency closure, environment and retained outputs; repeat execution requires an actual changed input or uncovered behavior. Synthetic checks establish no published-client acceptance.",
-    "revision_of": "cb14f5b0297b652f4a795762890a0e332f867397b7661f403bedcc0025040e21",
+    "reason": "Retain all existing acceptance criteria, selected modules, fixtures, mapping purposes and criterion/module pairs. Cross-area publication and review-evidence custody require the selected adversarial focused cases and recovery, completeness, pending-path, lifecycle and publication interactions. Add explicit acceptance for shared native and HTTPS payload validation and fail-closed journal integration conflicts through the already selected interaction modules. Preserve the immutable fourteen-module policy inventory, complete case discovery and existing assertions. No unrelated recurrence suite is selected. Preserve unchanged-test fail-before/pass-after evidence, historical outcomes, original request clocks, existing reviewer deadlines and the 300-second delivery budget. Reuse native validation only with matching consumed inputs, dependency closure, environment and retained outputs; repeat execution requires an actual changed input or uncovered behavior. Synthetic checks establish no published-client acceptance.",
+    "revision_of": "8ca7afa66022f23c4c667289fb3e3bf70aa4deea19e8dfef991c16678fd7d497",
     "scope_paths": [
       "AGENTS.md",
       "README.md",
@@ -361,11 +365,13 @@
       "tools/validation_contract.py",
       "tools/deterministic_source.py",
       "tests/validation-contract.test.mjs",
-      "tests/validation_contract_test.py"
+      "tests/validation_contract_test.py",
+      "source/platform/bos-workflow-orchestrator/scripts/journey-runtime-client.mjs",
+      "clients/*/*/*/skills/bos-workflow-orchestrator/scripts/journey-runtime-client.mjs"
     ]
   },
-  "base_commit": "906984ad0a1515878f7caefd75434c9080754571",
-  "base_tree": "454e648b850bf71cafa85c5979b9d18dcf518771",
+  "base_commit": "b0766a14797b2bfe7d70174b60f15b81cf7bb2d4",
+  "base_tree": "b8846598879dbd031d72d8e7456428eeeff2d480",
   "catalog_sha256": "9a96f1cd2a973457f9da681dddcc5161aa8ffda188b092d849e5bc83999391c8",
   "runtime": {
     "node": "v26.12.0",
@@ -375,8 +381,8 @@
     "architecture": "x86_64",
     "options_sha256": "ebc442c160f8629073a82976daadaba1d95a60a38d768c81c8eb06598aedcac5"
   },
-  "proposal_sha256": "1a874555e0db09a901eee3c70ab1944cf5adb6d03dd1b2e612c47174eb32fb3b",
-  "review_sha256": "ded79a7fd736fc095ee9541bbbfb6050191ad2646fc81049bacfeab5f6bc3079",
+  "proposal_sha256": "3c88b1af1cf4d8ef501b5d317306c13067133f12d010e05112a895d4ee6e1bb7",
+  "review_sha256": "d25bb2c32b748a1857fbe84539c35ad627f977f4ef6faf16cc29bf9821826b1d",
   "commands": [
     {
       "category": "sanity",
@@ -482,6 +488,6 @@
     "reasoning_effort": "medium",
     "maximum_reasoning_effort": "medium"
   },
-  "contract_sha256": "8ca7afa66022f23c4c667289fb3e3bf70aa4deea19e8dfef991c16678fd7d497",
-  "seal": "49df034433fdb1db2d2c2245d17733cbeb8d2afd75e53828d59a11ff2a34534c"
+  "contract_sha256": "facfbb5a1161b3299ae5ca71d06075f86636d3534b10738ba97ec451679f235a",
+  "seal": "20133adca3944c76c0b116c0307e8787eb277db4a3d44c4b011f0fe00f089f21"
 }
