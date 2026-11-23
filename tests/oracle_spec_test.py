@@ -280,9 +280,10 @@ class ContinuousIntegration(Fixture):
             self.assertEqual(package_lane.ci(self.root, self.base, '2026-11-11T00:00:00Z'), 0)
         return calls, tests
 
-    def test_native_contract_range_runs_spec_tests_then_native_command_coverage(self):
+    def test_native_contract_range_delegates_required_execution_to_native_command_coverage(self):
         calls, tests = self.run_ci('SPEC_SEALED', lane_admits=False)
-        tests.assert_called_once()
+        tests.assert_not_called()
+        self.assertEqual(len(calls),1)
         self.assertEqual(calls[-1][1:4], ['tools/command_coverage.py', 'ci', '--candidate'])
 
     def test_deterministic_lane_range_needs_no_native_command_coverage(self):
