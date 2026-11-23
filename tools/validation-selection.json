@@ -6,10 +6,10 @@
     "model": "claude-opus-5-5",
     "oracle_sha256": "892ad8c0d8413e07c6956c24cf2f634aeadbeaa2f73e4532b19386f6d9c7f326",
     "host": "Codys-MacBook-Pro.local",
-    "time": "2026-11-23T20:38:50Z",
+    "time": "2026-11-23T21:30:06Z",
     "origin_main": "b994663ddc5e6e804f39f050ff1ec0e84c3845be",
     "request_sha256": "fc7562b6053f376e51682f5b2c5654862ae9297b1581c2b29bb956a5093207a3",
-    "proposal_sha256": "d942c837b70ec3c22aa273d21a9e40f6ba2f3f052d97457be9f64e2c59f225c3"
+    "proposal_sha256": "8170cbac22d487c8b1e807c309d37eeda6abba26c3f0b166daa335048512df9b"
   },
   "selection": {
     "acceptance": [
@@ -20,7 +20,7 @@
       "Additive materialization preserves every prior criterion, selected module, fixture, mapping purpose and original criterion-to-module association while admitting only validated additions.",
       "Native proposal, lifecycle and deterministic admission retain exact-source custody, failure preservation, complete-category requirements and existing publication boundaries. Tests use isolated synthetic repositories and fake reviewers without launching a model or changing deadlines.",
       "An explicit send, submit, record, report or report-session feedback request authorizes exactly one privacy-minimized submission without requiring a further confirmation step, including its inspected and sanitized media.",
-      "Necessary in-scope discovered-bug reporting, evidence continuation and linking, and discussion follow-ups reuse the existing task authority without a redundant confirmation. Materially ambiguous targets and unrelated actions still require appropriate user input, and settings failures still report only after the user requests reporting.",
+      "Necessary in-scope discovered-bug reporting, evidence continuation and linking, and discussion follow-ups reuse the existing task authority without a redundant confirmation. Materially ambiguous targets and unrelated actions still require appropriate user input. Settings failures follow the same explicit reporting-request or necessary authorized-task bug-report rule; unsolicited reports outside that scope remain drafts with a Report this issue action, preserving privacy minimization, selected context and existing permissions.",
       "Text and media minimization and inspection, fresh selected-context authorization, server-derived execution scope, uncertain-result no-replay and canonical reporter-completion semantics remain unchanged.",
       "Every maintained canonical caller and reference and every generated client copy and archive applies the same authorization rule. Component versions, dependency pins and package composition remain valid and consistent, and no public API version, server permission, default or role changes.",
       "Dependent skills whose only change is a component version pin keep unchanged record lookup routing, graph completion, compact default route presentation and focused student-workflow behavior.",
@@ -166,7 +166,7 @@
           9
         ],
         "module": "tests/plugin-settings.test.mjs",
-        "purpose": "Verify the settings failure caller reports only after a reporting request and stays compatible with the feedback rule."
+        "purpose": "Verify the settings caller uses an explicit reporting request or necessary in-scope authorized-task bug report without redundant confirmation, while unsolicited reports remain drafts and context/privacy boundaries stay intact."
       },
       {
         "covers": [
@@ -178,41 +178,40 @@
         "purpose": "Verify graph completion, compact route presentation and focused student-workflow scope are unchanged by dependent version-pin updates."
       },
       {
-        "module": "tests/app-discovery.test.mjs",
         "covers": [
           11,
           20,
           30
         ],
+        "module": "tests/app-discovery.test.mjs",
         "purpose": "Verifies generic current app discovery agreement and strict legacy defaults without client route construction."
       },
       {
-        "module": "tests/journey-discovery.test.mjs",
         "covers": [
           11
         ],
+        "module": "tests/journey-discovery.test.mjs",
         "purpose": "Verifies current app discovery propagation into journey discovery with trusted origins."
       },
       {
-        "module": "tests/journey-registration-discovery.test.mjs",
         "covers": [
           11,
           20,
           28,
           30
         ],
+        "module": "tests/journey-registration-discovery.test.mjs",
         "purpose": "Verifies registration construction preserves the returned same-app opaque organization URI and unchanged current schemas."
       },
       {
-        "module": "tests/journey-runtime-client.test.mjs",
         "covers": [
           12,
           20
         ],
+        "module": "tests/journey-runtime-client.test.mjs",
         "purpose": "Verifies descriptor-bound admission denial envelopes are preserved before lifecycle parsing without inferred recovery or replay."
       },
       {
-        "module": "tests/customer-data-privacy.test.mjs",
         "covers": [
           14,
           32,
@@ -223,41 +222,41 @@
           38,
           39
         ],
+        "module": "tests/customer-data-privacy.test.mjs",
         "purpose": "Reproduces and verifies the bounded Git transport exemption while contacts and unsafe variants remain flagged."
       },
       {
-        "module": "tests/privacy-coverage.test.mjs",
         "covers": [
           14,
           18,
           34
         ],
+        "module": "tests/privacy-coverage.test.mjs",
         "purpose": "Verifies privacy scanner coverage and policy identity across the changed sources."
       },
       {
-        "module": "tests/callback-source-readiness.test.mjs",
         "covers": [
           11
         ],
+        "module": "tests/callback-source-readiness.test.mjs",
         "purpose": "Verifies callback readiness uses the propagated current app registration and real HTTPS host capability."
       },
       {
-        "module": "tests/contract-facts.test.mjs",
         "covers": [
           11,
           12
         ],
+        "module": "tests/contract-facts.test.mjs",
         "purpose": "Verifies contract projection of current app registration and declared admission errors."
       },
       {
-        "module": "tests/external-dependency-adapter.test.mjs",
         "covers": [
           11
         ],
+        "module": "tests/external-dependency-adapter.test.mjs",
         "purpose": "Verifies external dependency adaptation keeps current schemas and trusted origins."
       },
       {
-        "module": "tests/journey-package-parity.test.mjs",
         "covers": [
           11,
           13,
@@ -265,176 +264,177 @@
           28,
           30
         ],
+        "module": "tests/journey-package-parity.test.mjs",
         "purpose": "Verifies generated journey package parity for the registration and dependency changes."
       },
       {
-        "module": "tests/muse-package.test.mjs",
         "covers": [
           13
         ],
+        "module": "tests/muse-package.test.mjs",
         "purpose": "Verifies the dependent package keeps complete dependency closure after the workflow dependency fix."
       },
       {
-        "module": "tests/command-coverage.test.mjs",
         "covers": [
           16
         ],
+        "module": "tests/command-coverage.test.mjs",
         "purpose": "Verifies command-coverage applicability, no rerun of covered commands, rejection of stale or foreign coverage, and failure propagation."
       },
       {
-        "module": "tests/oracle-public-chroma.test.mjs",
         "covers": [
           15,
           17
         ],
+        "module": "tests/oracle-public-chroma.test.mjs",
         "purpose": "Verifies public Chroma tests honor the configured public Python with local fallback and locked model custody."
       },
       {
-        "module": "tests/oracle-public-core.test.mjs",
         "covers": [
           17
         ],
+        "module": "tests/oracle-public-core.test.mjs",
         "purpose": "Verifies Oracle public structural core obligations."
       },
       {
-        "module": "tests/oracle-public-export.test.mjs",
         "covers": [
           17,
           18
         ],
+        "module": "tests/oracle-public-export.test.mjs",
         "purpose": "Verifies immutable export and equivalent synthetic credential-negative rejection fixtures."
       },
       {
-        "module": "tests/oracle-public-benchmark.test.mjs",
         "covers": [
           17
         ],
+        "module": "tests/oracle-public-benchmark.test.mjs",
         "purpose": "Verifies Oracle public benchmark obligations on the exported source."
       },
       {
-        "module": "tests/oracle-public-runner.test.mjs",
         "covers": [
           17
         ],
+        "module": "tests/oracle-public-runner.test.mjs",
         "purpose": "Verifies Oracle public runner obligations."
       },
       {
-        "module": "tests/oracle-public-live-proposal.test.mjs",
         "covers": [
           17
         ],
+        "module": "tests/oracle-public-live-proposal.test.mjs",
         "purpose": "Native-only live proposal obligation, never fabricated as public CI execution."
       },
       {
-        "module": "tests/vault-index-runtime.test.mjs",
         "covers": [
           17
         ],
+        "module": "tests/vault-index-runtime.test.mjs",
         "purpose": "Verifies the locked Vault index runtime without automatic install or download."
       },
       {
-        "module": "tests/bos-native-compatibility.test.mjs",
         "covers": [
           20,
           28
         ],
+        "module": "tests/bos-native-compatibility.test.mjs",
         "purpose": "Native execution selection, payload validation, exact action href preservation and fail-closed error envelopes in canonical and generated clients."
       },
       {
-        "module": "tests/oracle-generated-proof.test.mjs",
         "covers": [
           21
         ],
+        "module": "tests/oracle-generated-proof.test.mjs",
         "purpose": "Generated-output proof regeneration, inventory equality and refusal of altered, stale or unsupported proof."
       },
       {
-        "module": "tests/oracle-parallel.test.mjs",
         "covers": [
           21,
           23,
           24
         ],
+        "module": "tests/oracle-parallel.test.mjs",
         "purpose": "Parallel cohort partitioning, checkpoint adoption and generated-proof coverage recognition through the real controller."
       },
       {
-        "module": "tests/oracle-relocation.test.mjs",
         "covers": [
           22
         ],
+        "module": "tests/oracle-relocation.test.mjs",
         "purpose": "Relocation chain admission, retirement refusal and fail-closed handling of malformed or concurrent chains."
       },
       {
-        "module": "tests/oracle-cohort-checkpoint.test.mjs",
         "covers": [
           23
         ],
+        "module": "tests/oracle-cohort-checkpoint.test.mjs",
         "purpose": "Typed checkpoint journal replay, input binding and conflicting-observation handling."
       },
       {
-        "module": "tests/oracle-review-series.test.mjs",
         "covers": [
           23,
           24
         ],
+        "module": "tests/oracle-review-series.test.mjs",
         "purpose": "Controller-to-series retention of observations and complete governing-text delivery without approval leakage."
       },
       {
-        "module": "tests/oracle-governance.test.mjs",
         "covers": [
           24
         ],
+        "module": "tests/oracle-governance.test.mjs",
         "purpose": "Complete governing-text bundle provenance and fail-closed handling of missing or altered governance."
       },
       {
-        "module": "tests/oracle-performance.test.mjs",
         "covers": [
           24
         ],
+        "module": "tests/oracle-performance.test.mjs",
         "purpose": "Cohort size and concurrency bounds with complete declared case execution."
       },
       {
-        "module": "tests/oracle-source-frontier.test.mjs",
         "covers": [
           24
         ],
+        "module": "tests/oracle-source-frontier.test.mjs",
         "purpose": "Source-frontier assignment and complete-coverage accounting."
       },
       {
-        "module": "tests/publication-safety.test.mjs",
         "covers": [
           25
         ],
+        "module": "tests/publication-safety.test.mjs",
         "purpose": "Release push event admission and gate-base resolution with legacy refs untouched."
       },
       {
-        "module": "tests/publication-admission.test.mjs",
         "covers": [
           25,
           29,
           31
         ],
+        "module": "tests/publication-admission.test.mjs",
         "purpose": "Release ref format enforcement across preparation, validation and publication admission, executing every declared case."
       },
       {
-        "module": "tests/shipment-workflow.test.mjs",
         "covers": [
           25,
           31
         ],
+        "module": "tests/shipment-workflow.test.mjs",
         "purpose": "End-to-end release workflow with exact-source CI, leased promotion and remote readback."
       },
       {
-        "module": "tests/history-integrity.test.mjs",
         "covers": [
           29
         ],
+        "module": "tests/history-integrity.test.mjs",
         "purpose": "Proves that history-integrity admission refuses rewriting, dropping or replacing recorded commits and keeps prepared ancestors valid through descendant work."
       },
       {
-        "module": "tests/build-project.test.mjs",
         "covers": [
           35
         ],
+        "module": "tests/build-project.test.mjs",
         "purpose": "Checks the published build definition and its publication-safety admission."
       }
     ],
@@ -543,8 +543,8 @@
     ],
     "change_class": "deep_bug_fix",
     "design": null,
-    "reason": "The typed byte-count privacy slot has overlapping whitespace and TAP-continuation alternatives, which allow exponential backtracking on malformed repeated CRLF continuations. A narrow fix in the same scanner and its existing privacy test, with a bounded isolated-child regression, keeps every existing privacy check and every prior criterion.",
-    "revision_of": "698a63026c8fe087e8c4795df1afd13de1a7c9ee5051ea01459e15104890258f",
+    "reason": "The settings-failure reporting criterion kept an outdated exception that required a separate reporting request. Current feedback guidance and the settings caller already treat necessary in-scope discovered-bug reports as covered by the existing task authority. Only that criterion and the matching settings-test purpose are replaced, the existing settings test is strengthened to assert the caller rule, and every other criterion, module, fixture, scope path and privacy, context and permission boundary stays unchanged.",
+    "revision_of": "1db91ed48959bfd1426efd7daf8a483066ab90473a120ffbf26db8a220721b66",
     "scope_paths": [
       ".github/workflows/publication-safety.yml",
       "README.md",
@@ -1070,8 +1070,8 @@
       "tools/vault_index.py"
     ]
   },
-  "base_commit": "bcd21c8accc77b69617acd3e1a5d674c243f024f",
-  "base_tree": "8f245dd1892db411997f61dd1c5eefb84621dc23",
+  "base_commit": "0f44138fc956e442464ff7edd96cde4b765b1b74",
+  "base_tree": "a952ddb19388430611ee692ce7906e7b41ec9b5c",
   "catalog_sha256": "51ee7ae8c1533604f7b2c68b9efba9d1b9d6f340d724d7c208dba434325859b3",
   "runtime": {
     "node": "v22.11.0",
@@ -1081,8 +1081,8 @@
     "architecture": "arm64",
     "options_sha256": "ebc442c160f8629073a82976daadaba1d95a60a38d768c81c8eb06598aedcac5"
   },
-  "proposal_sha256": "d942c837b70ec3c22aa273d21a9e40f6ba2f3f052d97457be9f64e2c59f225c3",
-  "review_sha256": "a45caeea2339d5ada912cc97a4f87871cebd8923040c8c784c475f35adef7e0f",
+  "proposal_sha256": "8170cbac22d487c8b1e807c309d37eeda6abba26c3f0b166daa335048512df9b",
+  "review_sha256": "9ecdc585bea8e050367acf63f0c8d281ac07a1698410978b83f7d4e124162184",
   "commands": [
     {
       "category": "sanity",
@@ -1257,6 +1257,6 @@
     "reasoning_effort": "medium",
     "maximum_reasoning_effort": "medium"
   },
-  "contract_sha256": "1db91ed48959bfd1426efd7daf8a483066ab90473a120ffbf26db8a220721b66",
-  "seal": "4c928d4cce6affbc9aaa7db3e01154b4398f50960430f2439f46d050f8a58423"
+  "contract_sha256": "418f883c1bc746e08445e00569c68b5a18d8486676dcd7e25eeb929e8c339e07",
+  "seal": "7265e2dd191b2f23499e575770f993b01a65ed9ad8a2b76391f8ddf2c38003d0"
 }

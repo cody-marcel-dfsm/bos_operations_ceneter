@@ -9,6 +9,17 @@ import {
   validateProduct
 } from "../scripts/lib/package-model.mjs";
 
+test("settings failures reuse scoped reporting authority and keep unsolicited reports as drafts", async () => {
+  const operation = (await readFile(
+    `${root}/source/platform/bos-plugin-settings/SKILL.md`, "utf8"
+  )).replace(/\s+/gu, " ");
+  assert.match(operation, /Invoke `submit-feedback` when the user requests reporting or the failure is a necessary discovered-bug report within the authorized task or repair\./u);
+  assert.match(operation, /That authority covers the sanitized report and necessary in-scope follow-ups without another confirmation\./u);
+  assert.match(operation, /For an unsolicited report outside that scope, retain a draft and expose \*\*Report this issue\*\*\./u);
+  assert.match(operation, /Never include credentials, tokens, raw authority identifiers, raw MCP payloads,/u);
+  assert.doesNotMatch(operation, /Invoke `submit-feedback` only after the user requests reporting/u);
+});
+
 test("BOS and dependent products compose plugin settings through their owning connections", async () => {
   const products = await listProducts();
   for (const { manifest } of products) {
