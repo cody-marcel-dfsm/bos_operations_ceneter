@@ -6,10 +6,10 @@
     "model": "claude-opus-5-5",
     "oracle_sha256": "76a1a8dc8d0756179bd71bdb7d513c752ef6b9142800843b35a6cdea4459df95",
     "host": "Codys-MacBook-Pro.local",
-    "time": "2026-11-23T19:19:16Z",
-    "origin_main": "4451580fefadfeade5eb13f837091b93b806028e",
+    "time": "2026-11-23T20:10:04Z",
+    "origin_main": "144c7ae07469bec33e64fe205bde41c397312986",
     "request_sha256": "fc7562b6053f376e51682f5b2c5654862ae9297b1581c2b29bb956a5093207a3",
-    "proposal_sha256": "f7b47fbffba72e78922f2962c0f6ffd84b0cc61f62c0ffffc22ffe59d6a001e1"
+    "proposal_sha256": "9ca61deca1435bd3cc8676e4a1bf3465b18027298220773161d151d64992cc35"
   },
   "selection": {
     "acceptance": [
@@ -44,7 +44,11 @@
       "The exact native selection admits every path in the complete current publication range, including the canonical native registration execution helper and each of its generated client mirrors. These paths come from the native publication-scope resolver without manual sealing, glob expansion or a caller-chosen baseline, and the canonical helper and every mirror keep identical, passing native registration behavior.",
       "Every published history-integrity guard stays in force across proposal review, source review, gating and publication. Recorded spec bases, stamped origins, revision archives, review-series rounds and validation commits remain in required ancestry. Any reset, rebase, amend, force-push or replacement that would retire them is refused, and prepared ancestors stay valid through later descendant work.",
       "The optional locally discovered application binding reaches the native registration builder with the exact current descriptor and context and the existing strict legacy defaults. Absent or mismatched descriptors fail closed, and current own-application HTTPS behavior is unchanged. The canonical producer and every client mirror are byte-identical. The before input is the published producer and its mirrors, the after input is the committed fixed bytes, and all test and fixture bytes are identical across that pair.",
-      "The package version is the next free ordinary patch above the actual published version. The occupied earlier release branch and its published source are preserved. No public API version, login, credential, grant, trust or tenant boundary, billing, or installed-cache change is introduced, and exact-source CI plus main readback remain required before publication."
+      "The package version is the next free ordinary patch above the actual published version. The occupied earlier release branch and its published source are preserved. No public API version, login, credential, grant, trust or tenant boundary, billing, or installed-cache change is introduced, and exact-source CI plus main readback remain required before publication.",
+      "When a TAP diagnostic comment continuation (newline followed by a '# ' comment prefix) splits a *_bytes key, its colon, or the boundary before its integer value, the value is still treated as a machine byte count and left out of the phone check. This must hold in the full operational-file scan and in the shared worker classifier, for every split position in the key and value boundary.",
+      "Phone, email and blocked-identifier findings stay detectable for: plain numeric or string contact fields, quoted byte values, malformed or non-TAP continuation markers, a missing key or colon, fractional or exponent values, extra adjacent values, and real email or digest matches. The original unmodified text is still scanned for every check except phone.",
+      "The fix adds no whole-log exclusion, arbitrary whitespace joining, digest allowlist, evidence modification or artifact cleanup. Changing the classifier source changes the privacy policy identity and invalidates earlier clean-cache results.",
+      "The published build definition stays checked: the build-definition test passes and the existing publication-safety admission of that definition is preserved."
     ],
     "acceptance_tests": [
       {
@@ -206,7 +210,10 @@
       {
         "module": "tests/customer-data-privacy.test.mjs",
         "covers": [
-          14
+          14,
+          32,
+          33,
+          34
         ],
         "purpose": "Reproduces and verifies the bounded Git transport exemption while contacts and unsafe variants remain flagged."
       },
@@ -214,7 +221,8 @@
         "module": "tests/privacy-coverage.test.mjs",
         "covers": [
           14,
-          18
+          18,
+          34
         ],
         "purpose": "Verifies privacy scanner coverage and policy identity across the changed sources."
       },
@@ -413,6 +421,13 @@
           29
         ],
         "purpose": "Proves that history-integrity admission refuses rewriting, dropping or replacing recorded commits and keeps prepared ancestors valid through descendant work."
+      },
+      {
+        "module": "tests/build-project.test.mjs",
+        "covers": [
+          35
+        ],
+        "purpose": "Checks the published build definition and its publication-safety admission."
       }
     ],
     "categories": [
@@ -513,14 +528,15 @@
           "tests/publication-admission.test.mjs",
           "tests/publication-safety.test.mjs",
           "tests/shipment-workflow.test.mjs",
-          "tests/history-integrity.test.mjs"
+          "tests/history-integrity.test.mjs",
+          "tests/build-project.test.mjs"
         ]
       }
     ],
     "change_class": "deep_bug_fix",
     "design": null,
-    "reason": "Published main added history-integrity admission guards and their tests, which changed selected fixture bytes. The existing deep fix must keep those guards as mandatory interactions. It must also show a real fail-before/pass-after for the discovered-application registration binding: the published producer and its mirrors are the before input, the committed fixed bytes are the after input, and the tests stay unchanged.",
-    "revision_of": "c4bfd2353e4dff22b3f776845d9e7b547aa37043613a0d35a36cb68cd581b242",
+    "reason": "Additive correction to how the privacy scanner treats byte counts in TAP output, which is falsely flagging retained validation logs. The change also keeps the published build-definition validation as a required interactions check. All prior criteria, categories, modules and fixtures are retained.",
+    "revision_of": "e3744ae0e8ab130cb9b3770d190ddcf03623d05e87d5c86c521f4d334dac34f4",
     "scope_paths": [
       ".github/workflows/publication-safety.yml",
       "README.md",
@@ -933,6 +949,7 @@
       "source/verticals/education-center/partnership-proposal-builder/SKILL.md",
       "tests/app-discovery.test.mjs",
       "tests/bos-native-compatibility.test.mjs",
+      "tests/build-project.test.mjs",
       "tests/callback-source-readiness.test.mjs",
       "tests/command-coverage.test.mjs",
       "tests/command_coverage_test.py",
@@ -1045,8 +1062,8 @@
       "tools/vault_index.py"
     ]
   },
-  "base_commit": "44bec4549d915dba74509e3bf97d6703b87394a0",
-  "base_tree": "a1ece785f153c712df4d220a27c2c3aedecce697",
+  "base_commit": "03ac84126fa343bd7b2e6a4eab68e23b2344ca14",
+  "base_tree": "a26f0a5a72b5494b9f08902e2eb893a0b8fe660a",
   "catalog_sha256": "51ee7ae8c1533604f7b2c68b9efba9d1b9d6f340d724d7c208dba434325859b3",
   "runtime": {
     "node": "v22.11.0",
@@ -1056,8 +1073,8 @@
     "architecture": "arm64",
     "options_sha256": "ebc442c160f8629073a82976daadaba1d95a60a38d768c81c8eb06598aedcac5"
   },
-  "proposal_sha256": "f7b47fbffba72e78922f2962c0f6ffd84b0cc61f62c0ffffc22ffe59d6a001e1",
-  "review_sha256": "f44b151b43a5aa24757e66f51ad48b63a5db6d6147825a54536b504583e3a79c",
+  "proposal_sha256": "9ca61deca1435bd3cc8676e4a1bf3465b18027298220773161d151d64992cc35",
+  "review_sha256": "898dd31a9a7c179f29e47a2aede5675409e96e7eec78e38f39c43abd03efeda0",
   "commands": [
     {
       "category": "sanity",
@@ -1150,7 +1167,8 @@
         "tests/publication-admission.test.mjs",
         "tests/publication-safety.test.mjs",
         "tests/shipment-workflow.test.mjs",
-        "tests/history-integrity.test.mjs"
+        "tests/history-integrity.test.mjs",
+        "tests/build-project.test.mjs"
       ],
       "tests": [
         "tests/oracle-lifecycle.test.mjs",
@@ -1187,7 +1205,8 @@
         "tests/publication-admission.test.mjs",
         "tests/publication-safety.test.mjs",
         "tests/shipment-workflow.test.mjs",
-        "tests/history-integrity.test.mjs"
+        "tests/history-integrity.test.mjs",
+        "tests/build-project.test.mjs"
       ],
       "fixtures": [
         "tests/oracle_lifecycle_test.py",
@@ -1230,6 +1249,6 @@
     "reasoning_effort": "medium",
     "maximum_reasoning_effort": "medium"
   },
-  "contract_sha256": "e3744ae0e8ab130cb9b3770d190ddcf03623d05e87d5c86c521f4d334dac34f4",
-  "seal": "3ac11bf65d926a33f12dcca22ae1cf2e630aadcd0fee051480b023b4d4966b5f"
+  "contract_sha256": "698a63026c8fe087e8c4795df1afd13de1a7c9ee5051ea01459e15104890258f",
+  "seal": "0fe138eeebaa08758fba8805f0928de4433a4478ee5295554f6f2c878de19ff2"
 }

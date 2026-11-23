@@ -674,3 +674,55 @@ test("operational evidence byte counts pass the complete file scan while a phone
     assert(result.some(item => item.includes("contact.stdout.log: non-fictional phone number")));
   } finally { await rm(directory, {recursive: true, force: true}); }
 });
+
+
+test("TAP diagnostic byte counts retain their typed meaning across comment continuations", () => {
+  const count = String(4827 * 10 ** 6 + 744560);
+  const key = '"free_bytes"';
+  for (let split = 1; split < key.length; split++) {
+    const text = `# {${key.slice(0, split)}\n# ${key.slice(split)}:${count}}`;
+    const phoneView = operationalPrivacyText(byteCountPrivacyText(text), {});
+    assert.deepEqual(customerDataFindings(text, "diagnostic.stdout.log", new Set(), phoneView), [], `key split ${split}`);
+  }
+  for (const separator of ["\n# ", " \n# ", "\r\n# "]) {
+    const text = `# {${key}:${separator}${count}}`;
+    assert.deepEqual(customerDataFindings(text, "diagnostic.stdout.log", new Set(),
+      operationalPrivacyText(byteCountPrivacyText(text), {})), []);
+  }
+});
+
+test("TAP metadata recognition preserves contact, malformed, email and digest checks", () => {
+  const value = String(4827 * 10 ** 6 + 744560);
+  const rejected = [
+    `# {"free_byte\n## s":${value}}`, `# {"free_byte\ns":${value}}`,
+    `# {"free_byte\n# s":"${value}"}`, `# {"contact":${value}}`,
+    `# {"free_byte\n# s":1,"contact":${value}}`,
+    `# {"free_byte\n# s":1} call ${value}`,
+    `# {"free_byte\n# s" ${value}}`
+  ];
+  for (const text of rejected) assert(customerDataFindings(text, "diagnostic.stdout.log", new Set(),
+    operationalPrivacyText(byteCountPrivacyText(text), {})).some(row => row.endsWith("non-fictional phone number")));
+  for (const suffix of [".5", "e2", "E+2"]) {
+    const text = `# {"free_byte\n# s":${value}${suffix}}`;
+    assert.equal(byteCountPrivacyText(text), text);
+  }
+  const text = `# {"free_byte\n# s":${value}}`;
+  assert(customerDataFindings(text, "diagnostic.stdout.log", new Set([sha256(value)]), byteCountPrivacyText(text))
+    .some(row => row.endsWith("identifier digest")));
+  const contact = ["person", "tenant.demo"].join("@");
+  assert(customerDataFindings(text + contact, "diagnostic.stdout.log", new Set(), byteCountPrivacyText(text + contact))
+    .some(row => row.endsWith("non-synthetic email address")));
+});
+
+test("complete operational-file scanning recognizes split TAP byte counts and rejects contacts", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "boc-privacy-tap-bytes-"));
+  const counts = join(directory, "resources.stdout.log"), contact = join(directory, "contact.stdout.log");
+  const value = String(4827 * 10 ** 6 + 744560);
+  try {
+    await writeFile(counts, `TAP version 13\n# {"free_byte\n# s":${value},"reserve_bytes":\n# ${value}}\n`);
+    await writeFile(contact, `TAP version 13\n# {"free_byte\n# s":${value},"contact":${value}}\n`);
+    const findings = await fixturePrivacyFailures([counts, contact]);
+    assert(!findings.some(row => row.includes("resources.stdout.log")), findings.join("\n"));
+    assert(findings.some(row => row.includes("contact.stdout.log: non-fictional phone number")));
+  } finally { await rm(directory, {recursive: true, force: true}); }
+});
