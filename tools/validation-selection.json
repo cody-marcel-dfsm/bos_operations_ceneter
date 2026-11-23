@@ -4,12 +4,12 @@
   "stamp": {
     "engine": "codex",
     "model": "gpt-6.1-sol",
-    "oracle_sha256": "95285ddd0c605879d30c7a417cc2f07eab5f20f4ff3d2ab7b64ec4614beef873",
+    "oracle_sha256": "1b5cfe03d97db05cb1caf032b06232e90f876258373472a7ffc047edb6fdc34e",
     "host": "aio",
-    "time": "2026-11-23T18:02:18Z",
+    "time": "2026-11-23T18:25:26Z",
     "origin_main": "5336a54c97a73ded92b9918560cc1fcc6c564c8a",
     "request_sha256": "d880e70d2d85c28c1270d57eba3707fa8502e6e4858ebd7b6f8b1b57401a9162",
-    "proposal_sha256": "23d0ee8b243aa3c8d2e849fccb3c6cb787897d72851e4cbfb1f613b91cabb796"
+    "proposal_sha256": "09b32255cdd6dec112c13a21cc6d3141e9f6b5150a6d62d16f2f36fc516a7aef"
   },
   "selection": {
     "acceptance": [
@@ -20,7 +20,8 @@
       "Maintainer review guidance rejects proposals to reset, rebase, force-push or amend published or recorded commits. The repair preserves historical records, unresolved findings, original execution statuses, request clocks and the existing fourteen-module review-policy inventory.",
       "The synthetic Git wrapper directly executes real Git for ordinary local commands while retaining existing transport destination, directory identity, fetch mapping, journal and unsupported-operation checks. Leading options and argument boundaries cannot bypass those checks; production Git behavior is unchanged.",
       "Focused history refusals have complete unchanged-test assertion-failure evidence before repair and pass afterward. Selected interaction modules execute their complete declared cases without skips or weakened assertions, including all existing publication-admission cases.",
-      "Retained before and after measurements compare identical runner and interaction command membership under equivalent runtime and resource conditions. Demonstrate the performance improvement and an interactions duration below 300 seconds without changing original request clocks, concealing overruns or substituting a reduced command for the original category."
+      "Retained before and after measurements compare identical runner and interaction command membership under equivalent runtime and resource conditions. Demonstrate the performance improvement and an interactions duration below 300 seconds without changing original request clocks, concealing overruns or substituting a reduced command for the original category.",
+      "The canonical package version, active-product versions, package-manifest.json and required current-release documentation markers agree. Generated product metadata and the Claude, Codex and Gemini host manifests match their product release versions; active Muse host manifests equal their product-derived manifests, including version."
     ],
     "acceptance_tests": [
       {
@@ -99,6 +100,27 @@
         ],
         "module": "tests/oracle-implementation-spec.test.mjs",
         "purpose": "Preserve native proposal sealing, immutable revision provenance and deterministic specification consumers with the shared history guard."
+      },
+      {
+        "module": "tests/release-version.test.mjs",
+        "covers": [
+          8
+        ],
+        "purpose": "Check actual canonical release versions and required current-release documentation markers."
+      },
+      {
+        "module": "tests/package-model.test.mjs",
+        "covers": [
+          8
+        ],
+        "purpose": "Check generated product metadata and Claude, Codex and Gemini host-manifest release versions."
+      },
+      {
+        "module": "tests/muse-package.test.mjs",
+        "covers": [
+          8
+        ],
+        "purpose": "Compare active Muse host manifests with product-derived manifests, including release version."
       }
     ],
     "categories": [
@@ -138,40 +160,73 @@
           "tests/command-coverage.test.mjs",
           "tests/oracle-review-series.test.mjs",
           "tests/validation-contract.test.mjs",
-          "tests/oracle-implementation-spec.test.mjs"
+          "tests/oracle-implementation-spec.test.mjs",
+          "tests/muse-package.test.mjs",
+          "tests/package-model.test.mjs",
+          "tests/release-version.test.mjs"
         ]
       }
     ],
     "change_class": "deep_bug_fix",
     "design": null,
-    "reason": "Cross-cutting history admission affects proposal custody, validation evidence, review continuation and publication. Select the focused refusal matrix and six directly affected interaction modules; preserve earlier immutable contracts and results. Performance comparisons retain identical measured command membership and cannot claim improvement through selection reduction.",
-    "revision_of": "be04bbc60f120db79f06757caac311b26e6697deb1d02e920965ec95ddfc9307",
+    "reason": "Preserve the existing deep-fix contract and add three existing modules covering the newly scoped release surfaces. Their complementary actual-checkout assertions support the added criterion without claiming lockfile or skill-release manifest consistency or expanding the recurrence registry.",
+    "revision_of": "c4667317b7d9ab3dabc7bb3e7c4613ea8b6fe0a6107f77eed98dad42844f538c",
     "scope_paths": [
       ".agents/skills/oracle/SKILL.md",
-      "tools/validation_contract.py",
+      "README.md",
+      "clients/claude/plugins/bos/.bos-product.json",
+      "clients/claude/plugins/bos/.claude-plugin/plugin.json",
+      "clients/claude/plugins/education-center/.bos-product.json",
+      "clients/claude/plugins/education-center/.claude-plugin/plugin.json",
+      "clients/codex/plugins/bos/.bos-product.json",
+      "clients/codex/plugins/bos/.codex-plugin/plugin.json",
+      "clients/codex/plugins/education-center/.bos-product.json",
+      "clients/codex/plugins/education-center/.codex-plugin/plugin.json",
+      "clients/copilot/products/bos/.bos-product.json",
+      "clients/copilot/products/education-center/.bos-product.json",
+      "clients/gemini/extensions/bos/.bos-product.json",
+      "clients/gemini/extensions/bos/gemini-extension.json",
+      "clients/gemini/extensions/bos/plugin.json",
+      "clients/gemini/extensions/education-center/.bos-product.json",
+      "clients/gemini/extensions/education-center/gemini-extension.json",
+      "clients/gemini/extensions/education-center/plugin.json",
+      "clients/muse/plugins/bos/.bos-product.json",
+      "clients/muse/plugins/bos/.muse-plugin/plugin.json",
+      "clients/muse/plugins/education-center/.bos-product.json",
+      "clients/muse/plugins/education-center/.muse-plugin/plugin.json",
+      "package-lock.json",
+      "package-manifest.json",
+      "package.json",
+      "products/bos/product.json",
+      "products/education-center/product.json",
+      "skill-release-manifest.json",
+      "tests/command-coverage.test.mjs",
+      "tests/command_coverage_test.py",
+      "tests/history-integrity.test.mjs",
+      "tests/history_integrity_test.py",
+      "tests/muse-package.test.mjs",
+      "tests/oracle-implementation-spec.test.mjs",
+      "tests/oracle-review-series.test.mjs",
+      "tests/oracle_fixture.py",
+      "tests/oracle_review_series.py",
+      "tests/oracle_spec_test.py",
+      "tests/package-model.test.mjs",
+      "tests/publication-admission.test.mjs",
+      "tests/publication_admission_test.py",
+      "tests/published_fixture.py",
+      "tests/release-version.test.mjs",
+      "tests/shipment-workflow.test.mjs",
+      "tests/shipment_workflow_test.py",
+      "tests/validation-contract.test.mjs",
+      "tests/validation_contract_test.py",
       "tools/oracle_approval.py",
       "tools/publication_admission.py",
       "tools/validation-selection.json",
-      "tests/history-integrity.test.mjs",
-      "tests/history_integrity_test.py",
-      "tests/publication_admission_test.py",
-      "tests/shipment_workflow_test.py",
-      "tests/command_coverage_test.py",
-      "tests/oracle_review_series.py",
-      "tests/validation_contract_test.py",
-      "tests/oracle_spec_test.py",
-      "tests/published_fixture.py",
-      "tests/oracle_fixture.py",
-      "tests/publication-admission.test.mjs",
-      "tests/shipment-workflow.test.mjs",
-      "tests/command-coverage.test.mjs",
-      "tests/oracle-review-series.test.mjs",
-      "tests/validation-contract.test.mjs",
-      "tests/oracle-implementation-spec.test.mjs"
+      "tools/validation_contract.py"
     ]
   },
-  "base_commit": "5336a54c97a73ded92b9918560cc1fcc6c564c8a",
-  "base_tree": "bddc97f716de24c7f079594772a94dc4ac0976fc",
+  "base_commit": "0e1250a43a56f04524c812204d2295f586af3633",
+  "base_tree": "ecb0b0a5b377c1db7e655fc1675ce971483646ad",
   "catalog_sha256": "9a96f1cd2a973457f9da681dddcc5161aa8ffda188b092d849e5bc83999391c8",
   "runtime": {
     "node": "v26.12.0",
@@ -181,8 +236,8 @@
     "architecture": "x86_64",
     "options_sha256": "ebc442c160f8629073a82976daadaba1d95a60a38d768c81c8eb06598aedcac5"
   },
-  "proposal_sha256": "23d0ee8b243aa3c8d2e849fccb3c6cb787897d72851e4cbfb1f613b91cabb796",
-  "review_sha256": "786844beefc6b9e58529d52db1365111a32efd385efaaf4aece6c00966dc32ff",
+  "proposal_sha256": "09b32255cdd6dec112c13a21cc6d3141e9f6b5150a6d62d16f2f36fc516a7aef",
+  "review_sha256": "b59b2c9f22e7d19572f777ea12900096e0d2fed60dfaf69804fb2c47c7000f44",
   "commands": [
     {
       "category": "sanity",
@@ -222,7 +277,10 @@
         "tests/command-coverage.test.mjs",
         "tests/oracle-review-series.test.mjs",
         "tests/validation-contract.test.mjs",
-        "tests/oracle-implementation-spec.test.mjs"
+        "tests/oracle-implementation-spec.test.mjs",
+        "tests/muse-package.test.mjs",
+        "tests/package-model.test.mjs",
+        "tests/release-version.test.mjs"
       ],
       "tests": [
         "tests/publication-admission.test.mjs",
@@ -230,7 +288,10 @@
         "tests/command-coverage.test.mjs",
         "tests/oracle-review-series.test.mjs",
         "tests/validation-contract.test.mjs",
-        "tests/oracle-implementation-spec.test.mjs"
+        "tests/oracle-implementation-spec.test.mjs",
+        "tests/muse-package.test.mjs",
+        "tests/package-model.test.mjs",
+        "tests/release-version.test.mjs"
       ],
       "fixtures": [
         "tests/publication_admission_test.py",
@@ -257,6 +318,6 @@
     "reasoning_effort": "medium",
     "maximum_reasoning_effort": "medium"
   },
-  "contract_sha256": "c4667317b7d9ab3dabc7bb3e7c4613ea8b6fe0a6107f77eed98dad42844f538c",
-  "seal": "919a9f5a39d7fb5e5b541fbdd48ccbadecc2fed27e644b20b9dc474143fdd3c3"
+  "contract_sha256": "4221a95513b8c300accf691e651a349ff02b36c8367059a08c664b433882d5e4",
+  "seal": "a61d185d98d845bd68a5f7ed7ecb0b237a7e85b84436e3d88ef0f691e7ef53cb"
 }
