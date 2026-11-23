@@ -7,8 +7,8 @@ The existing source-maintenance and skill-package lanes retain their own scopes.
 
 The literal source inventory admits only the selected core, compatibility
 entrypoints, exporter, public templates, native controller/catalog/CI wiring and
-selected tests/fixtures. The core runtime inventory has 43 paths; the public
-archive contains exactly 30 members, including the generated export manifest.
+selected tests/fixtures. The core runtime inventory has 44 paths; the public
+archive contains exactly 31 members, including the generated export manifest.
 All unpublished history edges are checked, including reverted changes. Unknown
 paths, source symlinks, product/dependency/version edits and changes to other
 catalog profiles or existing package aliases refuse admission.
@@ -17,8 +17,8 @@ From committed canonical main, with the current genuine proposal spec and
 publication base, run:
 
 ```sh
-python3 -B tools/deterministic_oracle.py validate --base FULL_REMOTE_MAIN_SHA --requested-at ORIGINAL_REQUEST_ISO_TIME
-python3 -B tools/deterministic_oracle.py verify
+python3 -B tools/deterministic_oracle.py validate --artifact-only --base 9e817aed58bb85f2799204c70d84b4cac181db58 --requested-at ORIGINAL_REQUEST_ISO_TIME
+python3 -B tools/deterministic_oracle.py verify --artifact-only
 ```
 
 The compatible dispatcher is `tools/deterministic_package.py --profile oracle`.
@@ -36,7 +36,7 @@ One immutable-commit export is verified and extracted for the cohort. Tests shar
 `ORACLE_PUBLIC_EXPORTED_ROOT`, `ORACLE_PUBLIC_SHARED_STATE` (the exported config's
 `.oracle` state) and the explicit Python. The first Chroma check owns construction;
 benchmark and standalone tests reuse the same declared synthetic corpus/index.
-The original 30 source members remain byte-identical. Generated index/operation
+The original 31 source members remain byte-identical. Generated index/operation
 state is private and never enters the archive. Standalone Python runs isolated
 from ambient Python source paths. Every exported test module must execute with
 positive complete totals, no skips or expected failures.
@@ -79,3 +79,27 @@ fast-forward main push. Intent is persisted before effects; uncertain outcomes
 are read back and never blindly replayed. This command publishes OC source only.
 Creating or publishing the independently generated Oracle distribution remains
 with its separately authorized artifact owner and target, outside this profile.
+
+## Component artifact purpose
+
+The current requested public delivery uses explicit `--artifact-only` mode. Its
+original feature component base is exactly
+`9e817aed58bb85f2799204c70d84b4cac181db58`, spanning the entire component through
+the current committed candidate rather than only the latest proposal amendment.
+The full native receipt retains `status: VERIFIED` with
+`verification_scope: COMPONENT_ARTIFACT_VERIFIED` and `source_publication: false`.
+It separately records actual OC origin/main observation and makes no source-sync
+or upstream-promotion claim. The canonical OC source pin may still be unpublished.
+
+The independent artifact publisher consumes the verified archive/manifest/native
+proof handoff and publishes only the generated 31-member artifact with fresh
+history. Its own allowlisted `.github/workflows/ci.yml` runs all four public test
+modules and the actual labelled synthetic benchmark, using the same pinned public
+dependency/cache setup and zero model/provider credentials. Public CI and anonymous
+artifact readback remain separate required delivery evidence.
+
+OC `push` and `promote` reject an artifact-only receipt before any effect, even if
+origin later reaches the component base. No previous source-range requirement,
+predecessor publication, source profile or protection is waived. The source
+publication commands above apply solely to a separately verified source-range
+receipt and its exact real origin baseline.

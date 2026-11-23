@@ -28,17 +28,20 @@ except ImportError:
 KIND = 'boc-deterministic-oracle/1'
 PROFILE = 'portable-actual-oracle/1'
 CI_KIND = 'boc-deterministic-oracle-ci/1'
+COMPONENT_BASE = '9e817aed58bb85f2799204c70d84b4cac181db58'
+COMPONENT_SCOPE = 'COMPONENT_ARTIFACT_VERIFIED'
+SOURCE_SCOPE = 'SOURCE_RANGE_VERIFIED'
 LIVE_MODULE = 'tests/oracle-public-live-proposal.test.mjs'
 EMBEDDING_URL = 'https://chroma-onnx-models.s3.amazonaws.com/all-MiniLM-L6-v2/onnx.tar.gz'
 EMBEDDING_ARCHIVE_SHA256 = '913d7300ceae3b2dbc2c50d1de4baacab4be7b9380491c27fab7418616a16ec3'
 # Literal reviewed source inventory. No controller or directory wildcard grants scope.
-OWN_PATHS = frozenset(('tools/oracle_core/__init__.py', 'tools/oracle_core/cli.py', 'tools/oracle_core/config.py', 'tools/oracle_core/proposal.py', 'tools/oracle_core/runner.py', 'tools/oracle_core/context.py', 'tools/oracle_core/index.py', 'tools/oracle_core/spec.py', 'tools/oracle_core/seal.py', 'tools/oracle_core/custody.py', 'tools/oracle_core/lifecycle.py', 'tools/oracle_oc_adapter.py', 'tools/export_oracle.py', 'tools/oracle-public-export.json', 'tools/oracle_approval.py', 'tools/vault_index.py', 'tools/validation_contract.py', 'tools/oracle_spec_seal.py', 'tools/oracle_lifecycle.py', 'tools/codex_child_model.py', 'tools/deterministic_oracle.py', 'tools/deterministic-oracle.md', 'tools/deterministic_package.py', 'tools/validation-catalog.json', 'tools/validation-selection.json', '.github/workflows/publication-safety.yml', 'package.json', 'tools/oracle_public/.gitignore', 'LICENSE', 'NOTICE', 'tools/oracle_public/README.md', 'tools/oracle_public/pyproject.toml', 'tools/oracle_public/requirements.lock', 'tools/oracle_public/oracle.project.json', 'tools/oracle_public/schemas/proposal-output.schema.json', 'tools/oracle_public/policy/example-policy.md', 'tools/oracle_public/corpus/example-architecture.md', 'tools/oracle_public/examples/proposal.txt', 'tools/oracle_public/validation-catalog.json', 'tools/oracle_public/tests/test_proposal_to_spec.py', 'tools/oracle_public/tests/test_public_chroma.py', 'tools/oracle_public/tests/test_runner_contract.py', 'tools/oracle_public/tests/test_export_boundary.py', 'tools/oracle_public/benchmarks/run.py', 'tools/oracle_public/benchmarks/public_cases.json', 'tests/oracle-public-core.test.mjs', 'tests/oracle-public-runner.test.mjs', 'tests/oracle-public-chroma.test.mjs', 'tests/oracle-public-export.test.mjs', 'tests/oracle-public-live-proposal.test.mjs', 'tests/oracle-public-benchmark.test.mjs', 'tests/deterministic-oracle.test.mjs', 'tests/deterministic-lanes.test.mjs', 'tests/fixtures/oracle-public/policy.md', 'tests/fixtures/oracle-public/catalog.json', 'tests/fixtures/oracle-public/proposal.txt', 'tests/fixtures/oracle-public/corpus/architecture.md', 'tests/fixtures/oracle-public/relevance.json', 'tests/fixtures/oracle-public/export-map.json'))
-CORE_INPUTS = frozenset(('tools/oracle_core/__init__.py', 'tools/oracle_core/cli.py', 'tools/oracle_core/config.py', 'tools/oracle_core/proposal.py', 'tools/oracle_core/runner.py', 'tools/oracle_core/context.py', 'tools/oracle_core/index.py', 'tools/oracle_core/spec.py', 'tools/oracle_core/seal.py', 'tools/oracle_core/custody.py', 'tools/oracle_core/lifecycle.py', 'tools/oracle_oc_adapter.py', 'tools/export_oracle.py', 'tools/oracle-public-export.json', 'tools/oracle_approval.py', 'tools/vault_index.py', 'tools/validation_contract.py', 'tools/oracle_spec_seal.py', 'tools/oracle_lifecycle.py', 'tools/codex_child_model.py', 'tools/deterministic_oracle.py', 'tools/deterministic_package.py', 'tools/validation-catalog.json', '.github/workflows/publication-safety.yml', 'package.json', 'tools/oracle_public/.gitignore', 'LICENSE', 'NOTICE', 'tools/oracle_public/README.md', 'tools/oracle_public/pyproject.toml', 'tools/oracle_public/requirements.lock', 'tools/oracle_public/oracle.project.json', 'tools/oracle_public/schemas/proposal-output.schema.json', 'tools/oracle_public/policy/example-policy.md', 'tools/oracle_public/corpus/example-architecture.md', 'tools/oracle_public/examples/proposal.txt', 'tools/oracle_public/validation-catalog.json', 'tools/oracle_public/tests/test_proposal_to_spec.py', 'tools/oracle_public/tests/test_public_chroma.py', 'tools/oracle_public/tests/test_runner_contract.py', 'tools/oracle_public/tests/test_export_boundary.py', 'tools/oracle_public/benchmarks/run.py', 'tools/oracle_public/benchmarks/public_cases.json'))
-PUBLIC_MEMBERS = frozenset(('.gitignore', 'LICENSE', 'NOTICE', 'README.md', 'pyproject.toml', 'requirements.lock', 'oracle.project.json', 'oracle-export-manifest.json', 'oracle_core/__init__.py', 'oracle_core/cli.py', 'oracle_core/config.py', 'oracle_core/proposal.py', 'oracle_core/runner.py', 'oracle_core/context.py', 'oracle_core/index.py', 'oracle_core/spec.py', 'oracle_core/seal.py', 'oracle_core/custody.py', 'oracle_core/lifecycle.py', 'schemas/proposal-output.schema.json', 'policy/example-policy.md', 'corpus/example-architecture.md', 'examples/proposal.txt', 'validation-catalog.json', 'tests/test_proposal_to_spec.py', 'tests/test_public_chroma.py', 'tests/test_runner_contract.py', 'tests/test_export_boundary.py', 'benchmarks/run.py', 'benchmarks/public_cases.json'))
+OWN_PATHS = frozenset(('.github/workflows/publication-safety.yml', 'LICENSE', 'NOTICE', 'package.json', 'tests/deterministic-lanes.test.mjs', 'tests/deterministic-oracle.test.mjs', 'tests/fixtures/oracle-public/catalog.json', 'tests/fixtures/oracle-public/corpus/architecture.md', 'tests/fixtures/oracle-public/export-map.json', 'tests/fixtures/oracle-public/policy.md', 'tests/fixtures/oracle-public/proposal.txt', 'tests/fixtures/oracle-public/relevance.json', 'tests/oracle-public-benchmark.test.mjs', 'tests/oracle-public-chroma.test.mjs', 'tests/oracle-public-core.test.mjs', 'tests/oracle-public-export.test.mjs', 'tests/oracle-public-live-proposal.test.mjs', 'tests/oracle-public-runner.test.mjs', 'tests/oracle_spec_test.py', 'tools/codex_child_model.py', 'tools/deterministic-oracle.md', 'tools/deterministic_oracle.py', 'tools/deterministic_package.py', 'tools/export_oracle.py', 'tools/oracle-public-export.json', 'tools/oracle_approval.py', 'tools/oracle_core/__init__.py', 'tools/oracle_core/cli.py', 'tools/oracle_core/config.py', 'tools/oracle_core/context.py', 'tools/oracle_core/custody.py', 'tools/oracle_core/index.py', 'tools/oracle_core/lifecycle.py', 'tools/oracle_core/proposal.py', 'tools/oracle_core/runner.py', 'tools/oracle_core/seal.py', 'tools/oracle_core/spec.py', 'tools/oracle_lifecycle.py', 'tools/oracle_oc_adapter.py', 'tools/oracle_public/.github/workflows/ci.yml', 'tools/oracle_public/.gitignore', 'tools/oracle_public/README.md', 'tools/oracle_public/benchmarks/public_cases.json', 'tools/oracle_public/benchmarks/run.py', 'tools/oracle_public/corpus/example-architecture.md', 'tools/oracle_public/examples/proposal.txt', 'tools/oracle_public/oracle.project.json', 'tools/oracle_public/policy/example-policy.md', 'tools/oracle_public/pyproject.toml', 'tools/oracle_public/requirements.lock', 'tools/oracle_public/schemas/proposal-output.schema.json', 'tools/oracle_public/tests/test_export_boundary.py', 'tools/oracle_public/tests/test_proposal_to_spec.py', 'tools/oracle_public/tests/test_public_chroma.py', 'tools/oracle_public/tests/test_runner_contract.py', 'tools/oracle_public/validation-catalog.json', 'tools/oracle_spec_seal.py', 'tools/validation-catalog.json', 'tools/validation-selection.json', 'tools/validation_contract.py', 'tools/vault_index.py'))
+CORE_INPUTS = frozenset(('.github/workflows/publication-safety.yml', 'LICENSE', 'NOTICE', 'package.json', 'tools/codex_child_model.py', 'tools/deterministic_oracle.py', 'tools/deterministic_package.py', 'tools/export_oracle.py', 'tools/oracle-public-export.json', 'tools/oracle_approval.py', 'tools/oracle_core/__init__.py', 'tools/oracle_core/cli.py', 'tools/oracle_core/config.py', 'tools/oracle_core/context.py', 'tools/oracle_core/custody.py', 'tools/oracle_core/index.py', 'tools/oracle_core/lifecycle.py', 'tools/oracle_core/proposal.py', 'tools/oracle_core/runner.py', 'tools/oracle_core/seal.py', 'tools/oracle_core/spec.py', 'tools/oracle_lifecycle.py', 'tools/oracle_oc_adapter.py', 'tools/oracle_public/.github/workflows/ci.yml', 'tools/oracle_public/.gitignore', 'tools/oracle_public/README.md', 'tools/oracle_public/benchmarks/public_cases.json', 'tools/oracle_public/benchmarks/run.py', 'tools/oracle_public/corpus/example-architecture.md', 'tools/oracle_public/examples/proposal.txt', 'tools/oracle_public/oracle.project.json', 'tools/oracle_public/policy/example-policy.md', 'tools/oracle_public/pyproject.toml', 'tools/oracle_public/requirements.lock', 'tools/oracle_public/schemas/proposal-output.schema.json', 'tools/oracle_public/tests/test_export_boundary.py', 'tools/oracle_public/tests/test_proposal_to_spec.py', 'tools/oracle_public/tests/test_public_chroma.py', 'tools/oracle_public/tests/test_runner_contract.py', 'tools/oracle_public/validation-catalog.json', 'tools/oracle_spec_seal.py', 'tools/validation-catalog.json', 'tools/validation_contract.py', 'tools/vault_index.py'))
+PUBLIC_MEMBERS = frozenset(('.github/workflows/ci.yml', '.gitignore', 'LICENSE', 'NOTICE', 'README.md', 'benchmarks/public_cases.json', 'benchmarks/run.py', 'corpus/example-architecture.md', 'examples/proposal.txt', 'oracle-export-manifest.json', 'oracle.project.json', 'oracle_core/__init__.py', 'oracle_core/cli.py', 'oracle_core/config.py', 'oracle_core/context.py', 'oracle_core/custody.py', 'oracle_core/index.py', 'oracle_core/lifecycle.py', 'oracle_core/proposal.py', 'oracle_core/runner.py', 'oracle_core/seal.py', 'oracle_core/spec.py', 'policy/example-policy.md', 'pyproject.toml', 'requirements.lock', 'schemas/proposal-output.schema.json', 'tests/test_export_boundary.py', 'tests/test_proposal_to_spec.py', 'tests/test_public_chroma.py', 'tests/test_runner_contract.py', 'validation-catalog.json'))
 ALIASES = {'oracle:source:validate': 'python3 -B tools/deterministic_oracle.py validate',
            'oracle:source:verify': 'python3 -B tools/deterministic_oracle.py verify',
            'oracle:public:export': 'python3 -B tools/export_oracle.py'}
-PROFILE_METADATA = {'native_kind': 'boc-deterministic-oracle/1', 'ci_kind': 'boc-deterministic-oracle-ci/1', 'native_result': 'VERIFIED', 'ci_result': 'CI_ONLY', 'native_commands': 'complete current sealed spec commands plus immutable export and standalone tests', 'ci_omitted_native_only_module': 'tests/oracle-public-live-proposal.test.mjs', 'ci_reason': 'Actual existing-plan CLI proposal evidence stays native and private; public CI has no provider credentials or calls. CI_ONLY grants no standalone publication authority.', 'source_inventory_sha256': '7d00ffd1e65daa84441a195f290015f224cc231eb0a7e51bb82f4ada50b7d049', 'runtime_source_count': 43, 'public_member_count': 30, 'budgets_seconds': {'structural': 120, 'chroma_export_benchmark': 60, 'native_proposal': 90, 'receipt_publication': 30}, 'automatic_install_or_download': False}
+PROFILE_METADATA = {'native_kind': 'boc-deterministic-oracle/1', 'ci_kind': 'boc-deterministic-oracle-ci/1', 'native_result': 'VERIFIED', 'ci_result': 'CI_ONLY', 'native_commands': 'complete current sealed spec commands plus immutable export and standalone tests', 'ci_omitted_native_only_module': 'tests/oracle-public-live-proposal.test.mjs', 'ci_reason': 'Actual existing-plan CLI proposal evidence stays native and private; public CI has no provider credentials or calls. CI_ONLY grants no standalone publication authority.', 'source_inventory_sha256': '0f582a1d7b973f6aac8fbacc9a291e030d5953f139b30da645c95f5bbc14c2d9', 'runtime_source_count': 44, 'public_member_count': 31, 'budgets_seconds': {'structural': 120, 'chroma_export_benchmark': 60, 'native_proposal': 90, 'receipt_publication': 30}, 'automatic_install_or_download': False, 'artifact_only': {'cli_flag': '--artifact-only', 'verification_scope': 'COMPONENT_ARTIFACT_VERIFIED', 'source_publication': False, 'feature_base': 'exact genuine sealed proposal base', 'origin_observation': 'separate read-only metadata; never an OC source publication or synchronization claim', 'full_native_selected_commands': True, 'oc_push_promote': 'always refused for artifact-only receipts even if remote later matches'}}
 NATIVE_INPUTS = ('tools/deterministic_source.py', 'tools/validation_contract.py',
                  'tools/oracle_spec_seal.py', 'tools/validation-catalog.json',
                  'tools/validation-selection.json', 'tools/deterministic_package.py',
@@ -176,8 +179,17 @@ def python_runtime(root):
     executable = Path(os.environ.get('ORACLE_PUBLIC_PYTHON', str(Path(root)/'Vault/index/venv/bin/python')))
     if not executable.is_absolute() or not executable.is_file():
         raise ValueError('Existing explicit Chroma Python runtime required; no installation fallback')
-    probe = r'''import hashlib,importlib.metadata as m,json,pathlib,sys
+    probe = r'''import hashlib,importlib.metadata as m,json,pathlib,re,sys
 import chromadb,onnxruntime
+if sys.version_info[:3]!=(3,13,5):raise RuntimeError('Declared Python3.13.5 required')
+pins={}
+for line in pathlib.Path(sys.argv[1]).read_text().splitlines():
+ match=re.fullmatch(r'([A-Za-z0-9_.-]+)==([^\s;]+)\s*\\?',line)
+ if match:
+  name,version=match.groups()
+  if name in pins or m.version(name)!=version:raise RuntimeError('Installed dependency differs from declared lock')
+  pins[name]=version
+if not pins:raise RuntimeError('Nonempty declared dependency lock required')
 from chromadb.utils.embedding_functions.onnx_mini_lm_l6_v2 import ONNXMiniLM_L6_V2
 cache=pathlib.Path(ONNXMiniLM_L6_V2.DOWNLOAD_PATH)/'onnx'
 if not cache.is_dir() or not (cache/'model.onnx').is_file():raise RuntimeError('Existing embedding cache required; downloads forbidden')
@@ -188,8 +200,8 @@ for dist in m.distributions():
   if p.is_file() and p.suffix not in ('.pyc','.pyo'):
    files[str(p.resolve())]=hashlib.sha256(p.read_bytes()).hexdigest()
 cachefiles={str(p.relative_to(cache)):hashlib.sha256(p.read_bytes()).hexdigest() for p in sorted(cache.rglob('*')) if p.is_file()}
-print(json.dumps({'python':sys.version,'prefix':sys.prefix,'chromadb':m.version('chromadb'),'onnxruntime':m.version('onnxruntime'),'dependencies_sha256':hashlib.sha256(json.dumps(files,sort_keys=True).encode()).hexdigest(),'embedding_cache_sha256':hashlib.sha256(json.dumps(cachefiles,sort_keys=True).encode()).hexdigest()}))'''
-    p = subprocess.run([str(executable), '-B', '-c', probe], cwd=root, capture_output=True, timeout=60)
+print(json.dumps({'python':sys.version,'prefix':sys.prefix,'chromadb':m.version('chromadb'),'onnxruntime':m.version('onnxruntime'),'locked_versions':pins,'dependencies_sha256':hashlib.sha256(json.dumps(files,sort_keys=True).encode()).hexdigest(),'embedding_cache_sha256':hashlib.sha256(json.dumps(cachefiles,sort_keys=True).encode()).hexdigest()}))'''
+    p = subprocess.run([str(executable), '-B', '-c', probe, str(Path(root)/'tools/oracle_public/requirements.lock')], cwd=root, capture_output=True, timeout=60)
     if p.returncode:
         raise ValueError('Existing Chroma runtime/cache unavailable; no automatic install/download')
     value = json.loads(p.stdout)
@@ -339,20 +351,25 @@ def native_proposal_witness(store, source, tree):
         if native.digest(regular(operation/(name+'.log')))!=process.get(name+'_sha256'):
             raise ValueError('Original native model output changed')
     files={}
-    for name in ('completed.json','inputs.json','runtime.json','process.json','result.json','stdout.log','stderr.log'):
+    for name in ('completed.json','inputs.json','invocation.json','runtime.json','process.json','result.json','stdout.log','stderr.log'):
         f=operation/name;files[str(f.relative_to(store))]=native.digest(regular(f))
     return {'execution_mode':'native_cli','operation':operation.name,'status':value['status'],
             'source_commit':source,'source_tree':tree,'runtime':runtime,'process':process,'files':files}
 
 
-def validate(root, base, requested_at, *, ci=False):
-    if ci:return validate_ci(root,base,requested_at)
+def validate(root, base, requested_at, *, ci=False, artifact_only=False):
+    if type(artifact_only) is not bool:raise ValueError('Closed artifact-only mode required')
+    if artifact_only and base!=COMPONENT_BASE:raise ValueError('Artifact verification retains the original component base')
+    if ci:
+        if artifact_only:raise ValueError('CI_ONLY never becomes full component-artifact verification')
+        return validate_ci(root,base,requested_at)
     start=None if requested_at=='unknown' else datetime.fromisoformat(requested_at.replace('Z','+00:00'))
     if start is not None and (start.tzinfo is None or start>datetime.now(timezone.utc)):
         raise ValueError('Original timezone-aware request time required')
     initial=native.identity(root); paths=scope(root,base,initial['source'])
     if contract.gate(root,base,initial['source'])['status']!='SPEC_SEALED':raise ValueError('Exact Oracle feature spec required')
     contract.native_origin(root,initial['source'])
+    origin_observed=observe_origin(root) if artifact_only else None
     store=directory(root)/str(time.time_ns());store.mkdir(parents=True,mode=0o700)
     failure={'kind':KIND+'-failure','identity':initial,'base':base,'request_started_at':requested_at}
     try:
@@ -370,6 +387,8 @@ def validate(root, base, requested_at, *, ci=False):
     value={'kind':KIND,'profile':PROFILE,'status':'VERIFIED',**before,'base':base,'paths':paths,
            'spec_runs':selected,'spec_mode':'native','export':artifact,'native_proposal':witness,'store':str(store),
            'request_started_at':requested_at,'completed_at':time.time(),'source_only':True,
+           'verification_scope':COMPONENT_SCOPE if artifact_only else SOURCE_SCOPE,
+           'source_publication':not artifact_only,'origin_main_observed':origin_observed,
            'deployment_authorized':False,'sla_status':'BREACHED_ORIGINAL_TIME_UNAVAILABLE' if start is None else
            ('BREACHED' if time.time()-start.timestamp()>300 else 'NOT_ESTABLISHED')}
     value['sha256']=native.digest(native.encoded(value));native.private_write(store/'receipt.json',native.encoded(value))
@@ -390,6 +409,17 @@ def verify(root):
     executable=value['oracle_runtime'].get('executable')
     if executable is None:raise ValueError('Bound native Python runtime missing')
     with cohort_environment(store,executable):current=identity(root)
+    if value.get('verification_scope') not in (COMPONENT_SCOPE,SOURCE_SCOPE) or value.get('source_publication') is not (value.get('verification_scope')==SOURCE_SCOPE):
+        raise ValueError('Native verification purpose changed')
+    if value['verification_scope']==COMPONENT_SCOPE:
+        observed=value.get('origin_main_observed')
+        if (value['base']!=COMPONENT_BASE or not isinstance(observed,dict)
+                or set(observed)!={'repository','commit','ref','observed_at','source_publication_claimed'}
+                or observed['repository']!=native.REPOSITORY or observed['ref']!='refs/heads/main'
+                or not re.fullmatch('[a-f0-9]{40}',observed.get('commit',''))
+                or type(observed.get('observed_at')) not in (float,int) or observed['observed_at']>time.time()
+                or observed['source_publication_claimed'] is not False):
+            raise ValueError('Original component scope/origin observation missing or changed')
     if any(value.get(k)!=v for k,v in current.items()) or scope(root,value['base'],current['source'])!=value['paths']:
         raise ValueError('Oracle committed inputs/runtime/scope changed')
     store=Path(value['store'])
@@ -463,8 +493,20 @@ def validate_ci(root,base,requested_at):
     return value
 
 
+def observe_origin(root):
+    destinations=native.git(root,'remote','get-url','--push','--all','origin').splitlines()
+    allowed={'https://github.com/'+native.REPOSITORY+x for x in ('','.git')}|{'git'+chr(64)+'github.com:'+native.REPOSITORY+'.git'}
+    if len(destinations)!=1 or destinations[0] not in allowed:raise ValueError('Exact OC origin required for component provenance')
+    value=native.git(root,'ls-remote',destinations[0],'refs/heads/main').split()
+    if len(value)!=2 or not re.fullmatch('[a-f0-9]{40}',value[0]) or value[1]!='refs/heads/main':
+        raise ValueError('Actual OC origin main observation unavailable')
+    return {'repository':native.REPOSITORY,'commit':value[0],'ref':value[1],'observed_at':time.time(),'source_publication_claimed':False}
+
+
 def publish(root, ref, *, promote=False):
     value=verify(root)  # CI_ONLY is deliberately never accepted here.
+    if value.get('verification_scope')!=SOURCE_SCOPE or value.get('source_publication') is not True:
+        raise ValueError('Artifact-only evidence never authorizes OC source push or promotion')
     if not re.fullmatch(r'codex/source-oracle-[a-z0-9-]+',ref or ''):
         raise ValueError('Exact Oracle source review ref required')
     destinations=native.git(root,'remote','get-url','--push','--all','origin').splitlines()
@@ -504,12 +546,15 @@ def publish(root, ref, *, promote=False):
 def main(argv=None):
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('action',choices=('validate','verify','status','ci','push','promote'))
-    parser.add_argument('--base');parser.add_argument('--requested-at',default='unknown');parser.add_argument('--ref')
+    parser.add_argument('--base');parser.add_argument('--requested-at',default='unknown');parser.add_argument('--ref');parser.add_argument('--artifact-only',action='store_true')
     args=parser.parse_args(argv);root=Path(native.git(Path.cwd(),'rev-parse','--show-toplevel'))
-    if args.action in ('verify','status'):result=verify(root)
+    if args.artifact_only and args.action not in ('validate','verify','status'):raise ValueError('Artifact-only mode cannot dispatch OC publication or CI')
+    if args.action in ('verify','status'):
+        result=verify(root)
+        if args.artifact_only and result['verification_scope']!=COMPONENT_SCOPE:raise ValueError('Component-artifact proof required')
     elif args.action in ('push','promote'):result=publish(root,args.ref,promote=args.action=='promote')
-    else:result=validate(root,args.base,args.requested_at,ci=args.action=='ci')
-    print(json.dumps({k:result[k] for k in ('kind','profile','status','source','sla_status','deployment_authorized') if k in result}));return 0
+    else:result=validate(root,args.base,args.requested_at,ci=args.action=='ci',artifact_only=args.artifact_only)
+    print(json.dumps({k:result[k] for k in ('kind','profile','status','verification_scope','source_publication','source','sla_status','deployment_authorized') if k in result}));return 0
 
 if __name__=='__main__':
     try:raise SystemExit(main())

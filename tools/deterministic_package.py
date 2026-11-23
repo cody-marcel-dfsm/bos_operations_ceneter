@@ -1491,6 +1491,7 @@ def main(argv=None):
                                            'verify-published', 'python-category'])
     parser.add_argument('component', nargs='?')
     parser.add_argument('--profile',choices=('skill-package','oracle'),default='skill-package')
+    parser.add_argument('--artifact-only',action='store_true')
     parser.add_argument('--base')
     parser.add_argument('--requested-at')
     parser.add_argument('--ref')
@@ -1504,10 +1505,12 @@ def main(argv=None):
         try:from . import deterministic_oracle as oracle_profile
         except ImportError:import deterministic_oracle as oracle_profile
         selected=[args.action]
+        if args.artifact_only:selected.append('--artifact-only')
         for name in ('base','requested_at','ref'):
             value=getattr(args,name)
             if value is not None:selected += ['--'+name.replace('_','-'),value]
         return oracle_profile.main(selected)
+    if args.artifact_only:raise ValueError('Artifact-only mode belongs only to the Oracle profile')
     if args.action == 'python-category':
         if args.component != 'unittest' or any((args.base,args.requested_at,args.ref,args.pr,args.source)):
             raise ValueError('Exact fixed Python category required')

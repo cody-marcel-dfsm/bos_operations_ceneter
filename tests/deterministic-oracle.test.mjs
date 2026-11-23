@@ -24,7 +24,7 @@ class Profile(unittest.TestCase):
  def commit(self):self.git('add','-A');self.git('commit','-qm','synthetic change')
  def test_exact_closed_inventory_and_nonempty_history(self):
   self.assertEqual(d.scope(self.root,self.base,self.head),['tools/deterministic_oracle.py'])
-  self.assertEqual(len(d.CORE_INPUTS),43);self.assertEqual(len(d.PUBLIC_MEMBERS),30)
+  self.assertEqual(len(d.CORE_INPUTS),44);self.assertEqual(len(d.PUBLIC_MEMBERS),31)
   self.assertFalse(any('*' in x for x in d.OWN_PATHS))
   with self.assertRaisesRegex(ValueError,'Outside'):d.scope(self.root,self.head,self.head)
  def test_reverted_unlisted_and_product_paths_refuse(self):
@@ -64,7 +64,7 @@ class Profile(unittest.TestCase):
   standalone=store/'standalone';standalone.mkdir();(standalone/'README.md').write_bytes(b'public')
   log=b'Ran 1 test in 0.1s\n\nOK\n';checksum=d.native.digest(log);(store/(checksum+'.log')).write_bytes(log)
   row={'exit_code':0,'output_sha256':checksum}
-  value={'kind':d.KIND,'profile':d.PROFILE,'status':status,**identity,'base':self.base,'paths':['tools/deterministic_oracle.py'],'spec_runs':[],'spec_mode':'native','native_proposal':{'execution_mode':'native_cli'},'completed_at':100,'store':str(store),'export':{'receipt':er,'receipt_sha256':d.native.digest(eraw),'archive_path':str(archive),'runs':[row],'standalone_inputs':{'README.md':{'sha256':d.native.digest(b'public'),'size':6,'mode':0o644}}}}
+  value={'kind':d.KIND,'profile':d.PROFILE,'status':status,**identity,'base':self.base,'paths':['tools/deterministic_oracle.py'],'verification_scope':d.SOURCE_SCOPE,'source_publication':True,'origin_main_observed':None,'spec_runs':[],'spec_mode':'native','native_proposal':{'execution_mode':'native_cli'},'completed_at':100,'store':str(store),'export':{'receipt':er,'receipt_sha256':d.native.digest(eraw),'archive_path':str(archive),'runs':[row],'standalone_inputs':{'README.md':{'sha256':d.native.digest(b'public'),'size':6,'mode':0o644}}}}
   value['sha256']=d.native.digest(d.native.encoded(value));path=store/'receipt.json';path.write_bytes(d.native.encoded(value))
   return identity,store,path
  def verification(self,identity):
@@ -150,8 +150,18 @@ class Profile(unittest.TestCase):
   with patch.object(d,'run') as run:
    with self.assertRaisesRegex(ValueError,'receipt'):d.publish(self.root,'codex/source-oracle-test')
    run.assert_not_called()
+ def test_artifact_only_is_never_oc_source_publication_even_if_origin_later_matches(self):
+  value={'source':self.head,'base':self.base,'store':str(self.root),'verification_scope':d.COMPONENT_SCOPE,'source_publication':False}
+  for promote in (False,True):
+   with patch.object(d,'verify',return_value=value),patch.object(d.native,'git',return_value=self.base+'\trefs/heads/main') as git,patch.object(d,'run') as run:
+    with self.assertRaisesRegex(ValueError,'Artifact-only'):d.publish(self.root,'codex/source-oracle-test',promote=promote)
+    git.assert_not_called();run.assert_not_called()
+ def test_artifact_only_retains_original_base_and_never_becomes_ci(self):
+  with self.assertRaisesRegex(ValueError,'original component base'):d.validate(self.root,self.base,'unknown',artifact_only=True)
+  with self.assertRaisesRegex(ValueError,'CI_ONLY'):d.validate(self.root,d.COMPONENT_BASE,'unknown',ci=True,artifact_only=True)
+  with self.assertRaisesRegex(ValueError,'Closed'):d.validate(self.root,self.base,'unknown',artifact_only='yes')
  def test_wrong_destination_and_moved_base_have_zero_effects(self):
-  value={'source':self.head,'base':self.base,'store':str(self.root)}
+  value={'source':self.head,'base':self.base,'store':str(self.root),'verification_scope':d.SOURCE_SCOPE,'source_publication':True}
   for destination,remote in [('https://example.invalid/wrong.git',self.base),('git@github.com:'+d.native.REPOSITORY+'.git','f'*40)]:
    def observed(root,*args):
     if args[0]=='remote':return destination

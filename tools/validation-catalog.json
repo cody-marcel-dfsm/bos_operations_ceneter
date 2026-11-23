@@ -47,16 +47,25 @@
       "native_commands": "complete current sealed spec commands plus immutable export and standalone tests",
       "ci_omitted_native_only_module": "tests/oracle-public-live-proposal.test.mjs",
       "ci_reason": "Actual existing-plan CLI proposal evidence stays native and private; public CI has no provider credentials or calls. CI_ONLY grants no standalone publication authority.",
-      "source_inventory_sha256": "7d00ffd1e65daa84441a195f290015f224cc231eb0a7e51bb82f4ada50b7d049",
-      "runtime_source_count": 43,
-      "public_member_count": 30,
+      "source_inventory_sha256": "0f582a1d7b973f6aac8fbacc9a291e030d5953f139b30da645c95f5bbc14c2d9",
+      "runtime_source_count": 44,
+      "public_member_count": 31,
       "budgets_seconds": {
         "structural": 120,
         "chroma_export_benchmark": 60,
         "native_proposal": 90,
         "receipt_publication": 30
       },
-      "automatic_install_or_download": false
+      "automatic_install_or_download": false,
+      "artifact_only": {
+        "cli_flag": "--artifact-only",
+        "verification_scope": "COMPONENT_ARTIFACT_VERIFIED",
+        "source_publication": false,
+        "feature_base": "exact genuine sealed proposal base",
+        "origin_observation": "separate read-only metadata; never an OC source publication or synchronization claim",
+        "full_native_selected_commands": true,
+        "oc_push_promote": "always refused for artifact-only receipts even if remote later matches"
+      }
     }
   }
 }
