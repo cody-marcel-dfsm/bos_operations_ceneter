@@ -25,6 +25,9 @@ class Profile(unittest.TestCase):
  def test_exact_closed_inventory_and_nonempty_history(self):
   self.assertEqual(d.scope(self.root,self.base,self.head),['tools/deterministic_oracle.py'])
   self.assertEqual(len(d.CORE_INPUTS),44);self.assertEqual(len(d.PUBLIC_MEMBERS),31)
+  self.assertEqual(len(d.OWN_PATHS),65)
+  self.assertTrue({'tests/published_fixture.py','tests/oracle_review_series.py','tests/privacy_coverage_test.py','tests/oracle-implementation-spec.test.mjs'}<=d.OWN_PATHS)
+  self.assertEqual(d.native.digest(('\n'.join(sorted(d.OWN_PATHS))+'\n').encode()),d.PROFILE_METADATA['source_inventory_sha256'])
   self.assertFalse(any('*' in x for x in d.OWN_PATHS))
   with self.assertRaisesRegex(ValueError,'Outside'):d.scope(self.root,self.head,self.head)
  def test_reverted_unlisted_and_product_paths_refuse(self):

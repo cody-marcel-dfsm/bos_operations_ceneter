@@ -47,7 +47,7 @@
       "native_commands": "complete current sealed spec commands plus immutable export and standalone tests",
       "ci_omitted_native_only_module": "tests/oracle-public-live-proposal.test.mjs",
       "ci_reason": "Actual existing-plan CLI proposal evidence stays native and private; public CI has no provider credentials or calls. CI_ONLY grants no standalone publication authority.",
-      "source_inventory_sha256": "0f582a1d7b973f6aac8fbacc9a291e030d5953f139b30da645c95f5bbc14c2d9",
+      "source_inventory_sha256": "6ef1da1582f81e110540208dadd3949025db13eb0f4b7736138ddfde85d1d518",
       "runtime_source_count": 44,
       "public_member_count": 31,
       "budgets_seconds": {

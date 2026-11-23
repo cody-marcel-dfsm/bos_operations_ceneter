@@ -7,7 +7,8 @@ The existing source-maintenance and skill-package lanes retain their own scopes.
 
 The literal source inventory admits only the selected core, compatibility
 entrypoints, exporter, public templates, native controller/catalog/CI wiring and
-selected tests/fixtures. The core runtime inventory has 44 paths; the public
+selected tests/fixtures. Its 65 exact paths include the three existing policy-copy
+helpers and their selected Node caller. The core runtime inventory has 44 paths; the public
 archive contains exactly 31 members, including the generated export manifest.
 All unpublished history edges are checked, including reverted changes. Unknown
 paths, source symlinks, product/dependency/version edits and changes to other
