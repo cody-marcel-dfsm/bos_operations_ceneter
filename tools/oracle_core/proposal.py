@@ -1,6 +1,6 @@
 """Actual proposal retrieval→independent judge→validated spec, with no-replay recovery."""
 from pathlib import Path
-import hashlib,json,platform,subprocess
+import json,platform,subprocess
 from .config import load,relative
 from .context import context_input
 from .custody import canonical,digest,identity,immutable,read
@@ -16,7 +16,9 @@ def core_identity():
 def source(root):
     manifest=root/'oracle-export-manifest.json'
     if manifest.is_file():
-        value=json.loads(manifest.read_text());return value.get('source_commit'),value.get('source_tree')
+        value=json.loads(relative(root,'oracle-export-manifest.json').read_text());return value.get('source_commit'),value.get('source_tree')
+    owner=subprocess.run(['git','rev-parse','--show-toplevel'],cwd=root,capture_output=True,text=True)
+    if owner.returncode or Path(owner.stdout.strip()).resolve()!=Path(root).resolve():return None,None
     run=subprocess.run(['git','rev-parse','HEAD','HEAD^{tree}'],cwd=root,capture_output=True,text=True)
     values=run.stdout.splitlines()
     return tuple(values) if run.returncode==0 and len(values)==2 else (None,None)
@@ -30,6 +32,7 @@ def prepare(config_path,proposal,*,mode="native_cli"):
     context=context_input(policy,proposal,evidence,catalog);runtime=runner.preflight(config['runner']);commit,tree=source(root)
     binding={'execution_mode':mode,'project':config['project'],'config_sha256':digest(Path(config_path).read_bytes()),'context_sha256':identity(context),
              'core_sha256':core_identity(),'runtime':runtime,'source_commit':commit,'source_tree':tree}
+    if mode=='native_cli' and (not commit or not tree):raise ValueError('Exact Git root or admitted export source identity required before model execution')
     provenance={**binding,'engine':runtime['engine'],'model':runtime['model'],'host_sha256':digest(platform.node().encode())}
     return root,config,context,binding,provenance
 

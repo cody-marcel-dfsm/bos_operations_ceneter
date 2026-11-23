@@ -868,7 +868,9 @@ class NativePolicyBatch(unittest.TestCase):
                 metadata,actual=oracle._git_bytes(self.root,'ls-tree','-z',self.revision,'--',name)[:-1].split(b'\t')
                 mode,kind,oid=metadata.split()
                 expected[name]={'mode':mode.decode(),'ast':oracle._policy_ast(oracle._git_bytes(self.root,'show',self.revision+':'+name))}
-            self.assertEqual(calls.call_count,28)
+            # Stable case identity; extracted core dependencies enlarge the exact inventory.
+            self.assertEqual(len(oracle.REVIEW_POLICY_MODULES),26)
+            self.assertEqual(calls.call_count,52)
         with patch.object(oracle,'_git_bytes',wraps=oracle._git_bytes) as calls:
             self.assertEqual(oracle._review_policy_sources(self.root,self.revision),expected)
             self.assertEqual(calls.call_count,2)

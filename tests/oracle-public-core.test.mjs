@@ -7,6 +7,7 @@ const code=String.raw`
 import json,tempfile,unittest
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor
+from unittest.mock import patch
 from oracle_core import seal_matches
 from oracle_core import proposal,runner,spec
 from oracle_core.custody import read
@@ -21,7 +22,11 @@ class Core(unittest.TestCase):
   self.catalog={'schema':'boc.validation-catalog/v1','classes':CLASSES,'sanity':['python','-m','unittest','discover','-s','tests'],'modules':{'tests/example.py':['python','-m','unittest','tests.example']}}
   (self.root/'catalog.json').write_text(json.dumps(self.catalog))
   self.config={'project':'synthetic-public-test','policy':'policy.md','catalog':'catalog.json','corpus':{'root':'corpus','sources':['architecture.md']},'state':'.oracle','runner':{'engine':'codex','executable':'codex','model':'gpt-6.1-sol','reasoning_effort':'medium','timeout_seconds':90,'sandbox':'read-only','max_output_bytes':8388608}}
+  (self.root/'oracle-export-manifest.json').write_text(json.dumps({'source_commit':'c'*40,'source_tree':'d'*40,'synthetic_fixture':True}))
   self.path=self.root/'oracle.project.json';self.path.write_text(json.dumps(self.config));self.calls=0
+  # Explicit synthetic adapter/runtime; CI needs no model CLI or credentials.
+  runtime=patch.object(runner,'preflight',side_effect=lambda c:{'engine':c['engine'],'model':c['model'],'executable_sha256':'e'*64,'capabilities':{'sandbox':'read-only','apps':False,'mcp':False,'shell':False,'automatic_project_context':False},'timeout_seconds':90,'maximum_output_bytes':8388608,'environment_sha256':'f'*64})
+  runtime.start();self.addCleanup(runtime.stop)
   self.review={'review_status':'COMPLETE','verdict':'APPROVED','summary':'Explicit synthetic adapter test; no provider was called.','findings':[],'validation_selection':{'change_class':'bug_fix','scope_paths':['examples/proposal.txt'],'categories':[{'name':'sanity','tests':[],'fixtures':[]},{'name':'focused','tests':['tests/example.py'],'fixtures':[]}],'reason':'Synthetic regression','revision_of':None,'design':None,'acceptance':['An exact proposal yields a sealed bounded test plan'],'acceptance_tests':[{'module':'tests/example.py','covers':[0],'purpose':'Validate exact plan'}]}}
  def adapter(self,config,*args):
   self.calls+=1;return self.review,runner.preflight(config)
@@ -57,7 +62,7 @@ class Core(unittest.TestCase):
   from oracle_core.config import load
   with self.assertRaises(ValueError):load(self.path)
  def test_retrieved_data_is_not_policy(self):
-  root,config,context,binding,provenance=proposal.prepare(self.path,'Exact immutable tests')
+  root,config,context,binding,provenance=proposal.prepare(self.path,'Exact immutable tests',mode='synthetic')
   self.assertIn('trusted_policy',context);self.assertIn('untrusted_retrieved_evidence',context)
   self.assertNotEqual(context['trusted_policy']['sha256'],binding['context_sha256'])
 unittest.main()

@@ -152,7 +152,9 @@ def index_configuration() -> dict:
             "chunk_characters": CHUNK_CHARACTERS, "overlap_characters": OVERLAP_CHARACTERS,
             "embedding": "Chroma DefaultEmbeddingFunction/all-MiniLM-L6-v2",
             "chromadb_version": version("chromadb"),
-            "indexer_sha256": file_digest(Path(__file__))}
+            "indexer_sha256": file_digest(Path(__file__)),
+            "indexer_core_sha256": file_digest(PROJECT_ROOT / "tools/oracle_core/index.py"),
+            "adapter_sha256": file_digest(PROJECT_ROOT / "tools/oracle_oc_adapter.py")}
 
 
 def atomic_json(path: Path, payload: dict) -> None:

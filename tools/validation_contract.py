@@ -19,7 +19,7 @@ SCHEMA = 'boc.validation-contract/v2'
 STAMP_KEYS = {'engine','model','oracle_sha256','host','time','origin_main','request_sha256','proposal_sha256'}
 ENGINES = ('claude','codex')
 ORACLE_FILES = ('.agents/skills/oracle/SKILL.md','.agents/skills/oracle/review-output.schema.json',
-                'tools/oracle_approval.py','tools/validation_contract.py','tools/oracle_spec_seal.py')
+                'tools/oracle_approval.py','tools/validation_contract.py','tools/oracle_spec_seal.py') + tuple('tools/oracle_core/'+name+'.py' for name in ('__init__','cli','config','proposal','runner','context','index','spec','seal','custody','lifecycle')) + ('tools/oracle_oc_adapter.py',)
 TESTED = {'focused','interactions','acceptance'}
 # Family secret patterns plus local absolute paths: committed spec text stays publishable.
 PRIVATE_PATTERNS = tuple(re.compile(p) for p in (

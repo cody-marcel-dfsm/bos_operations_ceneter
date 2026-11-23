@@ -15,13 +15,13 @@ class Transport(unittest.TestCase):
  def tearDown(self):os.environ['PATH']=self.old
  def executable(self,body):
   source='#!'+sys.executable+'\nimport sys,json,time\nfrom pathlib import Path\n'
-  source+='if "--help" in sys.argv:print("--ignore-user-config --ephemeral --strict-config --output-schema --sandbox");raise SystemExit(0)\n'
+  source+='if "--help" in sys.argv:print("--ignore-user-config --ephemeral --strict-config --skip-git-repo-check --output-schema --sandbox");raise SystemExit(0)\n'
   source+='if "features" in sys.argv:\n print("\\n".join(x+" stable false" for x in '+repr(list(runner.DISABLED))+'));raise SystemExit(0)\n'
   source+=body+'\n';p=self.bin/'codex';p.write_text(source);p.chmod(0o700)
  def run_model(self):return runner.run(self.config,self.root,self.root/'operation','SYNTHETIC transport fixture','Explicit test policy',{'type':'object'})
  def test_actual_command_capability_vector(self):
   cmd=runner.codex_command('codex','m','medium','r','s','o','p','trusted')
-  for flag in ['--ignore-user-config','--ignore-rules','--ephemeral','--strict-config']:self.assertIn(flag,cmd)
+  for flag in ['--ignore-user-config','--ignore-rules','--ephemeral','--strict-config','--skip-git-repo-check']:self.assertIn(flag,cmd)
   self.assertIn('mcp_servers={}',cmd);self.assertIn('project_doc_max_bytes=0',cmd);self.assertIn('approval_policy="never"',cmd);self.assertIn('read-only',cmd)
   self.assertNotIn('danger-full-access',cmd)
  def test_existing_oc_capabilities_are_explicit_adapter(self):

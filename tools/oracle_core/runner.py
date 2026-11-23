@@ -1,12 +1,12 @@
 """Existing CLI judge transports, explicit capabilities and bounded output custody."""
 from pathlib import Path
-import hashlib,json,os,shutil,signal,subprocess,threading,time
+import json,os,shutil,signal,subprocess,threading,time
 from .custody import immutable,digest,identity
 
 # UnifiedExec is a backend selected only inside the ShellTool-enabled guard.
 # Disabling ShellTool removes both shell and unified exec handlers.
 ENVIRONMENT={'PATH','HOME','CODEX_HOME','OPENAI_API_KEY','XDG_CACHE_HOME','SSL_CERT_FILE','SSL_CERT_DIR','LANG','LC_ALL','TMPDIR'}
-DISABLED=('apps','shell_tool','skill_search','skill_mcp_dependency_install')
+DISABLED=('apps','shell_tool','skill_search','skill_mcp_dependency_install','hooks','plugins','remote_plugin','plugin_sharing','multi_agent','multi_agent_v2','memories','guardian_include_additional_context')
 
 
 def codex_command(executable,model,effort,root,schema,output,prompt,policy,*,sandbox='read-only',portable=True):
@@ -15,7 +15,7 @@ def codex_command(executable,model,effort,root,schema,output,prompt,policy,*,san
          '--output-schema',str(schema),'--output-last-message',str(output)]
     if effort is not None:cmd+=['-c','model_reasoning_effort='+json.dumps(effort)]
     if portable:
-        cmd+=['--strict-config','--ignore-rules','-c','approval_policy="never"','-c','mcp_servers={}','-c','project_doc_max_bytes=0','-c','web_search="disabled"']
+        cmd+=['--skip-git-repo-check','--strict-config','--ignore-rules','-c','approval_policy="never"','-c','mcp_servers={}','-c','project_doc_max_bytes=0','-c','skills.include_instructions=false','-c','skills.bundled.enabled=false','-c','web_search="disabled"']
         for name in DISABLED:cmd+=['--disable',name]
     return cmd+[prompt]
 
@@ -33,7 +33,7 @@ def preflight(runner):
     meta=runtime(runner)
     if runner['engine']=='codex':
         help_run=subprocess.run([runner['executable'],'exec','--help'],capture_output=True,text=True,timeout=10)
-        for flag in ['--ignore-user-config','--ephemeral','--strict-config','--output-schema','--sandbox']:
+        for flag in ['--ignore-user-config','--ephemeral','--strict-config','--skip-git-repo-check','--output-schema','--sandbox']:
             if help_run.returncode or flag not in help_run.stdout:raise ValueError('CLI capability restriction unsupported')
         args=[runner['executable'],'features','list']
         for name in DISABLED:args+=['--disable',name]
@@ -56,6 +56,7 @@ def run(runner,root,directory,prompt,policy,schema):
              '--mcp-config','{"mcpServers":{}}','--tools','','--allowedTools','','--no-session-persistence','--model',runner['model'],
              '--append-system-prompt',policy,'--',prompt]
     immutable(directory/'runtime.json',meta)
+    immutable(directory/'invocation.json',{'argv_sha256':identity(cmd),'schema_sha256':identity(schema),'prompt_sha256':digest(prompt.encode()),'policy_sha256':digest(policy.encode()),'runtime_sha256':identity(meta)})
     # Authentication remains CLI-owned. No shell or inherited model-auth body is read here.
     env={k:v for k,v in os.environ.items() if k in ENVIRONMENT}
     child=subprocess.Popen(cmd,cwd=root,env=env,stdin=subprocess.DEVNULL,stdout=subprocess.PIPE,stderr=subprocess.PIPE,start_new_session=True)

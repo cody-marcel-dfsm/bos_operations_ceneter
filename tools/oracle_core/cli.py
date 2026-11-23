@@ -1,5 +1,4 @@
 """Standalone explicit-input CLI; generates private evidence only."""
-from pathlib import Path
 import argparse,json,sys
 from .config import load,relative
 from .index import Index

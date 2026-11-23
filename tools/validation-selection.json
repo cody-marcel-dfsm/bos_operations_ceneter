@@ -4,12 +4,12 @@
   "stamp": {
     "engine": "codex",
     "model": "gpt-6.1-sol",
-    "oracle_sha256": "221011304bc3ded8ade1bf37811e83a3465c8be23d908a7cd9bc11d59c6c3f76",
+    "oracle_sha256": "dae2fb07ccd8bfcd1130950d5517ccee25a1d327e07e21152b058c7e1d62ec86",
     "host": "Codys-MacBook-Pro.local",
-    "time": "2026-11-23T05:40:25Z",
+    "time": "2026-11-23T05:55:44Z",
     "origin_main": "d6f6dac91af5e962ddc7acaf39efaa302708408b",
     "request_sha256": null,
-    "proposal_sha256": "472d8fddf1262cfc6691326f336c24ae553e92d7a7155f2032eb2a7e984bb615"
+    "proposal_sha256": "c8fe4e82a4d43c44403b3592cb9175307cf71ea617c3b28f23831ff66e7cb96e"
   },
   "selection": {
     "acceptance": [
@@ -17,9 +17,9 @@
       "Standalone execution requires explicit project, trusted policy, catalog, corpus, model capabilities, budget and state configuration. Missing or ambiguous configuration fails closed, and retrieved corpus content remains untrusted evidence.",
       "Real local Chroma indexing and search operate on synthetic public fixtures without skips, preserve source, chunk and configuration identities, reject stale evidence and publish index state consistently.",
       "Proposal results and generated specifications preserve the current oracle-spec/1 format, complete acceptance-to-test bindings and exact input identities. Malformed, incomplete and uncertain executions retain their actual outcomes without automatic replay or paid fallback. Recovery of completed model output requires matching input, configuration, corpus, core, runtime and result identities; stale or tampered recovery fails closed.",
-      "Export reads immutable committed inputs through a complete closed mapping, rejects unsafe or unlisted members and produces independently verifiable artifact bytes with license, attribution and provenance.",
-      "A fresh exported installation runs independently of private knowledge, sibling checkouts and undeclared host configuration. Private material, credentials, operational state and product packages remain outside the artifact.",
-      "A separate deterministic verification profile binds complete committed source, selected tests, artifact bytes, runtime, dependencies and retained outputs. Existing profiles and publication restrictions remain enforced, with no completed-source model fallback. Full native VERIFIED requires every selected module. Public CI executes a separately typed CI_ONLY projection omitting exactly the native live-proposal module, makes no provider calls and receives no provider credentials. Publication rejects CI_ONLY as a substitute for a current full native receipt and rejects missing, stale or tampered native evidence. Only a separately declared bounded setup stage in the existing CI job may provision the pinned Python runtime, binary-only hash-locked dependencies and hash-verified public embedding archive. Archive admission enforces download and extracted-size limits and rejects unsafe paths, links, duplicate entries and unsupported member types. Optional caching contains only verified public setup inputs and revalidates restored bytes. Missing, incompatible or unverified setup fails closed; validation runtime never installs or downloads missing inputs. Receipts bind runtime, dependency-lock and embedding identities.",
+      "Export reads immutable committed inputs through a complete closed mapping, rejects unsafe or unlisted members and produces independently verifiable artifact bytes with license, attribution and provenance. The exact public inventory includes its explicitly mapped CI workflow. Source provenance distinguishes the canonical commit identity from independently established upstream publication.",
+      "A fresh exported installation runs independently of private knowledge, sibling checkouts and undeclared host configuration. Private material, credentials, operational state and product packages remain outside the artifact. Its public CI executes all four public test modules and the real labelled retrieval benchmark without model or provider calls or credentials.",
+      "A separate deterministic verification profile binds complete committed source, selected tests, artifact bytes, runtime, dependencies and retained outputs. Existing profiles and publication restrictions remain enforced, with no completed-source model fallback. Full native VERIFIED requires every selected module. Public CI executes a separately typed CI_ONLY projection omitting exactly the native live-proposal module, makes no provider calls and receives no provider credentials. Publication rejects CI_ONLY as a substitute for a current full native receipt and rejects missing, stale or tampered native evidence. Only a separately declared bounded setup stage in the existing CI job or explicitly mapped public workflow may provision the pinned Python runtime, binary-only hash-locked dependencies and hash-verified public embedding archive. Archive admission enforces download and extracted-size limits and rejects unsafe paths, links, duplicate entries and unsupported member types. Optional caching contains only verified public setup inputs and revalidates restored bytes. Missing, incompatible or unverified setup fails closed; validation runtime never installs or downloads missing inputs. Receipts bind runtime, dependency-lock and embedding identities. Explicit artifact-only validation binds the genuine sealed feature base, executes the complete native selected commands and standalone export checks, and records COMPONENT_ARTIFACT_VERIFIED with source_publication=false. Current origin observation remains separate metadata. Every OC push and promotion path refuses artifact-only receipts, including when origin later matches their base; existing whole-range source-publication guards remain enforced. Public upload requires current full native component proof, followed by independent public CI and exact-commit artifact readback.",
       "A bounded normal-plan model-adapter demonstration consumes only public example inputs and records a truthful conceptual proposal outcome with exact configuration and model evidence.",
       "Benchmark output identifies execution mode, independently authored labels, corpus, embedding, model and source identities and measured results without unsupported comparative claims."
     ],
@@ -88,21 +88,22 @@
           5
         ],
         "module": "tests/oracle-public-export.test.mjs",
-        "purpose": "Verify immutable source mapping, fresh-copy independence, provenance and negative export boundaries."
+        "purpose": "Verify immutable complete mapping, the explicit public workflow, truthful source provenance, fresh-copy independence, all public test modules and benchmark execution, and negative export boundaries."
       },
       {
         "covers": [
+          5,
           6
         ],
         "module": "tests/deterministic-oracle.test.mjs",
-        "purpose": "Verify exact-source native admission, output custody, the exact credential-free CI projection, distinct result types, publication refusal, governed setup pins, dependency and archive integrity, extraction bounds, cache tampering refusal and runtime no-provisioning behavior."
+        "purpose": "Verify native input and output custody, full-proof artifact admission, genuine feature-base binding, separate origin metadata, permanent artifact-only OC push and promotion refusal including later matching origin, unchanged whole-range guards, distinct CI evidence, zero-provider public workflow execution, pinned setup integrity, archive bounds, cache tampering refusal and runtime no-provisioning behavior."
       },
       {
         "covers": [
           6
         ],
         "module": "tests/deterministic-lanes.test.mjs",
-        "purpose": "Preserve existing deterministic profile scope and dispatcher behavior while admitting only the separate new profile."
+        "purpose": "Preserve existing deterministic profile scope and dispatcher behavior while admitting only the separate new profile and refusing artifact-only receipts at OC publication entrypoints."
       },
       {
         "covers": [
@@ -171,8 +172,8 @@
     ],
     "change_class": "feature",
     "design": "Vault/docs/design/portable-oracle-publication.md",
-    "reason": "Retain the complete nine-criterion, twelve-module feature selection and existing catalog. Add governed provisioning checks within the selected deterministic profile module. A separate existing-CI setup stage uses pinned Python and actions, binary-only hash-locked dependencies and a hash-verified public embedding archive with strict size, path and extraction bounds. Optional restored caches are revalidated. Validation runtime retains no installation or download fallback. Public CI omits exactly the native live-proposal module, receives no provider credentials, makes no provider calls and produces CI_ONLY evidence. Full native verification remains mandatory for publication. Preserve existing profiles, historical outcomes, original request clock and 300-second end-to-end obligation, including setup and network time. Retain structural, retrieval/export/benchmark, conceptual model and receipt/publication budgets of 120, 60, 90 and 30 seconds respectively. Completed-source verification remains deterministic.",
-    "revision_of": "b57444060e5016b549a953e68d719595798cc703ae211f035f9a58b90074f388",
+    "reason": "Retain all nine criteria, twelve selected modules and existing category fixtures. Add exactly the public workflow template to the bounded scope and adopt the supplied catalog inventory. Extend existing export and deterministic-profile checks for complete credential-free public CI, component-artifact custody, separate origin observation, truthful provenance and unconditional refusal of artifact-only evidence at source publication entrypoints. Preserve complete canonical dependency custody, existing profile restrictions, historical outcomes and the original request clock. The 300-second end-to-end obligation and structural, retrieval/export/benchmark, conceptual-model and receipt/publication budgets of 120, 60, 90 and 30 seconds remain unchanged. Full native verification precedes upload; public CI and remote readback remain separately required. Completed-source verification remains deterministic.",
+    "revision_of": "12f8d58332181fbd952855160735c85af0b0ed02b6a239b87529beb39a4e58eb",
     "scope_paths": [
       "tools/oracle_core/__init__.py",
       "tools/oracle_core/cli.py",
@@ -232,12 +233,14 @@
       "tests/fixtures/oracle-public/proposal.txt",
       "tests/fixtures/oracle-public/corpus/architecture.md",
       "tests/fixtures/oracle-public/relevance.json",
-      "tests/fixtures/oracle-public/export-map.json"
+      "tests/fixtures/oracle-public/export-map.json",
+      "tests/oracle_spec_test.py",
+      "tools/oracle_public/.github/workflows/ci.yml"
     ]
   },
-  "base_commit": "9e817aed58bb85f2799204c70d84b4cac181db58",
-  "base_tree": "56bd550e38a476e3cbf96ab6e2dfaf0526769b3f",
-  "catalog_sha256": "fd87d4a22ec92d7952775ff9aec0280765230c2483a15e28a672de6050b2b701",
+  "base_commit": "df870a6b58073a6df13f44a9f73f34cae16c5de5",
+  "base_tree": "fe3592e1059cec0f6e29df12c8f6699a62c599cd",
+  "catalog_sha256": "9b999fb8fb53625b380232919ccbae149a4ac4e3b099e4c6087b902841e198eb",
   "runtime": {
     "node": "v22.11.0",
     "node_sha256": "b3766cc0774a690436a2bc9e3cbfd9d80c29a3f64499ae2f98ca203853b1cd85",
@@ -246,8 +249,8 @@
     "architecture": "arm64",
     "options_sha256": "ebc442c160f8629073a82976daadaba1d95a60a38d768c81c8eb06598aedcac5"
   },
-  "proposal_sha256": "472d8fddf1262cfc6691326f336c24ae553e92d7a7155f2032eb2a7e984bb615",
-  "review_sha256": "8827b1c41f917b55c21df4690f22adacfd86d65fb6d733edca1e87a735ff6483",
+  "proposal_sha256": "c8fe4e82a4d43c44403b3592cb9175307cf71ea617c3b28f23831ff66e7cb96e",
+  "review_sha256": "cfa1ec8c7fdb615a911a22073d029744e14b3ae1fad46af9184fa8f8329b9789",
   "commands": [
     {
       "category": "sanity",
@@ -337,15 +340,15 @@
   },
   "design_binding": {
     "design": "Vault/docs/design/portable-oracle-publication.md",
-    "design_sha256": "e8df7e80fcbe6443407bd2939fb759af758175b916621817fee9e826342f45d3",
+    "design_sha256": "e65576bfe8794e9033bb89d87b1840d09a88feabe57a2d64ce69cee88094e7ff",
     "plan": "Vault/docs/design/portable-oracle-publication.test-plan.json",
-    "plan_sha256": "b826b794e8bad3d300629dd1b6aa7d35be5c1c3e7c8f3c2412b1e8c1b49f0a58",
+    "plan_sha256": "0a292d0f4fe49b64212934e4e6eb1668216991cf57617ef18194660ce5030e2a",
     "tests": [
       "tests/deterministic-oracle.test.mjs",
       "tests/oracle-public-core.test.mjs",
       "tests/oracle-public-export.test.mjs"
     ]
   },
-  "contract_sha256": "ce06dec3edb67b0375b1e493515519b1bcd18eabe7fa89ceefed7e217ba1eca3",
-  "seal": "b887e2c21a91be1224ca5ecc4a035fdce398484f3314cd38276264c68057e067"
+  "contract_sha256": "b3730f3aec66210dcaf77b9c4f1ec4bb643a4ba41c05901c0cb527a4971f948b",
+  "seal": "576b5ca9a07f4c060ec71ed5a934be19977589f4cc91b50050efb3f175e8f323"
 }

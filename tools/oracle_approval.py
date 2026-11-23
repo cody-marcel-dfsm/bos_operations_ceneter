@@ -1390,12 +1390,13 @@ REVIEW_POLICY_MODULES = ("tools/oracle_approval.py", "tools/codex_child_model.py
                          "tools/oracle_parallel.py", "tools/oracle_source_frontier.py", "tools/oracle_lifecycle.py",
                          "tools/command_coverage.py", "tools/validation_contract.py", "tools/oracle_spec_seal.py",
                          "tools/deterministic_source.py", "tools/deterministic_package.py")
+REVIEW_POLICY_MODULES += tuple('tools/oracle_core/'+name+'.py' for name in ('__init__','cli','config','proposal','runner','context','index','spec','seal','custody','lifecycle')) + ('tools/oracle_oc_adapter.py',)
 
 
 def _review_policy_tree_sources(root: Path, tree: str) -> dict[str, tuple[str, bytes]]:
     """One finite immutable inventory and one binary-safe body read; no cache."""
     if (not isinstance(tree,str) or re.fullmatch(r"(?:[0-9a-f]{40}|[0-9a-f]{64})",tree) is None
-            or len(REVIEW_POLICY_MODULES)!=14 or len(set(REVIEW_POLICY_MODULES))!=14):
+            or len(REVIEW_POLICY_MODULES)!=26 or len(set(REVIEW_POLICY_MODULES))!=26):
         raise ValueError("Immutable reviewer policy revision required")
     raw = _git_bytes(root,"ls-tree","--long","-z","--full-tree",tree,"--",*REVIEW_POLICY_MODULES,timeout=30)
     if len(raw)>32*1024 or not raw.endswith(b"\0"):

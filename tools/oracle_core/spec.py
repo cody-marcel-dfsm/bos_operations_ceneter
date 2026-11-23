@@ -66,6 +66,9 @@ def validate_review(review,catalog):
 def materialize(review,proposal,catalog,provenance):
     validate_review(review,catalog)
     if review['verdict']=='REJECTED':return None
+    import re
+    if any(not isinstance(provenance.get(k),str) or not re.fullmatch('[a-f0-9]{40}',provenance[k]) for k in ['source_commit','source_tree']):raise ValueError('An exact declared Git or export source identity is required')
+    if any(not isinstance(provenance.get(k),str) or not re.fullmatch('[a-f0-9]{64}',provenance[k]) for k in ['core_sha256','host_sha256']):raise ValueError('Exact core/runtime identity required')
     selection=review['validation_selection'];commands=[]
     for row in selection['categories']:
         entries=[(name,catalog['modules'][name]) for name in row['tests']]
