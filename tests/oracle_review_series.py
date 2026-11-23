@@ -1861,17 +1861,18 @@ class ReviewSeries(unittest.TestCase):
         variants = [
             source.replace("Reviewer process configuration:", "Additional reviewer policy:"),
             source.replace('"reviewer_role": "independent-oracle-approver"', '"reviewer_role": "changed-role"'),
-            source.replace('str(schema_path),', 'str(root / "changed-schema.json"),'),
+            source.replace('root,schema_path,output,prompt,developer_instructions,', 'root,root / "changed-schema.json",output,prompt,developer_instructions,'),
             source.replace("Return JSON matching the supplied schema.", "Use a different output contract."),
-            source.replace('"--sandbox", "danger-full-access"', '"--sandbox", "read-only"'),
+            source.replace('sandbox="danger-full-access"', 'sandbox="read-only"'),
             source.replace("cmd, cwd=root", 'cmd[:-1] + ["changed prompt"], cwd=root'),
             source.replace('"proposal": request,', '"proposal": "changed fixed request contract",'),
             source.replace('if _RUN.get() and', 'if False and'),
             source.replace('return call()', 'return None'),
         ]
+        self.assertEqual(len(variants), 9)
         with patch.object(o, "__file__", str(self.root / "tools/oracle_approval.py")):
-            for variant in variants:
-                self.assertNotEqual(source, variant)
+            for index, variant in enumerate(variants):
+                self.assertTrue(source != variant, "Policy mutation target did not change source: " + str(index))
                 self.change("tools/oracle_approval.py", source)
                 self.record_check()
                 self.submit()

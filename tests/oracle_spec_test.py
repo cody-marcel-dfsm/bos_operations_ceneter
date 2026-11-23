@@ -717,18 +717,28 @@ class PublicationCIDispatch(Fixture):
         (self.root/'tools/__init__.py').write_text('')
         stub=self.root/'tools/deterministic_oracle.py';output=self.root/'github-output'
         for present in (True,False):
-            stub.write_text('from types import SimpleNamespace\nnative=SimpleNamespace(git=lambda *args: "synthetic")\n'
-                            'def applies(*args):return False\n'
+            stub.write_text('import os\nfrom types import SimpleNamespace\n'
+                            'def git(root,*args):\n'
+                            ' if args == ("rev-parse","origin/main"):return "synthetic-published"\n'
+                            ' assert args == ("rev-parse","HEAD")\n'
+                            ' return "synthetic-candidate"\n'
+                            'native=SimpleNamespace(git=git)\n'
+                            'def applies(root,base,source):\n'
+                            ' assert base == os.environ["SYNTHETIC_EXPECTED_BASE"], "CI selector did not use the trusted publication base"\n'
+                            ' assert source == "synthetic-candidate"\n'
+                            ' return False\n'
                             f'def component_present(*args):return {present!r}\n'
                             'def scope(*args):raise AssertionError("Mixed range entered closed scope")\n')
-            output.write_text('')
-            env={**os.environ,'PYTHONPATH':str(self.root),'VALIDATION_BASE_SHA':self.base,'GITHUB_REF':'refs/heads/main','GITHUB_OUTPUT':str(output)}
-            run=subprocess.run([sys.executable,'-B','-c',script],cwd=self.root,env=env,capture_output=True,text=True)
-            self.assertEqual(run.returncode,0,run.stderr)
-            values=dict(line.split('=',1) for line in output.read_text().splitlines())
-            guards=__import__('re').findall(r"^\s+if:\s+steps\.oracle_profile\.outputs\.([a-z_]+)\s*==\s*'true'",workflow,__import__('re').M)
-            self.assertGreaterEqual(len(guards),2)
-            self.assertEqual([values.get(key)=='true' for key in guards],[present]*len(guards))
+            for reference,expected in [('refs/heads/main',self.base),('refs/heads/release/0.0.228','synthetic-published'),('refs/heads/codex/source-synthetic','synthetic-published')]:
+                with self.subTest(component_present=present,reference=reference):
+                    output.write_text('')
+                    env={**os.environ,'PYTHONPATH':str(self.root),'VALIDATION_BASE_SHA':self.base,'GITHUB_REF':reference,'GITHUB_OUTPUT':str(output),'SYNTHETIC_EXPECTED_BASE':expected}
+                    run=subprocess.run([sys.executable,'-B','-c',script],cwd=self.root,env=env,capture_output=True,text=True)
+                    self.assertEqual(run.returncode,0,run.stderr)
+                    values=dict(line.split('=',1) for line in output.read_text().splitlines())
+                    guards=__import__('re').findall(r"^\s+if:\s+steps\.oracle_profile\.outputs\.([a-z_]+)\s*==\s*'true'",workflow,__import__('re').M)
+                    self.assertGreaterEqual(len(guards),2)
+                    self.assertEqual([values.get(key)=='true' for key in guards],[present]*len(guards))
 
     def test_public_chroma_uses_declared_runtime_override(self):
         executable=self.root/'configured-python';marker=self.root/'runtime-used'
