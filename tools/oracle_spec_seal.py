@@ -1,3 +1,4 @@
+# Generated from tools/oracle_core/seal.py; edit the canonical core and regenerate.
 """Seal for `oracle-spec/1` implementation specs (BOS product-family formula).
 
 The seal is a sanity check that the Oracle spec step ran and that the build uses

@@ -1034,14 +1034,14 @@ def _review_process(root: Path, prompt: str, prefix: str, *, schema_path: Path |
     _atomic_write(run / "model.json", _pretty(metadata))
     prompt += "\nReviewer process configuration:\n" + json.dumps(metadata, sort_keys=True)
     _atomic_write(run / "request.txt", prompt.encode())
-    cmd = ["codex", "exec", "--ephemeral", "--ignore-user-config", "--model", model,
-           "-c", "developer_instructions=" + json.dumps(developer_instructions),
-           "--sandbox", "danger-full-access", "--cd", str(root), "--output-schema",
-           str(schema_path),
-           "--output-last-message", str(output), prompt]
+    try:
+        from .oracle_core.runner import codex_command
+    except ImportError:
+        from oracle_core.runner import codex_command
+    cmd = codex_command("codex",model,effort,root,schema_path,output,prompt,developer_instructions,
+                        sandbox="danger-full-access",portable=False)
     environment = {**os.environ, "CODEX_SELECTED_MODEL": model}
     if effort is not None:
-        cmd[cmd.index("-c"):cmd.index("-c")] = ["-c", "model_reasoning_effort=" + json.dumps(effort)]
         environment["CODEX_SELECTED_REASONING_EFFORT"] = effort
     else:
         environment.pop("CODEX_SELECTED_REASONING_EFFORT", None)
@@ -3180,12 +3180,16 @@ For every required_commands entry, independently emit command_coverage with its 
 Return JSON matching the supplied schema. Classify authentication_impact as AUTHENTICATION or NONE. Technical approval never requires human deployment permission. Any review may report the applicable NOT_REQUIRED, APPROVED, MISSING or INVALID legacy owner status; this field grants no publication authority. Return protected_effects with active concrete effects and independently source-bound dispositions for the complete publication_scope. A missing permission is not a finding. Only APPROVED with no findings can issue a receipt.\n{json.dumps(request, indent=2, sort_keys=True)}"""
     return _review_process(root, prompt, "reviewer")
 
+def _portable_proposal_input(request,evidence,owner):
+    try:
+        from .oracle_core.context import proposal_input
+    except ImportError:
+        from oracle_core.context import proposal_input
+    return proposal_input(request,evidence,owner)
+
+
 def _proposal_oracle(root: Path, request: str, evidence: dict[str,str], owner: dict[str,str] | None) -> dict[str,Any]:
-    payload = {
-        "proposal": request,
-        "evidence": evidence,
-        "owner_approval_evidence": owner,
-    }
+    payload = _portable_proposal_input(request,evidence,owner)
     prompt = f"""You are the independent BOS Operations Center Oracle proposal-review process.
 Read .agents/skills/oracle/SKILL.md completely and wear that approver skill. Read AGENTS.md and all required private Vault authority. Review the proposed solution before implementation using current filesystem evidence. Operate read-only: do not edit, stage, commit, deploy, write an approval receipt, or treat this proposal verdict as completed-tree approval.
 Approve only the immutable conceptual proposal, exact supplied evidence and governing criteria. Source-dependent observations describe the source actually examined; ordinary concurrent implementation can continue and its changed implementation/effect claims remain unadopted until complete-current-source review. Do not require a source freeze or grant completed-implementation authority through this proposal verdict.
