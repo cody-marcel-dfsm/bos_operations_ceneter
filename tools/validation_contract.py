@@ -509,11 +509,17 @@ def _history_refuse(root,rows,target,role):
 def require_history(root,candidate='HEAD',*,tip='HEAD',series=None,published=True,extra=()):
     """Refuse a candidate whose recorded or published history is no longer ancestry.
 
-    Continuation records and the candidate must be ancestors of the current tip;
-    the candidate's own sealed spec, revision chain, `extra` prerequisites and the
-    fetched origin/main (when `published`) must be ancestors of the candidate."""
+    Continuation records (including the active review series, resolved through the
+    native series selection when `series` is not supplied) and the candidate must be
+    ancestors of the current tip; the candidate's own sealed spec, revision chain,
+    `extra` prerequisites and the fetched origin/main (when `published`) must be
+    ancestors of the candidate."""
     head,current=_history_commit(root,candidate),_history_commit(root,tip)
     if head is None or current is None:raise HistoryRewritten(HISTORY_REFUSAL+': candidate '+str(candidate)+' or tip '+str(tip)+' is not a commit')
+    if series is None:
+        try: from . import oracle_approval as native
+        except ImportError: import oracle_approval as native
+        series=native._current_series(Path(root))
     owned,contract=candidate_history(root,head)
     rows=[*owned,*extra]
     if published:

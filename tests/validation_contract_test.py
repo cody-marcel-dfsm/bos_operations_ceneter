@@ -390,4 +390,30 @@ class HistoryStamps(unittest.TestCase):
  def test_present_stamp_origins_are_admitted(self):
   self.spec(selection={'revision_of':self.archive(self.base)})
   self.assertEqual(v.require_history(self.root)['candidate'],self.git('rev-parse','HEAD'))
+class HistorySeries(unittest.TestCase):
+ """Gate and publication admission check the active review series too (F2000)."""
+ def setUp(self):
+  self.temp=tempfile.TemporaryDirectory();self.addCleanup(self.temp.cleanup);self.root=Path(self.temp.name).resolve()
+  self.git('init','-q');self.git('config','user.name','Synthetic');self.git('config','user.email','synthetic@example.invalid')
+  (self.root/'source.mjs').write_text('export default true;\n');self.git('add','-A');self.git('commit','-qm','base')
+  self.base=self.git('rev-parse','HEAD')
+  self.orphan=self.git('commit-tree',self.base+'^{tree}','-p',self.base,'-m','rewritten away')
+  proposal={'base_commit':self.base,'review':{'verdict':'APPROVED','findings':[]}}
+  proposal['proposal_review_id']=oracle._sha(oracle._canonical(proposal))
+  path=oracle.proposal_path(self.root);path.parent.mkdir(parents=True,exist_ok=True);path.write_bytes(oracle._pretty(proposal))
+  (self.root/'README.md').write_text('# Forward documentation\n');self.git('add','-A');self.git('commit','-qm','forward docs')
+  self.series=oracle._current_series(self.root);self.series.mkdir(parents=True,exist_ok=True)
+ def git(self,*args): return subprocess.check_output(['git',*args],cwd=self.root,stderr=subprocess.DEVNULL).decode().strip()
+ def round(self,commit):(self.series/'round-0001.json').write_text(json.dumps({'base_commit':commit}))
+ def test_gate_refuses_orphaned_active_series_round(self):
+  self.round(self.orphan)
+  with self.assertRaisesRegex(v.HistoryRewritten,'review series round-0001.json base_commit '+self.orphan):v.gate(self.root,self.base)
+ def test_publication_plan_refuses_orphaned_active_series_round(self):
+  from tools import publication_admission as publication
+  self.round(self.orphan)
+  with self.assertRaisesRegex(v.HistoryRewritten,'review series round-0001.json base_commit '+self.orphan):
+   publication.plan(self.root,'HEAD','release/0.0.1','main-promotion',refresh=False)
+ def test_intact_active_series_is_admitted(self):
+  self.round(self.base)
+  self.assertGreaterEqual(v.require_history(self.root)['checked'],3)
 if __name__=='__main__':unittest.main()
