@@ -697,7 +697,7 @@ class NativeDelta(Fixture):
         published,source,tree=self.publication_delta()
         context=v.delta_context(self.root,source,tree)
         self.assertIn('older_foreign.py',context['paths'])
-        self.assertEqual(context['binding']['publication_baseline_commit'],published)
+        self.assertEqual(context['publication_scope']['baseline_commit'],published)
         delta={'kind':v.DELTA_KIND,'binding':copy.deepcopy(context['binding']),'reason':'Complete pending source coverage',
                'design':None,'acceptance_additions':['The complete pending publication inventory is covered'],
                'category_additions':[{'name':'focused','tests':['tests/extra.test.mjs'],'fixtures':[]}],
@@ -728,6 +728,26 @@ class NativeDelta(Fixture):
                'category_additions':[],'coverage_additions':[{'module':'tests/spec.test.mjs','covers':[0],'purpose':None}]}
         self.git('update-ref','refs/remotes/origin/main',source)
         with self.assertRaisesRegex(ValueError,'changed'):v.materialize_delta(self.root,context,delta)
+
+    def test_both_historical_binding_shapes_keep_original_inventory_after_publication_advances(self):
+        _,context,delta=self.prepared_delta()
+        selected,audit=v.materialize_delta(self.root,context,delta)
+        # Historic producers hashed literal inventory alone and recorded no
+        # publication projection. Preserve those raw bytes and their audit.
+        binding=dict(context['binding'],inventory_sha256=v.digest(context['paths']))
+        original_delta=dict(delta,binding=binding)
+        original_audit={k:value for k,value in audit.items() if k!='publication_scope'}
+        original_audit.update(binding=binding,raw_delta_sha256=v.digest(original_delta))
+        self.git('remote','add','origin','https://code.example/synthetic/repository.git')
+        self.git('update-ref','refs/remotes/origin/main',context['binding']['source_commit'])
+        for missing_proof in (False,True):
+            raw_binding={k:value for k,value in binding.items() if not (missing_proof and k=='prior_proposal_sha256')}
+            raw_delta=dict(original_delta,binding=raw_binding)
+            raw_audit=dict(original_audit,binding=raw_binding,raw_delta_sha256=v.digest(raw_delta))
+            retained=copy.deepcopy((raw_audit,raw_delta))
+            recovered,_=v.reconstruct_delta_record(self.root,raw_audit,raw_delta)
+            self.assertEqual(recovered,selected)
+            self.assertEqual((raw_audit,raw_delta),retained)
 
     def prepared_delta(self):
         selection=self.selection(scope_paths=['source.mjs','README.md','tests/spec.test.mjs',v.SELECTION,v.CATALOG])
