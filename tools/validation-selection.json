@@ -6,10 +6,10 @@
     "model": "gpt-6.1-sol",
     "oracle_sha256": "a63d021e2e029392fa5321ccd2c9be2ff8a361af8606a5e491e32d0562283057",
     "host": "aio",
-    "time": "2026-11-23T03:57:26Z",
+    "time": "2026-11-23T04:35:26Z",
     "origin_main": "7dc8a3bbfe9c925fbbe10812f4c0bb8397f18888",
     "request_sha256": "e70f107ea7a8cb9d81c468722cef8667bc37edecf3258920ca5c77f87bc018e3",
-    "proposal_sha256": "0c4ad994973afa837f0bdec29d8c51272ecc1988ad2b77488e8f7b6552f4bb4c"
+    "proposal_sha256": "f24d30edbd684135e5c68083ee77d770675d300ae49c85ff67b2e20ae192f7fc"
   },
   "selection": {
     "acceptance": [
@@ -272,8 +272,8 @@
     ],
     "change_class": "deep_bug_fix",
     "design": null,
-    "reason": "Retain every existing acceptance criterion, module, fixture, mapping purpose and original criterion/module pair. Add final packet-binding recovery and complete synthetic-workspace requirements, with the four affected interaction runners and their supporting fixtures. Cross-area publication and review-evidence custody require adversarial focused cases and actual completeness, pending-path, controller, lifecycle and publication interactions. Keep the immutable fourteen-module policy inventory, existing assertions and complete case discovery. No unrelated recurrence suite is selected. Preserve unchanged-test fail-before/pass-after evidence, historical outcomes, original request clocks, existing reviewer deadlines and the 300-second delivery budget. Reuse native validation only with matching consumed inputs, dependency closure, environment and retained outputs. Synthetic checks establish no published-client acceptance.",
-    "revision_of": "3f3b9b9233022d4527f2963a900fbf5eca22771b6a2f86dba42c1a00f16ccd30",
+    "reason": "Retain all existing acceptance criteria, selected modules, fixtures, mapping purposes and criterion/module pairs. Cross-area publication and review-evidence custody require the selected adversarial focused cases and recovery, completeness, pending-path, lifecycle and publication interactions. Preserve the immutable fourteen-module policy inventory, complete case discovery and existing assertions. No unrelated recurrence suite is selected. Preserve unchanged-test fail-before/pass-after evidence, historical outcomes, original request clocks, existing reviewer deadlines and the 300-second delivery budget. Reuse native validation only with matching consumed inputs, dependency closure, environment and retained outputs; repeat execution requires an actual changed input or uncovered behavior. Synthetic checks establish no published-client acceptance.",
+    "revision_of": "b0ff5ba994147ffa1d816d34d632af31ebd99e434d95d0b74fee3d33f03435e1",
     "scope_paths": [
       "AGENTS.md",
       "README.md",
@@ -349,8 +349,8 @@
       "tests/oracle_source_frontier_test.py"
     ]
   },
-  "base_commit": "a3ab51455ad3c241c2e7a538c7fb45fe9b17a0ca",
-  "base_tree": "16b72740141a174a7125258137b9bf91d2c5f30e",
+  "base_commit": "a75f3be5c57f099b2e05214529a9e4c11131d951",
+  "base_tree": "625d2d9d6dfc824844aad216e1169cc659de7854",
   "catalog_sha256": "9a96f1cd2a973457f9da681dddcc5161aa8ffda188b092d849e5bc83999391c8",
   "runtime": {
     "node": "v26.12.0",
@@ -360,8 +360,8 @@
     "architecture": "x86_64",
     "options_sha256": "ebc442c160f8629073a82976daadaba1d95a60a38d768c81c8eb06598aedcac5"
   },
-  "proposal_sha256": "0c4ad994973afa837f0bdec29d8c51272ecc1988ad2b77488e8f7b6552f4bb4c",
-  "review_sha256": "06cbf56cfe2decc10c8944eefd8988e24a83690655e132493df0d918fac4bf00",
+  "proposal_sha256": "f24d30edbd684135e5c68083ee77d770675d300ae49c85ff67b2e20ae192f7fc",
+  "review_sha256": "eb357aa3137dd51e1239fd1ee0329e8ef2dd753bb1aa466bce9ed45d33e6d584",
   "commands": [
     {
       "category": "sanity",
@@ -464,6 +464,6 @@
     "reasoning_effort": "medium",
     "maximum_reasoning_effort": "medium"
   },
-  "contract_sha256": "b0ff5ba994147ffa1d816d34d632af31ebd99e434d95d0b74fee3d33f03435e1",
-  "seal": "12164dd2b4d516757aa14d10689a0769cc138fbb1a8ced9ac718eb1d03d7270b"
+  "contract_sha256": "cb14f5b0297b652f4a795762890a0e332f867397b7661f403bedcc0025040e21",
+  "seal": "edf61bc31b3ba700044b56d5be0160a46a6f43c0047465aba647876ee32ed65b"
 }
