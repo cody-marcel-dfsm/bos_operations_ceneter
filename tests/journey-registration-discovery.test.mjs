@@ -169,3 +169,28 @@ test('current-v1 registration uses the selected app and exact scoped discovered 
  ]){const changed=structuredClone(f.registration_contract);mutate(changed);assert.throws(()=>validateApiContractResponse(changed,expected));}
  assert.throws(()=>validateApiContractResponse(f.registration_contract,{...expected,application:{...application,contact:{...f.application_contact,app_code:'other-work-app'}}}));
 });
+
+test('native registration carries discovered app evidence only with a matching scoped descriptor',async()=>{
+ const {createNativeBoslExecution,NATIVE_BOSL_TOOLS}=await import('../source/platform/bos-workflow-orchestrator/scripts/native-bosl-execution.mjs');
+ const f=JSON.parse(await readFile(new URL('./fixtures/current-app-registration.json',import.meta.url),'utf8'));
+ const application={public_application:'sample-work-app',contact:{uri:'bos://apps/sample-work-app/manifest'},description:f.app_describe};
+ const context={context_handle:'bos_ctx_v2_'+'a'.repeat(64),organization_name:'Synthetic organization',application_name:'Synthetic work app',installation_name:'Synthetic installation',role_label:'Synthetic role',is_default:true};
+ const document={identity:'synthetic work',name:'Synthetic work',inputs:{},entry:'done',nodes:[{code:'done',type:'server',inputs:{},outputs:{},terminal:true}]};
+ const descriptor={name:NATIVE_BOSL_TOOLS.register,description:'Synthetic current scoped registration.',inputSchema:{type:'object',properties:{document:f.registration_contract.input_schema},required:['document'],additionalProperties:false}};
+ const catalog={isError:false,structuredContent:{contract_version:'bos-identity-mcp/v2',context_handle:context.context_handle,resources:[],tools:[descriptor]}};
+ const native=createNativeBoslExecution({context,catalog});
+ const result=native.register(f.registration_contract,document,{application});
+ assert.equal(result.tool_name,descriptor.name);assert.equal(result.context_handle,context.context_handle);
+ assert.deepEqual(result.arguments,{document});assert.equal(result.registrationRequest.href,f.registration_contract.execution.uri);
+ assert.throws(()=>native.register(f.registration_contract,document),/application|lead-director|URI|scope/i,'Legacy default stays strict without discovered app evidence');
+ const wrong=structuredClone(application);wrong.description.application.application='other-work-app';
+ assert.throws(()=>native.register(f.registration_contract,document,{application:wrong}),/application|scope|match/i);
+ const mismatched=structuredClone(catalog);mismatched.structuredContent.context_handle='bos_ctx_v2_'+'b'.repeat(64);
+ assert.throws(()=>createNativeBoslExecution({context,catalog:mismatched}),/selected handle/);
+ const absent=structuredClone(catalog);absent.structuredContent.tools=[];
+ assert.throws(()=>createNativeBoslExecution({context,catalog:absent}).register(f.registration_contract,document,{application}),e=>e.code==='host_capability_unavailable');
+ const malformed=structuredClone(catalog);malformed.structuredContent.tools[0].inputSchema={type:'object',properties:{unexpected:{type:'string'}},required:['unexpected'],additionalProperties:false};
+ assert.throws(()=>createNativeBoslExecution({context,catalog:malformed}).register(f.registration_contract,document,{application}),/current descriptor/);
+ const https=buildJourneyRegistrationRequest(f.registration_contract,context.context_handle,document,{application});
+ assert.equal(f.registration_contract.execution.transport,'https');assert.equal(https.href,f.registration_contract.execution.uri);
+});

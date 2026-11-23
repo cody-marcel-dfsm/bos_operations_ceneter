@@ -67,7 +67,7 @@ def fixture_projection(root):
         total += len(body)
         if total > 32*1024*1024: raise ValueError('Constructor input total exceeds bound')
         entries[name] = {'mode':mode,'bytes':len(body),'sha256':hashlib.sha256(body).hexdigest()}
-    if set(entries) != names or len(entries) != 44: raise ValueError('Constructor input membership changed')
+    if set(entries) != names or len(entries) != 45: raise ValueError('Constructor input membership changed')
     return {name:entries[name] for name in sorted(entries)}
 
 

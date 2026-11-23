@@ -843,6 +843,7 @@ class NativeDelta(Fixture):
 
     def test_codex_supported_binding_schema_preserves_exact_logical_closure(self):
         _,context,_=self.prepared_delta();schema=v.delta_schema(context)['properties']['binding']
+        self.assertEqual(schema,v.binding_schema(context['binding']))
         def compound_constants(value):
             if isinstance(value,dict):return ('const' in value and isinstance(value['const'],(dict,list))) or any(compound_constants(x) for x in value.values())
             return isinstance(value,list) and any(compound_constants(x) for x in value)
@@ -1035,6 +1036,16 @@ class NativePolicyBatch(unittest.TestCase):
         payload=subprocess.check_output(['git','cat-file','--batch'],cwd=self.root,input=b'\n'.join(row[2] for row in rows)+b'\n')
         return inventory,payload,rows
 
+    def test_generated_output_policy_module_is_part_of_the_exact_source_mode_hash_closure(self):
+        self.assertIn('tools/oracle_generated_proof.py',oracle.REVIEW_POLICY_MODULES)
+        self.assertEqual(oracle.REVIEW_POLICY_MODULES[-1],'tools/oracle_generated_proof.py')
+        original=oracle._review_policy_digest(self.root,self.revision)
+        module=self.root/'tools/oracle_generated_proof.py'
+        module.write_text('generated_policy = 12345\n')
+        self.git(self.root,'add',str(module));self.git(self.root,'commit','-qm','Synthetic generated-policy mutation')
+        changed=self.git(self.root,'rev-parse','HEAD').decode().strip()
+        self.assertNotEqual(oracle._review_policy_digest(self.root,changed),original)
+
     def test_real_fourteen_modules_keep_exact_modes_ast_and_reduce_twenty_eight_to_two(self):
         with patch.object(oracle,'_git_bytes',wraps=oracle._git_bytes) as calls:
             expected={}
@@ -1043,8 +1054,8 @@ class NativePolicyBatch(unittest.TestCase):
                 mode,kind,oid=metadata.split()
                 expected[name]={'mode':mode.decode(),'ast':oracle._policy_ast(oracle._git_bytes(self.root,'show',self.revision+':'+name))}
             # Stable case identity; extracted core dependencies enlarge the exact inventory.
-            self.assertEqual(len(oracle.REVIEW_POLICY_MODULES),26)
-            self.assertEqual(calls.call_count,52)
+            self.assertEqual(len(oracle.REVIEW_POLICY_MODULES),27)
+            self.assertEqual(calls.call_count,54)
         with patch.object(oracle,'_git_bytes',wraps=oracle._git_bytes) as calls:
             self.assertEqual(oracle._review_policy_sources(self.root,self.revision),expected)
             self.assertEqual(calls.call_count,2)
@@ -1065,7 +1076,7 @@ for name in oracle_approval.REVIEW_POLICY_MODULES:
     assert actual.read_bytes() == original.read_bytes(), name
     assert stat.S_IMODE(actual.stat().st_mode) == stat.S_IMODE(original.stat().st_mode), name
     rows.append(name)
-assert len(rows) == 26
+assert len(rows) == 27
 from unittest.mock import patch
 with patch.object(oracle_approval, '__file__', str(target / 'tools/oracle_approval.py')):
     actual_policy = oracle_approval._review_policy_sources(target)
@@ -1157,7 +1168,7 @@ class NativeValidationFixtureInputs(unittest.TestCase):
         case = suite.ReviewSeries('runTest')
         try:
             case.setUp()
-            self.assertEqual(len(case.fixture_inputs), 44)
+            self.assertEqual(len(case.fixture_inputs), 45)
             for name in ('source.py', 'peer.py'):
                 (case.root/name).write_bytes(subprocess.check_output(['git','show','HEAD:'+name],cwd=case.root))
             self.assertEqual(suite.fixture_projection(case.root), case.fixture_inputs)
