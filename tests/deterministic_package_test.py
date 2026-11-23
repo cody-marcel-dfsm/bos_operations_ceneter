@@ -1268,7 +1268,7 @@ class PackageGateTests(unittest.TestCase):
             def observed(root, *args):
                 if args[0] == 'remote':
                     return remote
-                if args[-1].endswith('release-v1.0.0'):
+                if args[-1].endswith('release/1.0.0'):
                     return value['source'] + '\t' + args[-1]
                 return ('f' * 40 if moved else value['base']) + '\trefs/heads/main'
             with self.subTest(moved=moved), patch.object(d, 'read_receipt', return_value=value), \
@@ -1290,7 +1290,7 @@ class PackageGateTests(unittest.TestCase):
         def observed(root, *args):
             if args[0] == 'remote':
                 return remote
-            if args[-1].endswith('release-v1.0.0') or written:
+            if args[-1].endswith('release/1.0.0') or written:
                 return value['source'] + '\t' + args[-1]
             return value['base'] + '\trefs/heads/main'
         with patch.object(d, 'read_receipt', return_value=value), \
