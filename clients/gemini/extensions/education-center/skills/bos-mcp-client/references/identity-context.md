@@ -121,9 +121,10 @@ plugin never inherits either historical BOS default.
    advertised; it does not require host-authenticated HTTPS. Do not report `host_capability_unavailable`
    when a suitable advertised native compatibility tool is callable.
    No similar name, cached descriptor, or Describe contract establishes a native tool.
-   The named semantic business-read exceptions retain their existing scope and
-   schemas: `feedback.recommendations.query`, `journeys.notifications.read` and
-   `journeys.state.read`. The separately advertised operational `feedback.items.wait`
+   The new semantic business-read exceptions remain exactly
+   `feedback.recommendations.query`, `journeys.notifications.read` and
+   `journeys.state.read`, with their existing scope and schemas. The separately
+   advertised operational `feedback.items.wait`
    uses this same native execution path with its exact current closed schema and
    returned item cursor; it requires no exported credential or socket subprocess.
    Follow the feedback skill's item-connection procedure for peer acknowledgment,
