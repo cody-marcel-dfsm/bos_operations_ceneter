@@ -2,8 +2,8 @@
 name: education-center-invoice-operations
 description: Generate the exact Bright Horizons reimbursement Excel report from the distributed client template, answer Bright Horizons process, forwarding, billing, cancellation, and payment questions, and handle separate invoice discovery or reconciliation workflows through tenant-scoped BOS. Use for commands such as "create a Bright Horizons report for last week," "generate the Bright Horizons reimbursement sheet," "make the Bright Horizons attendance invoice," invoice discovery, cancellation reconciliation, child-day comparison, or provider capability gaps.
 metadata:
-  version: "1.0.27"
-  requires: "{\"bos-mcp-client\":\"1.0.16\",\"bos-plugin-settings-initialization\":\"1.0.27\",\"bos-visual-output\":\"1.0.17\",\"education-center-class-operations\":\"1.0.27\",\"education-center-customer-initialization\":\"1.0.16\",\"education-center-service-routing\":\"1.0.27\"}"
+  version: "1.0.28"
+  requires: "{\"bos-mcp-client\":\"1.0.16\",\"bos-plugin-settings-initialization\":\"1.0.28\",\"bos-visual-output\":\"1.0.17\",\"education-center-class-operations\":\"1.0.28\",\"education-center-customer-initialization\":\"1.0.16\",\"education-center-service-routing\":\"1.0.28\"}"
 ---
 
 

@@ -24,6 +24,13 @@ including Start and `state`, sends no payload. Its unwrapped
 exactly like an HTTPS response. The handle stays in `bos_execute`'s
 `context_handle`, never in arguments.
 
+For app-scoped native registration, pass the same discovered application
+evidence as local `{application}` options to
+`register(contract, document, {application})`. The request builder preserves
+the app contact, Describe and contract agreement. HTTPS remains the default
+when the host supports it; the current scoped catalog supplies native
+execution availability.
+
 For `payload_schema: null`, supply no caller payload. The BOS transport sends
 POST actions as exactly `{}` with `Content-Type: application/json`; GET actions
 send no body and omit `Content-Type`. The service also accepts an empty POST

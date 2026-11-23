@@ -660,3 +660,24 @@ test("every generated native BOSL action validates payloads exactly as HTTPS, in
     assert.equal(buildActionRequest(timed, valid).body, JSON.stringify(valid), skills);
   }
 });
+
+test('all generated native registration consumers retain discovered app binding and scoped availability',async()=>{
+ const {readFile}=await import('node:fs/promises');
+ const f=JSON.parse(await readFile(new URL('./fixtures/current-app-registration.json',import.meta.url),'utf8'));
+ const application={public_application:'sample-work-app',contact:{uri:'bos://apps/sample-work-app/manifest'},description:f.app_describe};
+ const context={context_handle:'bos_ctx_v2_'+'a'.repeat(64),organization_name:'Synthetic organization',application_name:'Synthetic work app',installation_name:'Synthetic installation',role_label:'Synthetic role',is_default:true};
+ const document={identity:'synthetic work',name:'Synthetic work',inputs:{},entry:'done',nodes:[{code:'done',type:'server',inputs:{},outputs:{},terminal:true}]};
+ for(const skills of [`${root}/source/platform`,...generatedRoots]){
+  const scripts=`${skills}/bos-workflow-orchestrator/scripts`;
+  const {createNativeBoslExecution,NATIVE_BOSL_TOOLS}=await import(pathToFileURL(`${scripts}/native-bosl-execution.mjs`).href);
+  const {buildJourneyRegistrationRequest,interpretJourneyResponse}=await import(pathToFileURL(`${scripts}/journey-runtime-client.mjs`).href);
+  const descriptor={name:NATIVE_BOSL_TOOLS.register,description:'Synthetic currently scoped registration.',inputSchema:{type:'object',properties:{document:f.registration_contract.input_schema},required:['document'],additionalProperties:false}};
+  const catalog={isError:false,structuredContent:{contract_version:'bos-identity-mcp/v2',context_handle:context.context_handle,resources:[],tools:[descriptor]}};
+  const native=createNativeBoslExecution({context,catalog}).register(f.registration_contract,document,{application});
+  assert.deepEqual(native.arguments,{document},skills);assert.equal(native.registrationRequest.href,f.registration_contract.execution.uri,skills);
+  assert.equal(interpretJourneyResponse(f.admission_responses[0],{registrationRequest:native.registrationRequest}).next,'declared_public_error',skills);
+  const absent=structuredClone(catalog);absent.structuredContent.tools=[];
+  assert.throws(()=>createNativeBoslExecution({context,catalog:absent}).register(f.registration_contract,document,{application}),e=>e.code==='host_capability_unavailable',skills);
+  assert.equal(buildJourneyRegistrationRequest(f.registration_contract,context.context_handle,document,{application}).href,f.registration_contract.execution.uri,skills);
+ }
+});

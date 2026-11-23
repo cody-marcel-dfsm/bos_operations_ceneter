@@ -183,7 +183,7 @@ def binding_schema(binding):
     """Closed exact binding in provider-accepted structured-output form: one scalar const per field (an object-level
     const is refused by the provider). materialize_delta still compares the whole returned binding exactly."""
     return {'type':'object','additionalProperties':False,'required':list(binding),
-            'properties':{k:({'type':'null'} if value is None else {'type':'string','const':value}) for k,value in binding.items()}}
+            'properties':{k:{'type':'null' if value is None else 'string','const':value} for k,value in binding.items()}}
 
 def delta_schema(context):
     row = {'type':'object','additionalProperties':False,'required':['name','tests','fixtures'],
@@ -196,9 +196,7 @@ def delta_schema(context):
                               'purpose':{'type':['string','null']}}}
     return {'type':'object','additionalProperties':False,
             'required':['kind','binding','reason','design','acceptance_additions','category_additions','coverage_additions'],
-            'properties':{'kind':{'type':'string','const':DELTA_KIND},'binding':{'type':'object',
-                          'additionalProperties':False,'required':list(context['binding']),
-                          'properties':{k:{'type':'null' if value is None else 'string','const':value} for k,value in context['binding'].items()}},
+            'properties':{'kind':{'type':'string','const':DELTA_KIND},'binding':binding_schema(context['binding']),
                           'reason':{'type':'string','minLength':1},
                           'design':{'type':'string','minLength':1} if context['prior']['selection']['change_class']=='feature' else {'type':'null','const':None},
                           'acceptance_additions':{'type':'array','minItems':1,'maxItems':32,'items':{'type':'string'}},
