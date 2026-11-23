@@ -470,8 +470,123 @@ def documentation(name):
     """Genuine documentation: needs no spec. Instructions, skills, packages and source do."""
     return name.endswith('.md') and name not in {'AGENTS.md','CLAUDE.md'} and not name.startswith(('.agents/','.claude/','source/','clients/'))
 
+# History integrity (owner direction, 2026-11-23: "the oracle should have
+# prevented you from changing git history"). Recorded commits never leave
+# history: a reset, rebase, amend or force-push is refused deterministically,
+# naming the record and commit. The remedy is merging forward, never a rewrite.
+# Continuation records bind the current tip; candidate-owned prerequisites bind
+# the candidate itself, so a prepared ancestor survives later descendant work.
+HISTORY_REFUSAL='History integrity refusal'
+
+class HistoryRewritten(ValueError):
+    """A recorded or published commit is no longer in the required history."""
+
+def _history_json(path):
+    try:
+        path=Path(path)
+        if path.is_symlink() or not path.is_file():return None
+        value=json.loads(path.read_bytes())
+    except (OSError,ValueError):return None
+    return value if isinstance(value,dict) else None
+
+def _history_commit(root,rev):
+    p=subprocess.run(['git','rev-parse','--verify','--quiet',rev+'^{commit}'],cwd=root,capture_output=True,text=True)
+    return p.stdout.strip() if p.returncode==0 else None
+
+def _history_spec(root,commit):
+    try:spec=blob(root,commit,SELECTION)
+    except ValueError:return None
+    return spec if isinstance(spec,dict) else None
+
+def candidate_history(root,candidate):
+    """Candidate-owned prerequisites, read from the candidate itself."""
+    rows=[];spec=_history_spec(root,candidate)
+    if spec is None:return rows,None
+    rows.append(('sealed spec base_commit',spec.get('base_commit')))
+    if isinstance(spec.get('stamp'),dict):rows.append(('sealed spec stamp origin_main',spec['stamp'].get('origin_main')))
+    folder=Path(git(root,'rev-parse','--absolute-git-dir'))/'oracle/proposals'
+    archived={}
+    for path in sorted(folder.glob('*.json')) if folder.is_dir() else []:
+        record=_history_json(path);prior=record.get('validation_contract') if record else None
+        if isinstance(prior,dict) and isinstance(prior.get('contract_sha256'),str):archived.setdefault(prior['contract_sha256'],[]).append((path,record,prior))
+    selection=spec.get('selection') if isinstance(spec.get('selection'),dict) else {}
+    wanted,seen=selection.get('revision_of'),set()
+    while isinstance(wanted,str) and wanted not in seen:
+        seen.add(wanted);found=None
+        for path,record,prior in archived.get(wanted,[]):
+            body={k:v for k,v in prior.items() if k not in ('contract_sha256','seal')}
+            if (not path.is_symlink() and prior.get('schema')==SCHEMA and digest(body)==wanted and spec_seal.seal_matches(prior)
+                    and native_proposal_record(root,path,prior,candidate,ancestry=False)):
+                found=(path,record,prior);break
+        if found is None:break # Earlier history without an authentic native archive binds nothing further.
+        path,record,prior=found;label='revision '+wanted[:12]+' archive'
+        rows.extend([(label+' base_commit',record.get('base_commit')),(label+' lifecycle_origin',record.get('lifecycle_origin',record.get('base_commit'))),
+                     (label+' stamp origin_main',prior['stamp'].get('origin_main') if isinstance(prior.get('stamp'),dict) else None)])
+        wanted=prior['selection'].get('revision_of') if isinstance(prior.get('selection'),dict) else None
+    return rows,spec.get('contract_sha256')
+
+def continuation_history(root,contracts=(),series=None):
+    """Active continuation records, which the current checkout tip must contain."""
+    oracle=Path(git(root,'rev-parse','--absolute-git-dir'))/'oracle';rows=[]
+    for name,keys in (('proposal.json',('base_commit','lifecycle_origin')),('lifecycle-origin.json',('origin',)),('approval.json',('base_commit',))):
+        record=_history_json(oracle/name)
+        for key in keys if record else ():
+            if key in record:rows.append(('recorded '+name+' '+key,record[key]))
+    for contract in dict.fromkeys(c for c in contracts if isinstance(c,str) and re.fullmatch('[0-9a-f]{64}',c)):
+        results=oracle/'validation-contract-results'/contract
+        for entry in sorted(results.iterdir()) if results.is_dir() and not results.is_symlink() else []:
+            if entry.is_dir() and not entry.is_symlink():rows.append(('recorded validation commit',entry.name))
+    if series is not None and Path(series).is_dir():
+        for path in sorted(Path(series).glob('round-*.json')):
+            record=_history_json(path)
+            if record is not None:rows.append(('review series '+path.name+' base_commit',record.get('base_commit')))
+    return rows
+
+def _history_refuse(root,rows,target,role):
+    """Verify every recorded row; returns the number of rows verified."""
+    checked=set()
+    for label,commit in rows:
+        if commit in checked:continue
+        if not isinstance(commit,str) or not re.fullmatch('[0-9a-f]{40}',commit) or _history_commit(root,commit)!=commit:
+            raise HistoryRewritten(HISTORY_REFUSAL+': recorded '+label+' '+str(commit)+' is missing from this repository; '
+                                   'recover that commit and merge it forward, never rewrite recorded history')
+        if subprocess.run(['git','merge-base','--is-ancestor',commit,target],cwd=root,capture_output=True).returncode:
+            if label=='published origin/main':
+                raise HistoryRewritten(HISTORY_REFUSAL+': candidate '+target+' would not fast-forward published origin/main '+commit+
+                                       '; fetch and merge origin/main forward, never force-push')
+            raise HistoryRewritten(HISTORY_REFUSAL+': recorded '+label+' '+commit+' is not an ancestor of the '+role+' '+target+
+                                   '; history was rewritten (reset, rebase, amend or force-push). Merge that commit forward instead')
+        checked.add(commit)
+    return len(rows)
+
+def require_history(root,candidate='HEAD',*,tip='HEAD',series=None,published=True,extra=()):
+    """Refuse a candidate whose recorded or published history is no longer ancestry.
+
+    Continuation records (including the active review series, resolved through the
+    native series selection when `series` is not supplied) and the candidate must be
+    ancestors of the current tip; the candidate's own sealed spec, revision chain,
+    `extra` prerequisites and the fetched origin/main (when `published`) must be
+    ancestors of the candidate."""
+    head,current=_history_commit(root,candidate),_history_commit(root,tip)
+    if head is None or current is None:raise HistoryRewritten(HISTORY_REFUSAL+': candidate '+str(candidate)+' or tip '+str(tip)+' is not a commit')
+    if series is None:
+        try: from . import oracle_approval as native
+        except ImportError: import oracle_approval as native
+        series=native._current_series(Path(root))
+    owned,contract=candidate_history(root,head)
+    rows=[*owned,*extra]
+    if published:
+        main=_history_commit(root,'refs/remotes/origin/main')
+        if main is not None:rows.append(('published origin/main',main))
+    checked=_history_refuse(root,rows,head,'candidate')
+    tip_spec=_history_spec(root,current) if current!=head else None
+    continuation=[('selected candidate',head),*continuation_history(root,[contract,(tip_spec or {}).get('contract_sha256')],series)]
+    checked+=_history_refuse(root,continuation,current,'current tip')
+    return {'candidate':head,'tip':current,'checked':checked}
+
 def gate(root,base,head='HEAD'):
     """Fail immediately unless a non-docs range carries its own valid sealed spec."""
+    require_history(root,head,published=False)
     head=git(root,'rev-parse',head+'^{commit}');base=git(root,'rev-parse',base+'^{commit}')
     if subprocess.run(['git','merge-base','--is-ancestor',base,head],cwd=root,capture_output=True).returncode: raise ValueError('Publication base is not candidate ancestry')
     paths=git(root,'diff','--name-only',base,head).splitlines()
@@ -485,8 +600,11 @@ def gate(root,base,head='HEAD'):
     if outside: raise ValueError('Publication range changes paths outside the sealed spec scope: '+', '.join(outside))
     return {'status':'SPEC_SEALED','paths':paths,'seal':contract['seal'],'contract_sha256':contract['contract_sha256'],'categories':[r['category'] for r in contract['commands']]}
 
-def native_proposal_record(root,path,contract,head):
-    """True only for an immutable, canonical, self-bound APPROVED native proposal archive of this exact spec."""
+def native_proposal_record(root,path,contract,head,*,ancestry=True):
+    """True only for an immutable, canonical, self-bound APPROVED native proposal archive of this exact spec.
+
+    `ancestry=False` authenticates the archive without its history predicate so the
+    history-integrity check can refuse an orphaned archive instead of skipping it."""
     try: from . import oracle_approval as native
     except ImportError: import oracle_approval as native
     try:
@@ -504,7 +622,7 @@ def native_proposal_record(root,path,contract,head):
             and isinstance(proposal,str) and record.get('proposal_sha256')==hashlib.sha256(proposal.encode()).hexdigest()
             and record.get('proposal_sha256')==contract['stamp']['proposal_sha256']
             and record.get('base_commit')==contract['base_commit']
-            and subprocess.run(['git','merge-base','--is-ancestor',contract['base_commit'],head],cwd=root,capture_output=True).returncode==0):return False
+            and (not ancestry or subprocess.run(['git','merge-base','--is-ancestor',contract['base_commit'],head],cwd=root,capture_output=True).returncode==0)):return False
     if record.get('proposal_materialization') is not None:
         try:
             audit=record['proposal_materialization']; raw_review=record['raw_review']

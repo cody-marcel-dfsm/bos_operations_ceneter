@@ -363,4 +363,60 @@ class NativeStreams(unittest.TestCase):
   with self.assertRaises(OSError):v.verify_stream_execution(self.root,record)
   replacement=folder.with_name('preserved');folder.rename(replacement);folder.symlink_to(replacement,target_is_directory=True)
   with self.assertRaises(OSError):v.verify_stream_execution(self.root,record)
+class HistoryStamps(unittest.TestCase):
+ """Stamped origins are candidate prerequisites: absent ones refuse like any missing commit (F1000)."""
+ def setUp(self):
+  self.temp=tempfile.TemporaryDirectory();self.addCleanup(self.temp.cleanup);self.root=Path(self.temp.name).resolve()
+  self.git('init','-q');self.git('config','user.name','Synthetic');self.git('config','user.email','synthetic@example.invalid')
+  (self.root/'source.mjs').write_text('export default true;\n');self.git('add','-A');self.git('commit','-qm','base')
+  self.base=self.git('rev-parse','HEAD');self.missing='1'*40
+ def git(self,*args): return subprocess.check_output(['git',*args],cwd=self.root,stderr=subprocess.DEVNULL).decode().strip()
+ def spec(self,**values):
+  value={'schema':v.SCHEMA,'base_commit':self.base,'stamp':{'origin_main':self.base},'contract_sha256':'c'*64,'selection':{'revision_of':None},**values}
+  (self.root/'tools').mkdir(exist_ok=True);(self.root/v.SELECTION).write_text(json.dumps(value));self.git('add','-A');self.git('commit','-qm','spec')
+ def archive(self,origin):
+  proposal='Problem\nCause\nRecommended change';stamp={'origin_main':origin,'proposal_sha256':hashlib.sha256(proposal.encode()).hexdigest()}
+  prior={'schema':v.SCHEMA,'kind':v.spec_seal.KIND,'base_commit':self.base,'stamp':stamp,'selection':{'revision_of':None}}
+  prior['contract_sha256']=v.digest(prior);prior['seal']=v.spec_seal.compute_seal(prior)
+  record={'schema_version':oracle.SCHEMA_VERSION,'issuer':oracle.ISSUER,'kind':'proposal-review','review_scope':'CONCEPTUAL_PROPOSAL','base_commit':self.base,
+          'lifecycle_origin':self.base,'proposal':proposal,'proposal_sha256':stamp['proposal_sha256'],'validation_contract':prior,
+          'review':{'verdict':'APPROVED','review_status':'COMPLETE','findings':[]}}
+  record['proposal_review_id']=oracle._sha(oracle._canonical(record));raw=oracle._pretty(record)
+  folder=Path(self.git('rev-parse','--absolute-git-dir'))/'oracle/proposals';folder.mkdir(parents=True,exist_ok=True)
+  (folder/(oracle._sha(raw)+'.json')).write_bytes(raw);return prior['contract_sha256']
+ def test_absent_sealed_spec_stamp_origin_is_refused(self):
+  self.spec(stamp={'origin_main':self.missing})
+  with self.assertRaisesRegex(v.HistoryRewritten,'stamp origin_main '+self.missing+' is missing'):v.require_history(self.root)
+ def test_absent_revision_archive_stamp_origin_is_refused(self):
+  self.spec(selection={'revision_of':self.archive(self.missing)})
+  with self.assertRaisesRegex(v.HistoryRewritten,'archive stamp origin_main '+self.missing+' is missing'):v.require_history(self.root)
+ def test_present_stamp_origins_are_admitted(self):
+  self.spec(selection={'revision_of':self.archive(self.base)})
+  self.assertEqual(v.require_history(self.root)['candidate'],self.git('rev-parse','HEAD'))
+class HistorySeries(unittest.TestCase):
+ """Gate and publication admission check the active review series too (F2000)."""
+ def setUp(self):
+  self.temp=tempfile.TemporaryDirectory();self.addCleanup(self.temp.cleanup);self.root=Path(self.temp.name).resolve()
+  self.git('init','-q');self.git('config','user.name','Synthetic');self.git('config','user.email','synthetic@example.invalid')
+  (self.root/'source.mjs').write_text('export default true;\n');self.git('add','-A');self.git('commit','-qm','base')
+  self.base=self.git('rev-parse','HEAD')
+  self.orphan=self.git('commit-tree',self.base+'^{tree}','-p',self.base,'-m','rewritten away')
+  proposal={'base_commit':self.base,'review':{'verdict':'APPROVED','findings':[]}}
+  proposal['proposal_review_id']=oracle._sha(oracle._canonical(proposal))
+  path=oracle.proposal_path(self.root);path.parent.mkdir(parents=True,exist_ok=True);path.write_bytes(oracle._pretty(proposal))
+  (self.root/'README.md').write_text('# Forward documentation\n');self.git('add','-A');self.git('commit','-qm','forward docs')
+  self.series=oracle._current_series(self.root);self.series.mkdir(parents=True,exist_ok=True)
+ def git(self,*args): return subprocess.check_output(['git',*args],cwd=self.root,stderr=subprocess.DEVNULL).decode().strip()
+ def round(self,commit):(self.series/'round-0001.json').write_text(json.dumps({'base_commit':commit}))
+ def test_gate_refuses_orphaned_active_series_round(self):
+  self.round(self.orphan)
+  with self.assertRaisesRegex(v.HistoryRewritten,'review series round-0001.json base_commit '+self.orphan):v.gate(self.root,self.base)
+ def test_publication_plan_refuses_orphaned_active_series_round(self):
+  from tools import publication_admission as publication
+  self.round(self.orphan)
+  with self.assertRaisesRegex(v.HistoryRewritten,'review series round-0001.json base_commit '+self.orphan):
+   publication.plan(self.root,'HEAD','release/0.0.1','main-promotion',refresh=False)
+ def test_intact_active_series_is_admitted(self):
+  self.round(self.base)
+  self.assertGreaterEqual(v.require_history(self.root)['checked'],3)
 if __name__=='__main__':unittest.main()

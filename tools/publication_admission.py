@@ -278,6 +278,11 @@ def publish_prepared(root: Path, prepared: Path, *, execute=subprocess.run) -> d
     """Publish a captured validated SHA with Git only, independent of later authors."""
     started = time.monotonic()
     record, digest, command = _prepared_record(root, prepared)
+    # The prepared candidate stays in the current history and still fast-forwards
+    # both its recorded baseline and the fetched published main.
+    expected = record.get("expected_remote_commit")
+    o.validation_contract.require_history(root, record["source_commit"], extra=(
+        [("prepared expected remote main", expected)] if expected is not None else []))
     shipment.publication_eligibility(root, record["source_commit"], record["source_tree"],
                                     record["plan"]["technical_receipt_sha256"])
     _prepared_authority(root, record)
@@ -333,10 +338,15 @@ def plan(root: Path, candidate: str, release_ref: str, operation: str, *, refres
     # Owner direction (Cody): one version-named release branch, never IDE specific.
     if not re.fullmatch(r"release/[0-9]+\.[0-9]+\.[0-9]+", release_ref):
         raise o.OracleApprovalError("Publication requires the resolved release review ref")
+    # Rewritten history is refused before any transport, then again on the
+    # freshly fetched baseline, before every planned attestation, push or record.
+    o.validation_contract.require_history(root, candidate)
     public_status.fetch_url(root)
     if refresh:
         o._git(root, "fetch", "origin")
     commit = o._git(root, "rev-parse", candidate + "^{commit}").strip()
+    if refresh:
+        o.validation_contract.require_history(root, commit)
     if (o._git(root, "branch", "--show-current").strip() != "main"
             or o._git(root, "rev-parse", "HEAD").strip() != commit
             or o._git(root, "status", "--porcelain=v1", "--untracked-files=all").strip()):
