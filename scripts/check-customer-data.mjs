@@ -251,10 +251,12 @@ function allowedFictionalPhone(exchange, subscriber) {
   return exchange === "555" && /^01\d{2}$/u.test(subscriber);
 }
 
-// Integer values of `*_bytes` keys are machine byte counts, never phone numbers.
+// Integer values of `*_bytes` keys are machine byte counts, and numeric values of `*_ms` keys
+// are machine timings (monotonic milliseconds in native test records), never phone numbers.
 // Only those typed digits leave the phone check; every other check reads them.
 export function byteCountPrivacyText(text) {
-  return text.replace(/(_bytes\\*"\s*:\s*)\d+(?![\d.eE])/gu, "$10");
+  return text.replace(/(_bytes\\*"\s*:\s*)\d+(?![\d.eE])/gu, "$10")
+    .replace(/(_ms\\*"\s*:\s*)\d+(?:\.\d+)?(?![\d.eE])/gu, "$10");
 }
 
 export function customerDataFindings(text, path, blockedDigests, phoneText = byteCountPrivacyText(text)) {

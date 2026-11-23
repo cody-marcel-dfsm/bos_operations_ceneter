@@ -640,6 +640,14 @@ test("byte-count values leave the phone check while phones under other keys stay
     .some(row=>row.endsWith("non-fictional phone number")));
 });
 
+test("millisecond timing values leave the phone check while phones under other keys stay rejected", () => {
+  const timings=['{"started_ms":2158862769.738,"finished_ms":2158862784.82}','{\\"elapsed_ms\\":2158862799}','"duration_ms" : 2025550123'];
+  for(const text of timings) assert.deepEqual(customerDataFindings(text,"run.json",new Set()),[]);
+  const phone=["202","867","5309"].join("");
+  for(const text of [`{"started": ${phone}}`,`{"started_ms": "${phone}"}`,`{"started_ms": 1, "contact": ${phone}}`,`started_ms ${phone}`,`{"started_ms_note": ${phone}}`])
+    assert(customerDataFindings(text,"run.json",new Set()).some(row=>row.endsWith("non-fictional phone number")),text);
+});
+
 test("operational evidence byte counts pass the complete file scan while a phone value fails", async () => {
   const directory = await mkdtemp(join(tmpdir(), "boc-privacy-bytes-"));
   const counts = join(directory, "resources.stdout.log"), phone = join(directory, "contact.stdout.log");
