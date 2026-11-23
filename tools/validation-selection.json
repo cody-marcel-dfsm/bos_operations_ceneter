@@ -4,12 +4,12 @@
   "stamp": {
     "engine": "codex",
     "model": "gpt-6.1-sol",
-    "oracle_sha256": "a63d021e2e029392fa5321ccd2c9be2ff8a361af8606a5e491e32d0562283057",
+    "oracle_sha256": "1aa6c13dc8f50cb495a3b9e857b951fa445a731070804f5c7f6cff0f7dcbf145",
     "host": "aio",
-    "time": "2026-11-23T04:35:26Z",
-    "origin_main": "7dc8a3bbfe9c925fbbe10812f4c0bb8397f18888",
+    "time": "2026-11-23T04:54:46Z",
+    "origin_main": "d6f6dac91af5e962ddc7acaf39efaa302708408b",
     "request_sha256": "e70f107ea7a8cb9d81c468722cef8667bc37edecf3258920ca5c77f87bc018e3",
-    "proposal_sha256": "f24d30edbd684135e5c68083ee77d770675d300ae49c85ff67b2e20ae192f7fc"
+    "proposal_sha256": "1a874555e0db09a901eee3c70ab1944cf5adb6d03dd1b2e612c47174eb32fb3b"
   },
   "selection": {
     "acceptance": [
@@ -39,7 +39,8 @@
       "Journal observations become eligible only for interrupted cohorts with intact original per-cohort preparation seals and intact shared plan and context. Altered source pages, schema, governance, context, seals or shared preparation admit neither clean coverage nor integration observations. Retain original raw journal bytes and unfinished or error outcomes without approval.",
       "Journal coverage names only real assigned paths present in the sealed input inventory, and every consumed input binds a real current identity with its exact digest. Virtual retained-criterion paths and input identities never enter replayed source coverage; native criterion expansion remains responsible for those obligations.",
       "The sealed cohort packet digest includes its final governance-bundle and checkpoint-journal bindings. An intact interrupted cohort can recover its eligible observations through the actual recovery consumer; changing either binding rejects adoption while preserving original artifacts and execution status.",
-      "Synthetic review workspaces supply every mandatory governing document and imported executable dependency, including the generated-output proof module, and reviewer stubs accept and forward the governance stdin payload. The immutable fourteen-module review-policy inventory remains unchanged. Review-series, governance, performance, source-frontier and publication-admission runners discover and execute their complete declared cases without skips, weakened assertions or substituted production behavior; publication admission declares all 36 cases."
+      "Synthetic review workspaces supply every mandatory governing document and imported executable dependency, including the generated-output proof module, and reviewer stubs accept and forward the governance stdin payload. The immutable fourteen-module review-policy inventory remains unchanged. Review-series, governance, performance, source-frontier and publication-admission runners discover and execute their complete declared cases without skips, weakened assertions or substituted production behavior; publication admission declares all 36 cases.",
+      "Focused reproduction evidence may carry forward only from the current contract or a prior revision reached through authenticated immutable APPROVED native proposal archives. Admission requires an unchanged selected command, identical selected test and fixture blobs, identical runtime, a reproduced commit ancestral to the current candidate, intact original execution custody, and a complete nonempty assertion-failure run without skipped, cancelled or todo cases. Missing or altered archives, changed inputs, unrelated or cyclic revisions, infrastructure failures and non-ancestral reproductions supply no evidence. Validation execution and deterministic source admission apply the same rule without withdrawing fixes, modifying historical records or resetting request clocks."
     ],
     "acceptance_tests": [
       {
@@ -154,7 +155,8 @@
       },
       {
         "covers": [
-          21
+          21,
+          27
         ],
         "module": "tests/deterministic-lanes.test.mjs",
         "purpose": "Exercise deterministic package publication, promotion and published-state verification through the existing complete Python-suite runner, preserving source-lane and receipt boundaries."
@@ -210,6 +212,13 @@
         ],
         "module": "tests/oracle-source-frontier.test.mjs",
         "purpose": "Exercise immutable source-page preparation and forged-page refusal with complete synthetic governance at the actual cohort delivery boundary."
+      },
+      {
+        "covers": [
+          27
+        ],
+        "module": "tests/validation-contract.test.mjs",
+        "purpose": "Exercise genuine assertion-failure capture and prior-revision reuse through validation execution, including authenticated archive requirements, unchanged test and fixture identities, runtime and history matching, and rejection without rewriting original evidence."
       }
     ],
     "categories": [
@@ -250,7 +259,8 @@
           "tests/oracle_review_series.py",
           "tests/oracle-fixture.mjs",
           "tests/oracle_fixture.py",
-          "tests/oracle_source_frontier_test.py"
+          "tests/oracle_source_frontier_test.py",
+          "tests/validation_contract_test.py"
         ],
         "name": "interactions",
         "tests": [
@@ -266,14 +276,15 @@
           "tests/oracle-review-series.test.mjs",
           "tests/oracle-governance.test.mjs",
           "tests/oracle-performance.test.mjs",
-          "tests/oracle-source-frontier.test.mjs"
+          "tests/oracle-source-frontier.test.mjs",
+          "tests/validation-contract.test.mjs"
         ]
       }
     ],
     "change_class": "deep_bug_fix",
     "design": null,
-    "reason": "Retain all existing acceptance criteria, selected modules, fixtures, mapping purposes and criterion/module pairs. Cross-area publication and review-evidence custody require the selected adversarial focused cases and recovery, completeness, pending-path, lifecycle and publication interactions. Preserve the immutable fourteen-module policy inventory, complete case discovery and existing assertions. No unrelated recurrence suite is selected. Preserve unchanged-test fail-before/pass-after evidence, historical outcomes, original request clocks, existing reviewer deadlines and the 300-second delivery budget. Reuse native validation only with matching consumed inputs, dependency closure, environment and retained outputs; repeat execution requires an actual changed input or uncovered behavior. Synthetic checks establish no published-client acceptance.",
-    "revision_of": "b0ff5ba994147ffa1d816d34d632af31ebd99e434d95d0b74fee3d33f03435e1",
+    "reason": "Retain all existing acceptance criteria, selected modules, fixtures, mapping purposes and criterion/module pairs. Cross-area publication and review-evidence custody require the selected adversarial focused cases and recovery, completeness, pending-path, lifecycle and publication interactions. Add validation-contract interactions for narrowly authenticated reproduction reuse and exercise the same rule through deterministic source admission. Preserve the immutable fourteen-module policy inventory, complete case discovery and existing assertions. No unrelated recurrence suite is selected. Preserve unchanged-test fail-before/pass-after evidence, historical outcomes, original request clocks, existing reviewer deadlines and the 300-second delivery budget. Reuse native validation only with matching consumed inputs, dependency closure, environment and retained outputs; repeat execution requires an actual changed input or uncovered behavior. Synthetic checks establish no published-client acceptance.",
+    "revision_of": "cb14f5b0297b652f4a795762890a0e332f867397b7661f403bedcc0025040e21",
     "scope_paths": [
       "AGENTS.md",
       "README.md",
@@ -346,11 +357,15 @@
       "tests/oracle_fixture.py",
       "tests/oracle-performance.test.mjs",
       "tests/oracle-source-frontier.test.mjs",
-      "tests/oracle_source_frontier_test.py"
+      "tests/oracle_source_frontier_test.py",
+      "tools/validation_contract.py",
+      "tools/deterministic_source.py",
+      "tests/validation-contract.test.mjs",
+      "tests/validation_contract_test.py"
     ]
   },
-  "base_commit": "a75f3be5c57f099b2e05214529a9e4c11131d951",
-  "base_tree": "625d2d9d6dfc824844aad216e1169cc659de7854",
+  "base_commit": "906984ad0a1515878f7caefd75434c9080754571",
+  "base_tree": "454e648b850bf71cafa85c5979b9d18dcf518771",
   "catalog_sha256": "9a96f1cd2a973457f9da681dddcc5161aa8ffda188b092d849e5bc83999391c8",
   "runtime": {
     "node": "v26.12.0",
@@ -360,8 +375,8 @@
     "architecture": "x86_64",
     "options_sha256": "ebc442c160f8629073a82976daadaba1d95a60a38d768c81c8eb06598aedcac5"
   },
-  "proposal_sha256": "f24d30edbd684135e5c68083ee77d770675d300ae49c85ff67b2e20ae192f7fc",
-  "review_sha256": "eb357aa3137dd51e1239fd1ee0329e8ef2dd753bb1aa466bce9ed45d33e6d584",
+  "proposal_sha256": "1a874555e0db09a901eee3c70ab1944cf5adb6d03dd1b2e612c47174eb32fb3b",
+  "review_sha256": "ded79a7fd736fc095ee9541bbbfb6050191ad2646fc81049bacfeab5f6bc3079",
   "commands": [
     {
       "category": "sanity",
@@ -418,7 +433,8 @@
         "tests/oracle-review-series.test.mjs",
         "tests/oracle-governance.test.mjs",
         "tests/oracle-performance.test.mjs",
-        "tests/oracle-source-frontier.test.mjs"
+        "tests/oracle-source-frontier.test.mjs",
+        "tests/validation-contract.test.mjs"
       ],
       "tests": [
         "tests/journey-package-parity.test.mjs",
@@ -433,7 +449,8 @@
         "tests/oracle-review-series.test.mjs",
         "tests/oracle-governance.test.mjs",
         "tests/oracle-performance.test.mjs",
-        "tests/oracle-source-frontier.test.mjs"
+        "tests/oracle-source-frontier.test.mjs",
+        "tests/validation-contract.test.mjs"
       ],
       "fixtures": [
         "tests/helpers/synthetic-bos-discovery-service.mjs",
@@ -451,7 +468,8 @@
         "tests/oracle_review_series.py",
         "tests/oracle-fixture.mjs",
         "tests/oracle_fixture.py",
-        "tests/oracle_source_frontier_test.py"
+        "tests/oracle_source_frontier_test.py",
+        "tests/validation_contract_test.py"
       ]
     }
   ],
@@ -464,6 +482,6 @@
     "reasoning_effort": "medium",
     "maximum_reasoning_effort": "medium"
   },
-  "contract_sha256": "cb14f5b0297b652f4a795762890a0e332f867397b7661f403bedcc0025040e21",
-  "seal": "edf61bc31b3ba700044b56d5be0160a46a6f43c0047465aba647876ee32ed65b"
+  "contract_sha256": "8ca7afa66022f23c4c667289fb3e3bf70aa4deea19e8dfef991c16678fd7d497",
+  "seal": "49df034433fdb1db2d2c2245d17733cbeb8d2afd75e53828d59a11ff2a34534c"
 }
