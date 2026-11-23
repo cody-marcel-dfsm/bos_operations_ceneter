@@ -22,8 +22,12 @@ original request admission clock, including upload, network, validation, build,
 deployment and live verification when applicable; these source-only repositories
 finish at verified remote Git publication. Retries, revisions and handoffs retain
 `request_started_at` and `deadline_at`; they never start a fresh clock. A late
-completion is an SLA failure, never approval or a partial pass. Local category
-results are phase results and cannot certify end-to-end completion.
+completion is an SLA failure, never a reported pass or a partial pass. Local
+category results are phase results and cannot certify end-to-end completion.
+Record an overrun as `BREACHED` with the original clock and measured phases on the
+review receipt and release report and correct it as an architecture defect. The
+Oracle approves or rejects on correctness and complete validation; a recorded
+breach alone is no rejection finding (owner direction, 2026-11-23).
 
 Rank and pare the relevant checks before Oracle freezes the executable contract,
 then execute every selected check completely. A small `bug_fix` uses only sanity

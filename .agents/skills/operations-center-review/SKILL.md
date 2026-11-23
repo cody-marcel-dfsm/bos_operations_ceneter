@@ -204,6 +204,10 @@ The controlling delivery budgets are docs_only120s, bug_fix180s,
 deep_bug_fix300s and feature300s end to end, including network/build/effects and
 verification (verified Git publication for source-only work). The host's original
 request clock survives retries and revisions; local PASS is only phase PASS.
+An overrun is recorded as BREACHED with the original clock and measured phases
+on the review receipt and release report, stays an SLA failure, and is corrected
+as an architecture defect. Review judges the candidate's correctness and complete
+validation; the breach record alone is no rejection finding (owner, 2026-11-23).
 Rank/pare checks before freezing the contract, then run the whole selected set.
 Small bugs get deterministic focused tests only; auth/cross-area work is deep.
 No automatic broader regression or partial/empty/skipped PASS. Use low reasoning
