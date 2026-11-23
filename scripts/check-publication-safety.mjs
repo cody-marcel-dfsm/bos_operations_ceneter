@@ -22,6 +22,7 @@ export const allowedTopLevelPaths = new Set([
   "TRADEMARKS.md",
   "acceptance",
   "brand",
+  "build-project.json",
   "clients",
   "contracts",
   "package-manifest.json",

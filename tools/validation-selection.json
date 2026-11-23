@@ -6,10 +6,10 @@
     "model": "gpt-6.1-sol",
     "oracle_sha256": "6201e34e0830b8be0aed47387586ed9fa30350482d58f258f54800091118925a",
     "host": "aio",
-    "time": "2026-11-23T19:43:42Z",
+    "time": "2026-11-23T19:49:42Z",
     "origin_main": "4451580fefadfeade5eb13f837091b93b806028e",
-    "request_sha256": "a43d5b736039403c1ae3b5ee020b742c672162673d69b51a8b0c7516d9b749a9",
-    "proposal_sha256": "51adbd2f6a030443b32f18bbb9afd7b04627e43bb142fac18e708b239b3b50d2"
+    "request_sha256": "2dcb781bbec06b26c7515f590fcafcf720d20580c9871fd2f321ca70db939766",
+    "proposal_sha256": "c67e6e7451a0c842f35bab06fb6842470cad0aa108abc06ffec57af743f762d9"
   },
   "selection": {
     "acceptance": [
@@ -17,7 +17,8 @@
       "Every tracked path is routed appropriately. Only plain documentation is non-runtime; skills, agent instructions, tool and contract Markdown, package configuration and the build declaration remain executable.",
       "Every change class retains sanity and sealed-spec checks. Documentation selection preserves both checks, and every non-documentation class selects its changed Node tests without adding unrelated categories.",
       "The new npm script invokes the existing validation controller's CI action against origin/main while preserving the existing release-check script. Isolated repository cases demonstrate documentation admission, rejection of absent or invalid specifications and out-of-scope changes, execution of a valid specification's selected commands, and refusal of failed, empty, skipped or incomplete test results.",
-      "The definition selects privacy and publication checks for sanity, package and contract checks for their declared path groups, and the sealed-spec script through its designated runner. Local checks make no claim of host enrollment, publication authority or live client acceptance."
+      "The definition selects privacy and publication checks for sanity, package and contract checks for their declared path groups, and the sealed-spec script through its designated runner. Local checks make no claim of host enrollment, publication authority or live client acceptance.",
+      "The publication allowlist admits exactly the new top-level build-project.json entry while retaining rejection of an unlisted sibling, private Vault paths and reachable Vault history, and preserving existing release-workflow boundaries."
     ],
     "acceptance_tests": [
       {
@@ -33,10 +34,18 @@
           1,
           2,
           3,
-          4
+          4,
+          5
         ],
         "module": "tests/build-project.test.mjs",
         "purpose": "Verify the declaration, effective class and path selection, exact npm script wiring, and isolated success and refusal cases through the selected validation entrypoint."
+      },
+      {
+        "covers": [
+          5
+        ],
+        "module": "tests/publication-safety.test.mjs",
+        "purpose": "Preserve unknown-path refusal, private-path and reachable-history protection, and existing release-workflow boundaries."
       }
     ],
     "categories": [
@@ -51,7 +60,8 @@
         ],
         "name": "interactions",
         "tests": [
-          "tests/validation-contract.test.mjs"
+          "tests/validation-contract.test.mjs",
+          "tests/publication-safety.test.mjs"
         ]
       },
       {
@@ -64,17 +74,19 @@
     ],
     "change_class": "feature",
     "design": "Vault/docs/design/family-build-definition.md",
-    "reason": "Add a bounded declarative build integration using the existing sealed-spec controller. Select its relevant contract interactions and dedicated declaration and entrypoint acceptance; omit unrelated runtime suites and recurrence checks. Preserve the original delivery clock and the feature delivery budget.",
-    "revision_of": "4221a95513b8c300accf691e651a349ff02b36c8367059a08c664b433882d5e4",
+    "reason": "Retain the existing feature contract and its complete acceptance and controller interactions. Add the publication-safety interaction because the exact public-path allowlist changes. Omit unrelated runtime suites and recurrence checks. Preserve historical failures, the original delivery clock and the feature delivery budget.",
+    "revision_of": "025a9e6cbc6ded8aa6580bdabc30102ddd1bcb29a1bbc51372d59749e22989c6",
     "scope_paths": [
       "build-project.json",
       "package.json",
+      "scripts/check-publication-safety.mjs",
       "tests/build-project.test.mjs",
+      "tests/publication-safety.test.mjs",
       "tools/validation-selection.json"
     ]
   },
-  "base_commit": "4451580fefadfeade5eb13f837091b93b806028e",
-  "base_tree": "ac720c710f9956ff8f73079f90e4d58c2638d6e3",
+  "base_commit": "02435b854ff196d8f52f837f750d8d10fd4045a9",
+  "base_tree": "55baaff61edfde4555313ee3cae5fa31910410ff",
   "catalog_sha256": "9a96f1cd2a973457f9da681dddcc5161aa8ffda188b092d849e5bc83999391c8",
   "runtime": {
     "node": "v26.12.0",
@@ -84,8 +96,8 @@
     "architecture": "x86_64",
     "options_sha256": "ebc442c160f8629073a82976daadaba1d95a60a38d768c81c8eb06598aedcac5"
   },
-  "proposal_sha256": "51adbd2f6a030443b32f18bbb9afd7b04627e43bb142fac18e708b239b3b50d2",
-  "review_sha256": "e0b3ea009d2ef799764d491830fecf21cefeff91c591e0390a79ced1338a5a1b",
+  "proposal_sha256": "c67e6e7451a0c842f35bab06fb6842470cad0aa108abc06ffec57af743f762d9",
+  "review_sha256": "84a9cb573058f7597870074ae3c7447077e14a33269e1aab22c4fc6444840f56",
   "commands": [
     {
       "category": "sanity",
@@ -104,10 +116,12 @@
         "--test",
         "--test-reporter=tap",
         "--test-concurrency=1",
-        "tests/validation-contract.test.mjs"
+        "tests/validation-contract.test.mjs",
+        "tests/publication-safety.test.mjs"
       ],
       "tests": [
-        "tests/validation-contract.test.mjs"
+        "tests/validation-contract.test.mjs",
+        "tests/publication-safety.test.mjs"
       ],
       "fixtures": [
         "tests/validation_contract_test.py"
@@ -139,13 +153,14 @@
   },
   "design_binding": {
     "design": "Vault/docs/design/family-build-definition.md",
-    "design_sha256": "b69c0044962b34e1ce291c2e72db5beba871fb6625904b1595ce212d7b3fc501",
+    "design_sha256": "e65f653af0e9aee43a7944d09511f1e04baf4cb17ac7d50cff54c39b678d5c09",
     "plan": "Vault/docs/design/family-build-definition.test-plan.json",
-    "plan_sha256": "12b14b88d5ba427fb3bd84830e179c4a38c711fbea58f490a0fbe020f1229de0",
+    "plan_sha256": "53e79d35d9cd49b14c2a93c31be38fc13615164912d94780aa1843d42291373f",
     "tests": [
-      "tests/build-project.test.mjs"
+      "tests/build-project.test.mjs",
+      "tests/publication-safety.test.mjs"
     ]
   },
-  "contract_sha256": "025a9e6cbc6ded8aa6580bdabc30102ddd1bcb29a1bbc51372d59749e22989c6",
-  "seal": "a718b325aaceea7ea92ffd717da790193b2d65da60340c352244563a6fc5e8e9"
+  "contract_sha256": "eeb44730274f4cd27437149a22946ca8b5d38f2b2e16d3796dcaaa2b598bc119",
+  "seal": "2ad1426a92f92442645f0f2854865fa41abfe0b1a7867352039483e19bdb0efb"
 }

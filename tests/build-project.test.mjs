@@ -7,6 +7,8 @@ import test from "node:test";
 import {fileURLToPath} from "node:url";
 import {promisify} from "node:util";
 
+import {validatePublicationPaths} from "../scripts/check-publication-safety.mjs";
+
 const root = new URL("../", import.meta.url);
 const definition = JSON.parse(await readFile(new URL("build-project.json", root), "utf8"));
 const scripts = JSON.parse(await readFile(new URL("package.json", root), "utf8")).scripts;
@@ -36,6 +38,11 @@ test("every selected npm script is allowlisted and defined by package.json", () 
   }
   assert.deepEqual(definition.categories.spec.selection, ["spec:check"]);
   assert.equal(definition.categories.spec.runner, "release_check");
+});
+
+test("the definition is a public path the publication check admits", () => {
+  assert.deepEqual(validatePublicationPaths(["build-project.json"]), []);
+  assert.notDeepEqual(validatePublicationPaths(["build-project.local.json"]), []);
 });
 
 test("rules and classification name only defined categories and every class", () => {
