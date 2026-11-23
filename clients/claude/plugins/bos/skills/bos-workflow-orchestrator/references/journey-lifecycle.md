@@ -91,9 +91,13 @@ when interpreting its response or continuing `runJourneyRecovery`. For the exact
 advertised canonical commercial errors, the result is `next: declared_public_error`
 with the HTTP status and unchanged safe public error, before lifecycle parsing:
 
-- `PAID_PLAN_REQUIRED`: HTTP 403 and `retryable: false`; payment is a prerequisite.
+- `PAID_PLAN_REQUIRED`: HTTP 403 and `retryable: false`; the service has denied current access.
 - `MCP_ENTITLEMENT_UNAVAILABLE`: HTTP 503 and `retryable: true`; current entitlement
   evidence is unavailable.
+
+BOS organization paid, qualifying-trial and prepared/lifecycle admission remain service-owned.
+The client preserves the actual returned denial and safe message; it infers no
+eligibility, separate app subscription, payment prerequisite or acquisition action.
 
 The actual validated request descriptor must declare the exact code/status/flag.
 Missing context, undeclared or mismatched errors, malformed envelopes and obsolete
