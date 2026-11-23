@@ -6,65 +6,70 @@
     "model": "gpt-6.1-sol",
     "oracle_sha256": "a9fe3d5142f622f993eee31ad2089b21a9e3c2e4c3147eb81f92e48524b83133",
     "host": "Codys-MacBook-Pro.local",
-    "time": "2026-11-21T22:40:03Z",
-    "origin_main": "95bbc0f5a2bc3cec2399a3f8880139d2b4ce0065",
-    "request_sha256": "2422e6d25fff07446de9438bcedd9a9d5cba713ae85bd148ad1ef9a9487c703b",
-    "proposal_sha256": "150bb4eac65db864e00bb3f2c0b5fd549a0fcaffe78e14e9554a8ce29bdc8707"
+    "time": "2026-11-23T04:11:18Z",
+    "origin_main": "7dc8a3bbfe9c925fbbe10812f4c0bb8397f18888",
+    "request_sha256": "f662c557f9cd272569f726371ae1b562d9b98eef6a87b9f8e2893c69c9a9ec6d",
+    "proposal_sha256": "20b59d88f590d4b2d983577294fc3c0150314ff2b57c82f73f0485786cf2afd9"
   },
   "selection": {
     "acceptance": [
-      "Native package scope admission accepts a committed body and version change to exactly the canonical implementation skill, while the existing unrelated-skill body-change refusal continues to reject.",
-      "The changed skill receives a strictly newer version, exact dependency metadata remains valid, and the release manifest binds its complete source identity and effective product guidance.",
-      "Maintained generated packages preserve canonical skill content through their existing product transformations, retain package version consistency and existing connection boundaries, and pass existing package conformance checks.",
-      "Diagram labels use deterministic bounded Unicode-aware wrapping, including unbroken text, with dynamic punctuation encoded before trusted generated line-break markers are inserted. Source-supplied markup, directives, links and syntax remain inert, and existing model and input bounds remain enforced.",
-      "Invisible ordering connectors organize disconnected presentation content without adding visible graph or dependency relationships. All supplied graph edges, dependency edges, revisions, confirmation evidence, failure states and milestones remain represented; text output remains unchanged.",
-      "Current, stale and unknown projections retain their existing evidence requirements, stale achievement suppression and single truthful next-action behavior. The pure stdin renderer and all five generated consumers preserve equivalent behavior.",
-      "Existing record-detail graph completion survives clarification, retains every intermediate state on the selected compact route, preserves ranking and explicit format choices, and reports precise partial evidence without invented topology. Native inline rendering retains priority, unsupported Mermaid and ASCII remain incomplete, plain labels reject HTML formatting wrappers, and the focused student exception remains scoped."
+      "Feedback guidance selects an exact freshly advertised native item-wait descriptor with schema-valid arguments through the existing connection, or an independently admitted authenticated host socket. Missing capability preserves supported reads and comments without invented routes, fields, credentials or authority.",
+      "Collaboration distinguishes transport admission, committed comment acknowledgment, actual same-item peer acknowledgment, design delivery, complete design read acknowledgment, implementation verification and reporter acceptance. A saved comment or item brief establishes none of the later milestones.",
+      "Synthetic request examples respect current schema and privacy boundaries. Design handoff identifies the complete intended document and revision, preserves disclosure authorization, sanitization and size limits, and reports unsupported delivery without inventing attachment or document operations.",
+      "Authorized active observation uses returned cursors within service and host limits. Gaps require current detail and necessary paging; uncertain writes require reconciliation without blind replay. Cancellation, denied authority, terminal outcomes and bounded failure recovery stop or constrain continuation appropriately.",
+      "Journey wait expiry remains distinct from transport lifetime. Re-arming uses current service-returned state and permitted actions. Active waiting establishes no idle wake, persistent monitoring or autonomous peer execution.",
+      "Canonical guidance and maintained generated consumers remain equivalent under existing transformations. Required skill versions and exact dependency pins advance consistently, package metadata remains valid, and existing connection, lifecycle and discussion runtime behavior is preserved.",
+      "Shared entrypoints preserve individual-record graph completion after clarification, complete intermediate routes, compact preferred presentation, truthful partial evidence, ranking provenance, explicit format choices, native rendering priority, plain labels and the focused student-workflow exception."
     ],
     "acceptance_tests": [
       {
         "covers": [
-          0
-        ],
-        "module": "tests/deterministic-lanes.test.mjs",
-        "purpose": "Executes the complete native lane conformance modules, including the new exact implementation-skill admission case and the unchanged unrelated-skill refusal."
-      },
-      {
-        "covers": [
-          1
-        ],
-        "module": "tests/versioned-skills.test.mjs",
-        "purpose": "Checks skill metadata, source and effective-guidance identities, version advancement and exact dependency requirements."
-      },
-      {
-        "covers": [
-          2
-        ],
-        "module": "tests/package-model.test.mjs",
-        "purpose": "Checks maintained product composition, generated package contracts, release metadata and existing ownership boundaries."
-      },
-      {
-        "covers": [
-          2
-        ],
-        "module": "tests/muse-package.test.mjs",
-        "purpose": "Checks complete generated Muse skill parity, package metadata and unchanged host connection ownership."
-      },
-      {
-        "covers": [
+          0,
+          1,
+          2,
           3,
           4,
           5
         ],
-        "module": "tests/ada-journey-view.test.mjs",
-        "purpose": "Reproduces wrapping and disconnected-layout failures, verifies inert hostile labels and invisible-only ordering, and preserves graph, text, evidence, freshness, CLI and five-host parity behavior."
+        "module": "tests/feedback-item-discussion.test.mjs",
+        "purpose": "Reproduce missing collaboration guidance before correction and verify discovery-bound examples, acknowledgment milestones, privacy, bounded observation, cursor recovery, uncertain writes and generated guidance after correction."
+      },
+      {
+        "covers": [
+          1,
+          3,
+          5
+        ],
+        "module": "tests/feedback-lifecycle.test.mjs",
+        "purpose": "Preserve fresh-state lifecycle decisions, reporter-only completion, reply attribution and conservative conflict and uncertain-write recovery."
+      },
+      {
+        "covers": [
+          5
+        ],
+        "module": "tests/versioned-skills.test.mjs",
+        "purpose": "Verify version advancement, exact dependency requirements and source and effective-guidance identities."
+      },
+      {
+        "covers": [
+          5
+        ],
+        "module": "tests/package-model.test.mjs",
+        "purpose": "Verify maintained package composition, generated guidance, release metadata and existing connection ownership."
+      },
+      {
+        "covers": [
+          5
+        ],
+        "module": "tests/muse-package.test.mjs",
+        "purpose": "Verify generated package parity and existing host-owned connection boundaries."
       },
       {
         "covers": [
           6
         ],
         "module": "tests/lead-graph-regression.test.mjs",
-        "purpose": "Preserves shared canonical and generated graph completion, compact route completeness, plain labels, native delivery selection and the focused student exception."
+        "purpose": "Preserve canonical and generated graph handoffs, compact response completeness, plain labels, rendering selection and the focused student exception."
       }
     ],
     "categories": [
@@ -74,24 +79,20 @@
         "tests": []
       },
       {
-        "fixtures": [
-          "tests/deterministic_package_test.py",
-          "tests/deterministic_source_test.py",
-          "tests/helpers/native-validation-git.mjs",
-          "tests/helpers/native-validation-state.mjs"
-        ],
+        "fixtures": [],
         "name": "focused",
         "tests": [
-          "tests/deterministic-lanes.test.mjs",
-          "tests/ada-journey-view.test.mjs"
+          "tests/feedback-item-discussion.test.mjs"
         ]
       },
       {
         "fixtures": [
+          "tests/helpers/synthetic-bos-discovery-service.mjs",
           "tests/helpers/lead-graph-acceptance.mjs"
         ],
         "name": "interactions",
         "tests": [
+          "tests/feedback-lifecycle.test.mjs",
           "tests/versioned-skills.test.mjs",
           "tests/package-model.test.mjs",
           "tests/muse-package.test.mjs",
@@ -101,14 +102,18 @@
     ],
     "change_class": "deep_bug_fix",
     "design": null,
-    "reason": "Retain the complete prior admission, versioning and package contract while adding bounded diagram readability correction and generated-consumer interactions. Capture unchanged-test fail-before/pass-after layout and wrapping reproductions. Preserve all existing security and state assertions; normalization may remove only trusted generated line-break markers. Supplement deterministic checks with actual installed strict-renderer before/after metrics and visual inspection at desktop and mobile widths for current, stale and hostile-label examples, with root and nested HTML labels disabled and no executable SVG, anchors or foreign objects. Existing complete deterministic package, privacy, generation and publication checks remain mandatory. Source and synthetic rendering evidence establish no installed-host or provider acceptance. Preserve original failures and delivery clocks; add no dependency, live provider call or automatic recurrence registry expansion.",
-    "revision_of": "286f69a748cb146d0e9cc93bfbfb10d0fade4ec6ac1103a217f89e034e87c88b",
+    "reason": "Shared connection guidance, collaboration milestones, recovery and generated consumers require cross-area verification. Add guidance regressions only to the existing admitted discussion test module. Capture a complete assertion failure against unchanged implementation, then preserve those test bytes for passing execution after correction. Behavioral edits remain confined to the four named canonical guidance files and their generated mirrors; other admitted skill files may change only required versions and exact dependency pins. Preserve runtime code, the existing deterministic package profile, historical evidence and the original delivery clock. Complete every selected category and existing package privacy, publication and parity gates. Source and synthetic checks establish no native collaboration, idle wake or published-client acceptance.",
+    "revision_of": "99ea5783bbc4478986caaef35218e8ec0f8b7e205e33ab34c2e69a6c1a80eb38",
     "scope_paths": [
-      "source/platform/implementation/SKILL.md",
-      "tools/deterministic_package.py",
-      "tools/deterministic-package.md",
+      "source/platform/submit-feedback/SKILL.md",
+      "source/platform/submit-feedback/references/item-discussion.md",
+      "source/platform/submit-feedback/references/feedback-contract.md",
+      "source/platform/bos-mcp-client/references/identity-context.md",
+      "source/platform/*/SKILL.md",
+      "source/capabilities/*/SKILL.md",
+      "source/verticals/*/*/SKILL.md",
+      "tests/feedback-item-discussion.test.mjs",
       "tools/validation-selection.json",
-      "tests/deterministic_package_test.py",
       "README.md",
       "package.json",
       "package-lock.json",
@@ -118,54 +123,44 @@
       "products/education-center/product.json",
       "products/bos/openai/bos-skills.zip",
       "products/education-center/openai/education-center-skills.zip",
-      "clients/claude/plugins/bos/skills/implementation/SKILL.md",
-      "clients/codex/plugins/bos/skills/implementation/SKILL.md",
-      "clients/copilot/products/bos/skills/implementation/SKILL.md",
-      "clients/gemini/extensions/bos/skills/implementation/SKILL.md",
-      "clients/muse/plugins/bos/skills/implementation/SKILL.md",
-      "clients/claude/plugins/bos/.bos-product.json",
-      "clients/claude/plugins/bos/.claude-plugin/plugin.json",
-      "clients/claude/plugins/education-center/.bos-product.json",
-      "clients/claude/plugins/education-center/.claude-plugin/plugin.json",
-      "clients/codex/plugins/bos/.bos-product.json",
-      "clients/codex/plugins/bos/.codex-plugin/plugin.json",
-      "clients/codex/plugins/education-center/.bos-product.json",
-      "clients/codex/plugins/education-center/.codex-plugin/plugin.json",
-      "clients/copilot/products/bos/.bos-product.json",
-      "clients/copilot/products/education-center/.bos-product.json",
-      "clients/gemini/extensions/bos/.bos-product.json",
-      "clients/gemini/extensions/bos/gemini-extension.json",
-      "clients/gemini/extensions/bos/plugin.json",
-      "clients/gemini/extensions/education-center/.bos-product.json",
-      "clients/gemini/extensions/education-center/gemini-extension.json",
-      "clients/gemini/extensions/education-center/plugin.json",
-      "clients/muse/plugins/bos/.bos-product.json",
-      "clients/muse/plugins/bos/.muse-plugin/plugin.json",
-      "clients/muse/plugins/education-center/.bos-product.json",
-      "clients/muse/plugins/education-center/.muse-plugin/plugin.json",
-      "source/platform/ada/SKILL.md",
-      "source/platform/ada/scripts/journey-view.mjs",
-      "source/platform/ada/references/journey-view.md",
-      "tests/ada-journey-view.test.mjs",
-      "clients/claude/plugins/bos/skills/ada/SKILL.md",
-      "clients/claude/plugins/bos/skills/ada/scripts/journey-view.mjs",
-      "clients/claude/plugins/bos/skills/ada/references/journey-view.md",
-      "clients/codex/plugins/bos/skills/ada/SKILL.md",
-      "clients/codex/plugins/bos/skills/ada/scripts/journey-view.mjs",
-      "clients/codex/plugins/bos/skills/ada/references/journey-view.md",
-      "clients/copilot/products/bos/skills/ada/SKILL.md",
-      "clients/copilot/products/bos/skills/ada/scripts/journey-view.mjs",
-      "clients/copilot/products/bos/skills/ada/references/journey-view.md",
-      "clients/gemini/extensions/bos/skills/ada/SKILL.md",
-      "clients/gemini/extensions/bos/skills/ada/scripts/journey-view.mjs",
-      "clients/gemini/extensions/bos/skills/ada/references/journey-view.md",
-      "clients/muse/plugins/bos/skills/ada/SKILL.md",
-      "clients/muse/plugins/bos/skills/ada/scripts/journey-view.mjs",
-      "clients/muse/plugins/bos/skills/ada/references/journey-view.md"
+      "clients/claude/plugins/*/skills/*/SKILL.md",
+      "clients/codex/plugins/*/skills/*/SKILL.md",
+      "clients/muse/plugins/*/skills/*/SKILL.md",
+      "clients/copilot/products/*/skills/*/SKILL.md",
+      "clients/copilot/skills/*/SKILL.md",
+      "clients/gemini/extensions/*/skills/*/SKILL.md",
+      "clients/claude/plugins/*/skills/submit-feedback/references/item-discussion.md",
+      "clients/claude/plugins/*/skills/submit-feedback/references/feedback-contract.md",
+      "clients/claude/plugins/*/skills/bos-mcp-client/references/identity-context.md",
+      "clients/codex/plugins/*/skills/submit-feedback/references/item-discussion.md",
+      "clients/codex/plugins/*/skills/submit-feedback/references/feedback-contract.md",
+      "clients/codex/plugins/*/skills/bos-mcp-client/references/identity-context.md",
+      "clients/muse/plugins/*/skills/submit-feedback/references/item-discussion.md",
+      "clients/muse/plugins/*/skills/submit-feedback/references/feedback-contract.md",
+      "clients/muse/plugins/*/skills/bos-mcp-client/references/identity-context.md",
+      "clients/copilot/products/*/skills/submit-feedback/references/item-discussion.md",
+      "clients/copilot/products/*/skills/submit-feedback/references/feedback-contract.md",
+      "clients/copilot/products/*/skills/bos-mcp-client/references/identity-context.md",
+      "clients/copilot/skills/submit-feedback/references/item-discussion.md",
+      "clients/copilot/skills/submit-feedback/references/feedback-contract.md",
+      "clients/copilot/skills/bos-mcp-client/references/identity-context.md",
+      "clients/gemini/extensions/*/skills/submit-feedback/references/item-discussion.md",
+      "clients/gemini/extensions/*/skills/submit-feedback/references/feedback-contract.md",
+      "clients/gemini/extensions/*/skills/bos-mcp-client/references/identity-context.md",
+      "clients/claude/plugins/*/.bos-product.json",
+      "clients/claude/plugins/*/.claude-plugin/plugin.json",
+      "clients/codex/plugins/*/.bos-product.json",
+      "clients/codex/plugins/*/.codex-plugin/plugin.json",
+      "clients/muse/plugins/*/.bos-product.json",
+      "clients/muse/plugins/*/.muse-plugin/plugin.json",
+      "clients/copilot/products/*/.bos-product.json",
+      "clients/gemini/extensions/*/.bos-product.json",
+      "clients/gemini/extensions/*/gemini-extension.json",
+      "clients/gemini/extensions/*/plugin.json"
     ]
   },
-  "base_commit": "2bb3c6f770c15b55957900ba9b669b95cad4cfb4",
-  "base_tree": "cef2f9131ebc96aed8ec32698034e81a3ee386d3",
+  "base_commit": "7dc8a3bbfe9c925fbbe10812f4c0bb8397f18888",
+  "base_tree": "82b87600b2bbd53ee48e402b2b41b37fb0989666",
   "catalog_sha256": "9a96f1cd2a973457f9da681dddcc5161aa8ffda188b092d849e5bc83999391c8",
   "runtime": {
     "node": "v22.11.0",
@@ -175,8 +170,8 @@
     "architecture": "arm64",
     "options_sha256": "ebc442c160f8629073a82976daadaba1d95a60a38d768c81c8eb06598aedcac5"
   },
-  "proposal_sha256": "150bb4eac65db864e00bb3f2c0b5fd549a0fcaffe78e14e9554a8ce29bdc8707",
-  "review_sha256": "09735a7bbf24dc121d083c0b57e584d2e2e6e119da38d6b4ebf17104c3729dba",
+  "proposal_sha256": "20b59d88f590d4b2d983577294fc3c0150314ff2b57c82f73f0485786cf2afd9",
+  "review_sha256": "2925d4ebc244d10049c578f7d488acccae1fccaf9cab5ddf6df306750c51756b",
   "commands": [
     {
       "category": "sanity",
@@ -195,19 +190,12 @@
         "--test",
         "--test-reporter=tap",
         "--test-concurrency=1",
-        "tests/deterministic-lanes.test.mjs",
-        "tests/ada-journey-view.test.mjs"
+        "tests/feedback-item-discussion.test.mjs"
       ],
       "tests": [
-        "tests/deterministic-lanes.test.mjs",
-        "tests/ada-journey-view.test.mjs"
+        "tests/feedback-item-discussion.test.mjs"
       ],
-      "fixtures": [
-        "tests/deterministic_package_test.py",
-        "tests/deterministic_source_test.py",
-        "tests/helpers/native-validation-git.mjs",
-        "tests/helpers/native-validation-state.mjs"
-      ]
+      "fixtures": []
     },
     {
       "category": "interactions",
@@ -216,18 +204,21 @@
         "--test",
         "--test-reporter=tap",
         "--test-concurrency=1",
+        "tests/feedback-lifecycle.test.mjs",
         "tests/versioned-skills.test.mjs",
         "tests/package-model.test.mjs",
         "tests/muse-package.test.mjs",
         "tests/lead-graph-regression.test.mjs"
       ],
       "tests": [
+        "tests/feedback-lifecycle.test.mjs",
         "tests/versioned-skills.test.mjs",
         "tests/package-model.test.mjs",
         "tests/muse-package.test.mjs",
         "tests/lead-graph-regression.test.mjs"
       ],
       "fixtures": [
+        "tests/helpers/synthetic-bos-discovery-service.mjs",
         "tests/helpers/lead-graph-acceptance.mjs"
       ]
     }
@@ -241,6 +232,6 @@
     "reasoning_effort": "medium",
     "maximum_reasoning_effort": "medium"
   },
-  "contract_sha256": "99ea5783bbc4478986caaef35218e8ec0f8b7e205e33ab34c2e69a6c1a80eb38",
-  "seal": "ec9c564af3aafd4615f49ca2110d399e6a81099a689e6f477fc42e021b502fbc"
+  "contract_sha256": "b470eb24f465cf535a37e8df3cf82643b0a8d5b82e73ec7928215b829ae983b6",
+  "seal": "3d6f7affaa5c0bf1ee3f63d3720913406ee58b66917c039742d3f587280520d7"
 }
