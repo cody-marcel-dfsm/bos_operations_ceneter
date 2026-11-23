@@ -5,6 +5,7 @@ import {join, relative} from "node:path";
 import test from "node:test";
 import crypto from "node:crypto";
 import {syncBuiltinESMExports} from "node:module";
+import {spawnSync} from "node:child_process";
 
 import {
   byteCountPrivacyText,
@@ -733,4 +734,31 @@ test("complete operational-file scanning recognizes split TAP byte counts and re
     assert(!findings.some(row => row.includes("resources.stdout.log")), findings.join("\n"));
     assert(findings.some(row => row.includes("contact.stdout.log: non-fictional phone number")));
   } finally { await rm(directory, {recursive: true, force: true}); }
+});
+
+test("local typed-slot scanning completes bounded synthetic spacing checks", () => {
+  const script = String.raw`
+    import assert from "node:assert/strict";
+    import {byteCountPrivacyText, customerDataFindings, operationalPrivacyText} from "./scripts/check-customer-data.mjs";
+    const count = String(4827 * 10 ** 6 + 744560);
+    for (const ending of ["\n", "\r\n"]) {
+      const spacing = (ending + "# ").repeat(27);
+      const malformed = '"free_bytes"' + spacing + "missing-colon";
+      assert.equal(byteCountPrivacyText(malformed), malformed);
+      const beforeColon = '"free_bytes"' + spacing + ":" + count;
+      assert.equal(byteCountPrivacyText(beforeColon), '"free_bytes"' + spacing + ":0");
+      const beforeValue = '"free_bytes":' + spacing + count;
+      assert.equal(byteCountPrivacyText(beforeValue), '"free_bytes":' + spacing + "0");
+      const contact = beforeValue + ',"contact":' + count;
+      assert(customerDataFindings(contact, "synthetic.log", new Set(),
+        operationalPrivacyText(byteCountPrivacyText(contact), {})).some(row => row.endsWith("non-fictional phone number")));
+    }
+    console.log("validated");
+  `;
+  const result = spawnSync(process.execPath, ["--input-type=module", "-e", script], {
+    cwd: root, encoding: "utf8", timeout: 1000, maxBuffer: 64 * 1024
+  });
+  assert.equal(result.error, undefined, "local scanner must complete the bounded synthetic input");
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.stdout.trim(), "validated");
 });

@@ -4,12 +4,12 @@
   "stamp": {
     "engine": "claude",
     "model": "claude-opus-5-5",
-    "oracle_sha256": "76a1a8dc8d0756179bd71bdb7d513c752ef6b9142800843b35a6cdea4459df95",
+    "oracle_sha256": "892ad8c0d8413e07c6956c24cf2f634aeadbeaa2f73e4532b19386f6d9c7f326",
     "host": "Codys-MacBook-Pro.local",
-    "time": "2026-11-23T20:10:04Z",
-    "origin_main": "144c7ae07469bec33e64fe205bde41c397312986",
+    "time": "2026-11-23T20:38:50Z",
+    "origin_main": "b994663ddc5e6e804f39f050ff1ec0e84c3845be",
     "request_sha256": "fc7562b6053f376e51682f5b2c5654862ae9297b1581c2b29bb956a5093207a3",
-    "proposal_sha256": "9ca61deca1435bd3cc8676e4a1bf3465b18027298220773161d151d64992cc35"
+    "proposal_sha256": "d942c837b70ec3c22aa273d21a9e40f6ba2f3f052d97457be9f64e2c59f225c3"
   },
   "selection": {
     "acceptance": [
@@ -48,7 +48,11 @@
       "When a TAP diagnostic comment continuation (newline followed by a '# ' comment prefix) splits a *_bytes key, its colon, or the boundary before its integer value, the value is still treated as a machine byte count and left out of the phone check. This must hold in the full operational-file scan and in the shared worker classifier, for every split position in the key and value boundary.",
       "Phone, email and blocked-identifier findings stay detectable for: plain numeric or string contact fields, quoted byte values, malformed or non-TAP continuation markers, a missing key or colon, fractional or exponent values, extra adjacent values, and real email or digest matches. The original unmodified text is still scanned for every check except phone.",
       "The fix adds no whole-log exclusion, arbitrary whitespace joining, digest allowlist, evidence modification or artifact cleanup. Changing the classifier source changes the privacy policy identity and invalidates earlier clean-cache results.",
-      "The published build definition stays checked: the build-definition test passes and the existing publication-safety admission of that definition is preserved."
+      "The published build definition stays checked: the build-definition test passes and the existing publication-safety admission of that definition is preserved.",
+      "Malformed input that repeats CRLF-plus-comment TAP continuations after a typed byte-count key, with the colon missing, completes in a separate child process within the existing one-second regression budget. The input is returned unchanged.",
+      "The ordinary-whitespace and exact TAP-continuation spacing alternatives in the typed byte-count slot are mutually exclusive. They accept exactly the whitespace and continuation syntax the earlier correction accepted, with no blanket normalization, partial scanning or timeout increase.",
+      "Valid repeated LF and CRLF continuations around a typed byte-count key still remove only the integer value from the phone view. Non-integer or malformed values stay unchanged, and every other privacy view still reads the original text.",
+      "Contact data and blocked identifiers placed next to a byte-count slot, whether well-formed or malformed, are still detected. All existing typed-slot and privacy worker cases keep their current results."
     ],
     "acceptance_tests": [
       {
@@ -213,7 +217,11 @@
           14,
           32,
           33,
-          34
+          34,
+          36,
+          37,
+          38,
+          39
         ],
         "purpose": "Reproduces and verifies the bounded Git transport exemption while contacts and unsafe variants remain flagged."
       },
@@ -535,8 +543,8 @@
     ],
     "change_class": "deep_bug_fix",
     "design": null,
-    "reason": "Additive correction to how the privacy scanner treats byte counts in TAP output, which is falsely flagging retained validation logs. The change also keeps the published build-definition validation as a required interactions check. All prior criteria, categories, modules and fixtures are retained.",
-    "revision_of": "e3744ae0e8ab130cb9b3770d190ddcf03623d05e87d5c86c521f4d334dac34f4",
+    "reason": "The typed byte-count privacy slot has overlapping whitespace and TAP-continuation alternatives, which allow exponential backtracking on malformed repeated CRLF continuations. A narrow fix in the same scanner and its existing privacy test, with a bounded isolated-child regression, keeps every existing privacy check and every prior criterion.",
+    "revision_of": "698a63026c8fe087e8c4795df1afd13de1a7c9ee5051ea01459e15104890258f",
     "scope_paths": [
       ".github/workflows/publication-safety.yml",
       "README.md",
@@ -1062,8 +1070,8 @@
       "tools/vault_index.py"
     ]
   },
-  "base_commit": "03ac84126fa343bd7b2e6a4eab68e23b2344ca14",
-  "base_tree": "a26f0a5a72b5494b9f08902e2eb893a0b8fe660a",
+  "base_commit": "bcd21c8accc77b69617acd3e1a5d674c243f024f",
+  "base_tree": "8f245dd1892db411997f61dd1c5eefb84621dc23",
   "catalog_sha256": "51ee7ae8c1533604f7b2c68b9efba9d1b9d6f340d724d7c208dba434325859b3",
   "runtime": {
     "node": "v22.11.0",
@@ -1073,8 +1081,8 @@
     "architecture": "arm64",
     "options_sha256": "ebc442c160f8629073a82976daadaba1d95a60a38d768c81c8eb06598aedcac5"
   },
-  "proposal_sha256": "9ca61deca1435bd3cc8676e4a1bf3465b18027298220773161d151d64992cc35",
-  "review_sha256": "898dd31a9a7c179f29e47a2aede5675409e96e7eec78e38f39c43abd03efeda0",
+  "proposal_sha256": "d942c837b70ec3c22aa273d21a9e40f6ba2f3f052d97457be9f64e2c59f225c3",
+  "review_sha256": "a45caeea2339d5ada912cc97a4f87871cebd8923040c8c784c475f35adef7e0f",
   "commands": [
     {
       "category": "sanity",
@@ -1249,6 +1257,6 @@
     "reasoning_effort": "medium",
     "maximum_reasoning_effort": "medium"
   },
-  "contract_sha256": "698a63026c8fe087e8c4795df1afd13de1a7c9ee5051ea01459e15104890258f",
-  "seal": "0fe138eeebaa08758fba8805f0928de4433a4478ee5295554f6f2c878de19ff2"
+  "contract_sha256": "1db91ed48959bfd1426efd7daf8a483066ab90473a120ffbf26db8a220721b66",
+  "seal": "4c928d4cce6affbc9aaa7db3e01154b4398f50960430f2439f46d050f8a58423"
 }
