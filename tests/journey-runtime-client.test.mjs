@@ -984,3 +984,36 @@ test("active capacity exposes only returned stoppable choices and exact state ac
   assert.equal(result.choices[0].action.href, state.href);
   assert.equal(result.choices[1].expires_at, null);
 });
+
+
+test("declared commercial errors are interpreted before lifecycle without retry or login", async () => {
+  const {readFile} = await import("node:fs/promises");
+  const f=JSON.parse(await readFile(new URL("./fixtures/current-app-registration.json",import.meta.url),"utf8"));
+  // Start with the existing current-v1 app so this independently reproduces the
+  // missing error disposition even before new-app binding is implemented.
+  const contract=structuredClone(f.registration_contract);
+  contract.execution.uri="/bos/apps/lead-director/api/v1/organizations/synthetic/journeys/register";
+  const document={identity:"synthetic work",name:"Synthetic work",inputs:{},entry:"done",nodes:[{code:"done",type:"server",inputs:{},outputs:{},terminal:true}]};
+  const request=buildJourneyRegistrationRequest(contract,"bos_ctx_v2_"+"e".repeat(64),document);
+  for(const response of f.admission_responses){
+    let result;
+    assert.doesNotThrow(()=>{result=interpretJourneyResponse(response,{registrationRequest:request});});
+    assert.equal(result.next,"declared_public_error");
+    assert.deepEqual(result.error,response.body.error);
+    assert.equal(result.http_status,response.http_status);
+    assert.equal(Object.hasOwn(result,"action"),false);
+    assert.equal(Object.hasOwn(result,"retry_after"),false);
+    let calls=0;
+    assert.deepEqual(await runJourneyRecovery(response,{registrationRequest:request,wait:async()=>{calls++;},invoke:async()=>{calls++;}}),response);
+    assert.equal(calls,0);
+    assert.throws(()=>interpretJourneyResponse(response));
+    for(const mutate of [r=>{r.http_status=402;},r=>{r.body.error.retryable=!r.body.error.retryable;},r=>{r.body.status="failed";},r=>{r.body.error.details=[{org_id:"private-ledger"}];}]){
+      const changed=structuredClone(response);mutate(changed);assert.throws(()=>interpretJourneyResponse(changed,{registrationRequest:request}));
+    }
+  }
+  const retry=structuredClone(f.admission_responses[1]);retry.headers={"Retry-After":"17"};
+  assert.equal(interpretJourneyResponse(retry,{registrationRequest:request}).retry_after,"17");
+  const undeclared=structuredClone(contract);undeclared.public_errors=undeclared.public_errors.filter(e=>!e.code.startsWith("MCP_")&&e.code!=="PAID_PLAN_REQUIRED");
+  const other=buildJourneyRegistrationRequest(undeclared,"bos_ctx_v2_"+"e".repeat(64),document);
+  assert.throws(()=>interpretJourneyResponse(f.admission_responses[0],{registrationRequest:other}));
+});

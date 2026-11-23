@@ -97,3 +97,25 @@ test("graph validator preserves exact topology and canonical goal semantics", ()
     /legacy goal metadata/
   );
 });
+
+
+test("a selected new app binds its scoped description to an independent app contact", async () => {
+  const {readFile} = await import("node:fs/promises");
+  const {validateAppDescribe} = await import("../source/platform/bos-app-discovery/scripts/validate-discovery.mjs");
+  const fixture = JSON.parse(await readFile(new URL("./fixtures/current-app-registration.json", import.meta.url), "utf8"));
+  assert.equal(validateAppContact(fixture.application_contact), fixture.application_contact);
+  assert.doesNotThrow(() => validateAppDescribe(fixture.app_describe, {contact: fixture.application_contact}));
+  assert.throws(() => validateAppDescribe(fixture.app_describe), /lead-director/);
+  for (const mutate of [
+    value => {value.application.application = "other-work-app";},
+    value => {value.describe.uri = value.describe.uri.replace("/sample-work-app/", "/other-work-app/");},
+    value => {value.bosl.schema_uri = value.bosl.schema_uri.replace("/sample-work-app/", "/other-work-app/");},
+    value => {value.describe.uri = "https://foreign.invalid/describe";},
+    value => {value.describe.uri = value.describe.uri.replace("/api/v1/", "/api/v2/");},
+    value => {value.journey_registration.contract.input.operation = "other.journeys.register";}
+  ]) {
+    const changed = structuredClone(fixture.app_describe); mutate(changed);
+    assert.throws(() => validateAppDescribe(changed, {contact: fixture.application_contact}));
+  }
+  assert.throws(() => validateAppDescribe(fixture.app_describe, {contact: {...fixture.application_contact, context_handle: "forged"}}));
+});

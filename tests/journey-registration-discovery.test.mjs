@@ -144,3 +144,28 @@ test('registration schemas, ceilings, errors and freshness remain strict',()=>{
  const mutations=[v=>{v.limits.unknown=1;},v=>{v.input_schema.type='array';},v=>{v.input_schema.additionalProperties=true;},v=>{v.input_schema.required.pop();},v=>{delete v.input_schema.properties.identity;},v=>{v.input_schema.$schema='https://foreign.example/schema';},v=>{v.output_schema.oneOf=[];},v=>{v.output_schema.oneOf[0].additionalProperties=true;},v=>{v.output_schema.oneOf[0].type='invalid-json-schema-type';},v=>{v.public_errors=[];},v=>{v.public_errors.push(structuredClone(v.public_errors[0]));},v=>{v.public_errors[0].retryable='false';},v=>{v.public_errors[0].http_status=200;},v=>{v.public_errors[0].private_detail='synthetic';},v=>{v.ttlMs=1;},v=>{v.cacheScope='public';}];
  for(const mutate of mutations){const value=clone();mutate(value);assert.throws(()=>validateApiContractResponse(value));}
 });
+
+
+test('current-v1 registration uses the selected app and exact scoped discovered contacts', async()=>{
+ const f=JSON.parse(await readFile(new URL('./fixtures/current-app-registration.json',import.meta.url),'utf8'));
+ const application={contact:f.application_contact,description:f.app_describe};
+ const expected={operation:f.app_describe.journey_registration.contract.input.operation,application};
+ const before=JSON.stringify(f);
+ assert.doesNotThrow(()=>validateApiContractResponse(f.registration_contract,expected));
+ const document={identity:'synthetic work',name:'Synthetic work',inputs:{},entry:'done',nodes:[{code:'done',type:'server',inputs:{},outputs:{},terminal:true}]};
+ let request;
+ assert.doesNotThrow(()=>{request=buildJourneyRegistrationRequest(f.registration_contract,'bos_ctx_v2_'+'d'.repeat(64),document,{application});});
+ assert.equal(request.href,f.registration_contract.execution.uri);
+ assert.deepEqual(JSON.parse(request.body),document);
+ assert.equal(JSON.stringify(f),before);
+ assert.throws(()=>validateApiContractResponse(f.registration_contract,{operation:expected.operation}));
+ for(const mutate of [
+  r=>{r.execution.uri=r.execution.uri.replace('/sample-work-app/','/other-work-app/');},
+  r=>{r.execution.uri=r.execution.uri.replace('/synthetic-org/','/other-org/');},
+  r=>{r.execution.uri='https://foreign.invalid/register';},
+  r=>{r.execution.uri=r.execution.uri.replace('/api/v1/','/api/v2/');},
+  r=>{r.operation='other.journeys.register';},
+  r=>{r.execution.context_header='X-Other-Context';}
+ ]){const changed=structuredClone(f.registration_contract);mutate(changed);assert.throws(()=>validateApiContractResponse(changed,expected));}
+ assert.throws(()=>validateApiContractResponse(f.registration_contract,{...expected,application:{...application,contact:{...f.application_contact,app_code:'other-work-app'}}}));
+});

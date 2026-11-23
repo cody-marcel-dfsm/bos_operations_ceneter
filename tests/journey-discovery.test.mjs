@@ -1178,3 +1178,15 @@ test('display-label exceptions reject open, altered, private and misplaced schem
   for(const altered of [field.toUpperCase(),field.replaceAll('_','-'),'tenant_context']){const document=structuredClone(operationDescription);document.operations[0].output_schema.properties={[altered]:label};assert.throws(()=>validateOperationDescription(document),/raw authority/);}
  }
 });
+
+
+test("new-app discovery refresh retains its independently selected application", async () => {
+  const fixture = JSON.parse(await readFile(new URL("./fixtures/current-app-registration.json", import.meta.url), "utf8"));
+  const application = {contact: fixture.application_contact, description: fixture.app_describe};
+  const refresh = {application: fixture.app_describe.application, bosl: fixture.app_describe.bosl, plugins: [], ttlMs: 0, cacheScope: "private"};
+  assert.doesNotThrow(() => validateDiscoveryRefresh(refresh, {application}));
+  const foreign = structuredClone(refresh); foreign.application.application = "other-work-app";
+  assert.throws(() => validateDiscoveryRefresh(foreign, {application}));
+  const mixed = structuredClone(refresh); mixed.bosl.examples_uri = mixed.bosl.examples_uri.replace("/sample-work-app/", "/other-work-app/");
+  assert.throws(() => validateDiscoveryRefresh(mixed, {application}));
+});
