@@ -15,7 +15,7 @@ class Transport(unittest.TestCase):
  def tearDown(self):os.environ['PATH']=self.old
  def executable(self,body):
   source='#!'+sys.executable+'\nimport sys,json,time\nfrom pathlib import Path\n'
-  source+='if "--help" in sys.argv:print("--ignore-user-config --ephemeral --strict-config --skip-git-repo-check --output-schema --sandbox");raise SystemExit(0)\n'
+  source+='if "--help" in sys.argv:print("--ignore-user-config --ephemeral --strict-config --skip-git-repo-check --output-schema --sandbox --bare --disallowedTools --restricted --strict-mcp-config --mcp-config --tools --allowedTools --json-schema --no-session-persistence");raise SystemExit(0)\n'
   source+='if "features" in sys.argv:\n print("\\n".join(x+" stable false" for x in '+repr(list(runner.DISABLED))+'));raise SystemExit(0)\n'
   source+=body+'\n';p=self.bin/'codex';p.write_text(source);p.chmod(0o700)
  def run_model(self):return runner.run(self.config,self.root,self.root/'operation','SYNTHETIC transport fixture','Explicit test policy',{'type':'object'})
@@ -42,11 +42,16 @@ class Transport(unittest.TestCase):
   self.executable('sys.stdout.write("x"*1000000);sys.stdout.flush();time.sleep(2)')
   with self.assertRaises(RuntimeError):self.run_model()
   self.assertLessEqual(sum((self.root/'operation'/n).stat().st_size for n in ['stdout.log','stderr.log']),4096)
+ def test_actual_reported_model_mismatch_denied(self):
+  self.config.update(engine='claude',executable='claude')
+  self.executable('print(json.dumps({"modelUsage":{"other-model":{}},"structured_output":{"synthetic":True}}))')
+  (self.bin/'codex').rename(self.bin/'claude')
+  with self.assertRaisesRegex(ValueError,'different model identity'):self.run_model()
  def test_unsupported_capabilities_fail_closed(self):
   self.executable('raise SystemExit(0)');p=self.bin/'codex';p.write_text(p.read_text().replace('stable false','stable true'))
   with self.assertRaises(ValueError):runner.preflight(self.config)
 unittest.main()
 `;
 const run=spawnSync('Vault/index/venv/bin/python',['-B','-c',code],{cwd:new URL('../',import.meta.url),env:{...process.env,PYTHONPATH:'tools',PYTHONDONTWRITEBYTECODE:'1'},encoding:'utf8',timeout:20000,maxBuffer:4*1024*1024});
-assert.equal(run.status,0,`${run.stdout}\n${run.stderr}`);assert.match(run.stderr,/Ran 7 tests/);assert.doesNotMatch(run.stderr,/skipped=/);
+assert.equal(run.status,0,`${run.stdout}\n${run.stderr}`);assert.match(run.stderr,/Ran 8 tests/);assert.doesNotMatch(run.stderr,/skipped=/);
 });

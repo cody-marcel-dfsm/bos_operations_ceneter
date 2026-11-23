@@ -5,7 +5,7 @@ from .custody import immutable,digest,identity
 
 # UnifiedExec is a backend selected only inside the ShellTool-enabled guard.
 # Disabling ShellTool removes both shell and unified exec handlers.
-ENVIRONMENT={'PATH','HOME','CODEX_HOME','OPENAI_API_KEY','XDG_CACHE_HOME','SSL_CERT_FILE','SSL_CERT_DIR','LANG','LC_ALL','TMPDIR'}
+ENVIRONMENT={'PATH','HOME','CODEX_HOME','OPENAI_API_KEY','ANTHROPIC_API_KEY','XDG_CACHE_HOME','SSL_CERT_FILE','SSL_CERT_DIR','LANG','LC_ALL','TMPDIR'}
 DISABLED=('apps','shell_tool','skill_search','skill_mcp_dependency_install','hooks','plugins','remote_plugin','plugin_sharing','multi_agent','multi_agent_v2','memories','guardian_include_additional_context')
 
 
@@ -20,13 +20,18 @@ def codex_command(executable,model,effort,root,schema,output,prompt,policy,*,san
     return cmd+[prompt]
 
 
+def environment(runner):
+    excluded='ANTHROPIC_API_KEY' if runner['engine']=='codex' else 'OPENAI_API_KEY'
+    return {k:v for k,v in os.environ.items() if k in ENVIRONMENT and k!=excluded}
+
+
 def runtime(runner):
     executable=shutil.which(runner['executable'])
     if not executable:raise ValueError('Configured existing CLI is unavailable')
     return {'engine':runner['engine'],'model':runner['model'],'executable_sha256':digest(Path(executable).read_bytes()),
             'capabilities':{'sandbox':runner['sandbox'],'apps':False,'mcp':False,'shell':False,'automatic_project_context':False},
             'timeout_seconds':runner['timeout_seconds'],'maximum_output_bytes':runner['max_output_bytes'],
-            'environment_sha256':identity({k:digest(v.encode()) for k,v in os.environ.items() if k in ENVIRONMENT})}
+            'environment_sha256':identity({k:digest(v.encode()) for k,v in environment(runner).items()})}
 
 
 def preflight(runner):
@@ -42,7 +47,7 @@ def preflight(runner):
         if status.returncode or any(lines.get(name)!='false' for name in DISABLED):raise ValueError('CLI tool restrictions unavailable')
     else:
         help_run=subprocess.run([runner['executable'],'--help'],capture_output=True,text=True,timeout=10)
-        for flag in ['--restricted','--strict-mcp-config','--tools','--json-schema','--no-session-persistence']:
+        for flag in ['--bare','--disallowedTools','--restricted','--strict-mcp-config','--mcp-config','--tools','--allowedTools','--json-schema','--no-session-persistence']:
             if help_run.returncode or flag not in help_run.stdout:raise ValueError('CLI capability restriction unsupported')
     return meta
 
@@ -52,13 +57,13 @@ def run(runner,root,directory,prompt,policy,schema):
     immutable(schema_path,schema)
     if runner['engine']=='codex':cmd=codex_command(runner['executable'],runner['model'],runner['reasoning_effort'],root,schema_path,output,prompt,policy)
     else:
-        cmd=[runner['executable'],'-p','--output-format','json','--json-schema',json.dumps(schema),'--restricted','--strict-mcp-config',
+        cmd=[runner['executable'],'--bare','--disallowedTools','*','-p','--output-format','json','--json-schema',json.dumps(schema),'--restricted','--strict-mcp-config',
              '--mcp-config','{"mcpServers":{}}','--tools','','--allowedTools','','--no-session-persistence','--model',runner['model'],
              '--append-system-prompt',policy,'--',prompt]
     immutable(directory/'runtime.json',meta)
     immutable(directory/'invocation.json',{'argv_sha256':identity(cmd),'schema_sha256':identity(schema),'prompt_sha256':digest(prompt.encode()),'policy_sha256':digest(policy.encode()),'runtime_sha256':identity(meta)})
     # Authentication remains CLI-owned. No shell or inherited model-auth body is read here.
-    env={k:v for k,v in os.environ.items() if k in ENVIRONMENT}
+    env=environment(runner)
     child=subprocess.Popen(cmd,cwd=root,env=env,stdin=subprocess.DEVNULL,stdout=subprocess.PIPE,stderr=subprocess.PIPE,start_new_session=True)
     parts=[bytearray(),bytearray()];counts=[0,0];overflow=threading.Event();errors=[];guard=threading.Lock()
     def drain(stream,index):
@@ -95,6 +100,7 @@ def run(runner,root,directory,prompt,policy,schema):
     if runner['engine']=='claude':
         envelope=json.loads(parts[0]); reported=list(envelope.get('modelUsage',{}))
         if len(reported)!=1 or envelope.get('is_error'):raise ValueError('No single successful model identity')
+        if reported[0]!=runner['model']:raise ValueError('Provider reported a different model identity')
         answer=envelope.get('structured_output')
         if answer is None:answer=json.loads(envelope.get('result') or '')
     else:
