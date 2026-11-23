@@ -192,7 +192,7 @@ class CommandCoverage(unittest.TestCase):
             "publication_scope": {"baseline_commit": baseline},
             "destination": {"remote_url": o.PUBLICATION_REMOTE, "ref": "refs/heads/main"}}
         with patch.object(publication, "plan", return_value=selected), patch.object(coverage, "requirements", return_value=[]):
-            prepared = publication.prepare(self.root, candidate, "codex/release-v0.0.2", "main-promotion", refresh=False)
+            prepared = publication.prepare(self.root, candidate, "release/0.0.2", "main-promotion", refresh=False)
         hooks = Path(__file__).resolve().parents[1] / ".githooks"
         git("config", "core.hooksPath", str(hooks))
         path = Path(prepared["prepared_file"])
@@ -254,7 +254,7 @@ class CommandCoverage(unittest.TestCase):
     def admission(self):
         selected = {"candidate_commit": self.commit, "candidate_tree": self.tree,
             "technical_receipt_sha256": "f" * 64, "human_authority_required": False,
-            "release_ref": "codex/release-v0.0.2", "publication_scope": {"baseline_commit": "d" * 40},
+            "release_ref": "release/0.0.2", "publication_scope": {"baseline_commit": "d" * 40},
             "destination": {"remote_url": o.PUBLICATION_REMOTE, "ref": "refs/heads/main"}}
         heads = {"refs/heads/main": "d" * 40, "refs/heads/" + selected["release_ref"]: self.commit}
         run = {"id": 123, "head_sha": self.commit, "head_branch": selected["release_ref"], "event": "push",

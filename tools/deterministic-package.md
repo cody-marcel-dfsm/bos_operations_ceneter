@@ -137,7 +137,7 @@ From clean committed canonical main, after fetching and integrating origin/main:
 ```sh
 python3 tools/deterministic_package.py validate --base EXACT_PUBLICATION_BASE --requested-at ORIGINAL_REQUEST_ISO_TIME
 python3 tools/deterministic_package.py verify
-python3 tools/deterministic_package.py push --ref codex/release-vPACKAGE_VERSION
+python3 tools/deterministic_package.py push --ref release/PACKAGE_VERSION
 ```
 
 Validation regenerates all packages, requires an unchanged source tree, runs package,
@@ -158,7 +158,7 @@ branch, against the current main base. Under the user's existing release instruc
 publish with the existing authenticated Git transport:
 
 ```sh
-python3 tools/deterministic_package.py promote --ref codex/release-vPACKAGE_VERSION
+python3 tools/deterministic_package.py promote --ref release/PACKAGE_VERSION
 ```
 
 The promotion consumer verifies original local custody, exact destination/base/head,

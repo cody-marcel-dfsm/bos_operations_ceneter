@@ -161,6 +161,25 @@ Existing deterministic HTTPS/SSE and lifecycle mutation boundaries remain in
 force. Scope admission requires current actual native tools and discovery;
 package parity, source tests and captured frames supply no native wake proof.
 
+## Native BOSL execution — owner-directed exception, 2026-11-19
+
+Owner direction, Cody, verbatim: "you should use the normal plugin", "the bos
+plugin is loged n the same way it always it", "why are you asking me this when
+it's a fundametnal part of the skill definitions". A signed-in plugin host
+registers and runs BOSL and completes its client steps through its normal BOS
+connection. When the host supplies no authenticated HTTPS, consume exactly the
+freshly advertised `lead-director.journeys.register` (`{document}`),
+`lead-director.journeys.action` (`{href, payload?}` with the returned href
+verbatim) and `bos.graph_export.read` (`{}`) through existing `bos_execute` and
+the fresh selected context, before reporting `host_capability_unavailable`.
+BOS Service owns their POs, authority and admission (its Constitution v2.13.7);
+the family architecture carries the matching exception. HTTPS remains the
+default; never invent the tools, and keep handles, credentials and authority
+selectors out of arguments. Returned envelopes keep their validation, explicit
+Start, approvals and recovery. This adds no proxy, token export, second login
+or API/protocol version. The client contract is in `bos-mcp-client`'s
+identity-context reference and `scripts/native-bosl-execution.mjs`.
+
 ## Customer installation routing
 
 - This repository owns customer installation instructions for BOS Operations
@@ -365,6 +384,10 @@ The controlling delivery budgets are docs_only120s, bug_fix180s,
 deep_bug_fix300s and feature300s end to end, including network/build/effects and
 verification (verified Git publication for source-only work). The host's original
 request clock survives retries and revisions; local PASS is only phase PASS.
+An overrun is recorded as BREACHED with the original clock and measured phases
+on the review receipt and release report, stays an SLA failure, and is corrected
+as an architecture defect. Review judges the candidate's correctness and complete
+validation; the breach record alone is no rejection finding (owner, 2026-11-23).
 Rank/pare checks before freezing the contract, then run the whole selected set.
 Small bugs get deterministic focused tests only; auth/cross-area work is deep.
 No automatic broader regression or partial/empty/skipped PASS. Use low reasoning

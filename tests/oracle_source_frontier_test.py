@@ -296,13 +296,22 @@ class SourceFrontier(unittest.TestCase):
         owner=o._METADATA_ROOT.set(self.root);self.addCleanup(o._METADATA_ROOT.reset,owner)
         # Keep the real Git source fixture while reusing the native envelope constructor.
         fixture.root=self.root;fixture.run=self.child
+        # Every cohort receives the complete governing texts; supply synthetic ones.
+        for name in parallel.GOVERNANCE_PATHS:
+            document=self.root/name
+            if not document.exists():
+                document.parent.mkdir(parents=True,exist_ok=True);document.write_text('Synthetic governing text for '+name+'\n')
         fixture.context.update(self.context,required_coverage_paths=['source.py'],reusable_coverage=[],
                                prior_findings={},reusable_validations=[],current_validations=[])
         fixture.context['input_hashes']['@proposal/scope']='sha256:synthetic-proposal'
+        # The sealed authority digests describe this real fixture root's governing texts.
+        authorities=fixture.context.get('guards',{}).get('authority_digests',{})
+        for name in list(authorities):
+            if (self.root/name).is_file():authorities[name]=hashlib.sha256((self.root/name).read_bytes()).hexdigest()
         fixture.binding.update(base_commit=self.context['base_commit'])
         fixture.plan=parallel.partition(fixture.context,fixture.binding,fixture.digest)
         o._atomic_write(self.child/'review-context.json',o._pretty(fixture.context))
-        schema=self.root/'.agents/skills/oracle/review-output.schema.json';schema.parent.mkdir(parents=True)
+        schema=self.root/'.agents/skills/oracle/review-output.schema.json';schema.parent.mkdir(parents=True,exist_ok=True)
         schema.write_bytes((Path(__file__).resolve().parents[1]/'.agents/skills/oracle/review-output.schema.json').read_bytes())
         seen=[];tamper=[False];delivered=[]
         def consume(root,prompt,prefix,**kwargs):

@@ -165,6 +165,26 @@ def _delta_context(root, source, tree, *, origin_main=_CURRENT_ORIGIN, prior_pro
     return {'binding':binding, 'prior':prior, 'paths':paths, 'test_paths':tests,
             **({'publication_scope':publication_scope} if publication_scope is not None else {})}
 
+def exact_scope(patterns, tracked):
+    """Expand prior sealed scope into exact paths: a glob becomes the tracked candidate paths the gate's fnmatchcase
+    already admits under it; an exact path stays itself. Unsafe patterns and unsafe expansions still reject."""
+    names = [p for p in tracked if p]
+    exact = set()
+    for pattern in patterns:
+        if not safe_path(pattern) or any(c in pattern for c in '\r\n'):
+            raise ValueError('Delta requires finite exact paths')
+        if any(c in pattern for c in '*?['):
+            exact.update(p for p in names if fnmatch.fnmatchcase(p, pattern))
+        else:
+            exact.add(pattern)
+    return exact
+
+def binding_schema(binding):
+    """Closed exact binding in provider-accepted structured-output form: one scalar const per field (an object-level
+    const is refused by the provider). materialize_delta still compares the whole returned binding exactly."""
+    return {'type':'object','additionalProperties':False,'required':list(binding),
+            'properties':{k:({'type':'null'} if value is None else {'type':'string','const':value}) for k,value in binding.items()}}
+
 def delta_schema(context):
     row = {'type':'object','additionalProperties':False,'required':['name','tests','fixtures'],
            'properties':{'name':{'type':'string','enum':[r['name'] for r in context['prior']['selection']['categories'] if r['name'] in TESTED]},
@@ -714,6 +734,48 @@ def originals(root,contract,phase):
                 raise ValueError('Native stream output differs from original execution')
         yield {**d, '_record_path':str(p)}
 
+def revision_chain(root,contract,head):
+    """This contract, then each prior revision it names, each proven by its own APPROVED native proposal archive."""
+    folder=Path(git(root,'rev-parse','--absolute-git-dir'))/'oracle/proposals'
+    archived={}
+    for path in sorted(folder.glob('*.json')) if folder.is_dir() else []:
+        try:prior=json.loads(path.read_bytes()).get('validation_contract')
+        except (OSError,ValueError,AttributeError):continue
+        if isinstance(prior,dict) and isinstance(prior.get('contract_sha256'),str):archived.setdefault(prior['contract_sha256'],[]).append((path,prior))
+    chain,current=[contract],contract
+    while current['selection'].get('revision_of') is not None:
+        wanted=current['selection']['revision_of']
+        if any(item['contract_sha256']==wanted for item in chain):raise ValueError('Contract revision chain repeats')
+        found=None
+        for path,prior in archived.get(wanted,[]):
+            body={k:v for k,v in prior.items() if k not in ('contract_sha256','seal')}
+            if (not path.is_symlink() and prior.get('schema')==SCHEMA and digest(body)==wanted
+                    and spec_seal.seal_matches(prior) and native_proposal_record(root,path,prior,head)):
+                found=prior;break
+        if found is None:break # Earlier history without a native archive supplies no reproduction.
+        chain.append(found);current=found
+    return chain
+
+def fail_before(root,contract,category,fixtures,command,head):
+    """Genuine assertion-failure reproductions of exactly these test bytes.
+
+    A revision keeps the reproduction its revision chain already captured when the
+    selected command, every test/fixture blob and the runtime are identical and the
+    reproduced commit remains in history; nothing is re-run on withdrawn fixes."""
+    records=[]
+    for owner in revision_chain(root,contract,head):
+        for r in originals(root,owner,'before'):
+            output=Path(r['output_file']).read_text(errors='replace')
+            if (r.get('inputs_unchanged') is True and r['category']==category and r.get('phase')=='before'
+                    and r['contract_sha256']==owner['contract_sha256'] and r['fixtures']==fixtures
+                    and r['command']==command and r['runtime']==contract['runtime'] and r['exit_code']!=0
+                    and r['summary'].get('complete') and r['summary'].get('fail',0)>0 and 'ERR_ASSERTION' in output
+                    and not any(r['summary'].get(k,0) for k in ('skipped','todo','cancelled'))
+                    and Path(r['_record_path']).name==category+'-before-'+str(r.get('record_sha256'))+'.json'
+                    and subprocess.run(['git','merge-base','--is-ancestor',r['commit'],head],cwd=root,capture_output=True).returncode==0):
+                records.append(r)
+    return records
+
 def execute(root,category,phase='after'):
     if git(root,'status','--porcelain=v1','--untracked-files=all'):raise ValueError('Execute a clean committed candidate')
     commit=git(root,'rev-parse','HEAD');contract=verify(root,commit)
@@ -727,8 +789,7 @@ def execute(root,category,phase='after'):
         changed=git(root,'diff','--name-only',contract['base_commit'],commit).splitlines()
         if any(p!=SELECTION and p not in fixtures for p in changed):raise ValueError('Fail-before source includes implementation changes')
     elif category=='focused' and contract['selection']['change_class'] in {'bug_fix','deep_bug_fix'}:
-        before=[r for r in originals(root,contract,'before') if r.get('inputs_unchanged') is True and r['category']==category and r['fixtures']==fixtures and r['runtime']==contract['runtime'] and r['exit_code']!=0 and r['summary'].get('complete') and r['summary'].get('fail',0)>0 and 'ERR_ASSERTION' in Path(r['output_file']).read_text() and not any(r['summary'].get(k,0) for k in ('skipped','todo','cancelled'))]
-        if not before:raise ValueError('Missing unchanged-test fail-before execution; do not substitute an infrastructure error')
+        if not fail_before(root,contract,category,fixtures,row['argv'],commit):raise ValueError('Missing unchanged-test fail-before execution; do not substitute an infrastructure error')
     env={k:v for k,v in os.environ.items() if k!='NODE_TEST_CONTEXT'}
     binding={'contract_sha256':contract['contract_sha256'],'commit':commit,'tree':git(root,'rev-parse',commit+'^{tree}'),
              'category':category,'phase':phase,'command':row['argv'],'fixtures':fixtures,'runtime':contract['runtime']}

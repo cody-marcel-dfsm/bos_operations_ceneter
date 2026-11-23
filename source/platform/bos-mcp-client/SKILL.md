@@ -2,8 +2,8 @@
 name: bos-mcp-client
 description: Use first for every BOS API or connected-data request, including feedback reads. Resolve bos_get_context from the live host tool catalog and allow bounded tool startup before diagnosing missing access; then use the existing authenticated connection. Also handles BOS discovery, transport recovery, provider authorization and sign-out.
 metadata:
-  version: "1.0.14"
-  requires: "{\"bos-external-dependency-adapter\":\"1.0.14\"}"
+  version: "1.0.16"
+  requires: "{\"bos-external-dependency-adapter\":\"1.0.16\"}"
 ---
 
 

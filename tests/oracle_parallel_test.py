@@ -31,6 +31,12 @@ class ParallelReview(unittest.TestCase):
         helper = self.root / 'tools/codex_child_model.py'
         helper.parent.mkdir(parents=True)
         helper.write_bytes((Path(__file__).resolve().parents[1] / 'tools/codex_child_model.py').read_bytes())
+        # Every cohort now receives the complete governing texts; supply synthetic ones.
+        for name in parallel.GOVERNANCE_PATHS:
+            document = self.root / name
+            if not document.exists():
+                document.parent.mkdir(parents=True, exist_ok=True)
+                document.write_text('Synthetic governing text for ' + name + '\n')
         self.paths = ['@proposal/scope', 'source.py', 'tests/source_test.py', 'unchanged.py']
         self.context = {'base_commit': 'a' * 40, 'candidate_tree': 'b' * 40,
             'required_coverage_paths': self.paths, 'input_hashes': {p: 'bound-' + p for p in self.paths},
@@ -158,7 +164,7 @@ class ParallelReview(unittest.TestCase):
         evidence, originals = self.command_observations()
         observed = []
 
-        def child(root, prompt, prefix, *, schema_path, cohort_policy):
+        def child(root, prompt, prefix, *, schema_path, cohort_policy, stdin_payload=None):
             run = o._RUN.get()
             packet = json.loads((run / 'cohort-context.json').read_text())
             schema = json.loads(Path(schema_path).read_text())
@@ -355,7 +361,9 @@ class ParallelReview(unittest.TestCase):
         self.context['prior_findings'] = {'F1000': {'state': 'OPEN', 'file': 'source.py',
             'affected_paths': ['source.py'], 'required_behavior': 'Preserve this mandatory finding'}}
         before = o._pretty(self.context)
-        plan = parallel.partition(self.context, self.binding, self.digest)
+        # This case measures navigation for one large assignment, not cohort splitting.
+        with patch.object(parallel, 'MAX_COHORT_PATHS', 10 ** 6):
+            plan = parallel.partition(self.context, self.binding, self.digest)
         cohort = next(item for item in plan['cohorts'] if item['id'] == parallel.AREAS[1])
         packet = parallel.packet(self.context, plan, cohort, self.run/'review-context.json', self.digest)
         navigation = packet['criterion_navigation']
@@ -406,7 +414,7 @@ class ParallelReview(unittest.TestCase):
     def test_actual_dispatch_collectively_assesses_unchanged_originals_and_expands_bound_members(self):
         self.retained_context()
         launches = []
-        def child(root, prompt, prefix, *, schema_path, cohort_policy):
+        def child(root, prompt, prefix, *, schema_path, cohort_policy, stdin_payload=None):
             run = o._RUN.get(); packet = json.loads((run/'cohort-context.json').read_text())
             cohort = packet['cohort']; launches.append(cohort['id'])
             self.assertLess(len(o._pretty(packet)), parallel.COHORT_PACKET_MAX_BYTES)
@@ -497,7 +505,7 @@ class ParallelReview(unittest.TestCase):
     def test_production_launcher_runs_three_isolated_inherited_reviewers_in_parallel(self):
         barrier = threading.Barrier(3)
         launches = []; lock = threading.Lock()
-        def child(root, prompt, prefix, *, schema_path, cohort_policy):
+        def child(root, prompt, prefix, *, schema_path, cohort_policy, stdin_payload=None):
             run = o._RUN.get()
             packet = json.loads((run / 'cohort-context.json').read_text())
             cohort = packet['cohort']
@@ -554,7 +562,7 @@ class ParallelReview(unittest.TestCase):
         (self.run / 'review-context.json').write_bytes(o._pretty(self.context))
         self.plan = parallel.partition(self.context, self.binding, self.digest)
         observed = []
-        def child(root, prompt, prefix, *, schema_path, cohort_policy):
+        def child(root, prompt, prefix, *, schema_path, cohort_policy, stdin_payload=None):
             run = o._RUN.get(); packet = json.loads((run / 'cohort-context.json').read_text())
             navigation = packet['caller_evidence']
             if navigation.get('encoding') == 'directory-prefix-v1':
@@ -606,7 +614,7 @@ class ParallelReview(unittest.TestCase):
             parallel.packet(self.context, self.plan, self.plan['cohorts'][0],
                             self.run / 'review-context.json', self.digest)
         observed = []
-        def child(root, prompt, prefix, *, schema_path, cohort_policy):
+        def child(root, prompt, prefix, *, schema_path, cohort_policy, stdin_payload=None):
             run = o._RUN.get(); packet = json.loads((run / 'cohort-context.json').read_text())
             navigation = packet['caller_evidence']; collection = navigation['collection']
             self.assertTrue(navigation['records_via_pages'])
@@ -998,7 +1006,7 @@ output.with_name('probe.json').write_text(json.dumps({'pid':os.getpid(),'started
                 target.mkdir()
                 (target / 'review-context.json').write_bytes(o._pretty(self.context))
                 token = o._RUN.set(target)
-                def child(root, prompt, prefix, *, schema_path, cohort_policy):
+                def child(root, prompt, prefix, *, schema_path, cohort_policy, stdin_payload=None):
                     run = o._RUN.get(); cohort = json.loads((run / 'cohort-context.json').read_text())['cohort']
                     if cohort['id'] == parallel.AREAS[1]:
                         if mode == 'child-failure':
@@ -1331,6 +1339,45 @@ class RawObservationCriterion(unittest.TestCase):
             variant = dict(raw, result_sha256=o._sha(result_file.read_bytes()))
             with patch.object(o, '_raw_assessment_origins', return_value=iter([(record, variant, candidate, original)])):
                 self.assertEqual(self.candidates(), [])
+
+
+class JournalIntegrationConflict(unittest.TestCase):
+    """Interrupted-cohort recovery never keeps an earlier completion after a conflicting disposition."""
+    def setUp(self):
+        self.six = list(parallel.INTEGRATION_CHECKS)
+        self.context = {'input_hashes': {'source/a.md': 'git-sha1:100644:blob:' + '0' * 40,
+                                         'source/b.md': 'git-sha1:100644:blob:' + '1' * 40}, 'prior_findings': {}}
+        self.plan = {'plan_sha256': 'p' * 64, 'retained_criteria': []}
+        self.cohort = {'id': 'crosscutting-integration', 'required_paths': [], 'integration_checks': self.six[:1],
+                       'new_finding_prefix': 'F1000'}
+        self.done = {'concern': self.six[0], 'status': 'REVIEWED', 'inputs': self.inputs('source/a.md'), 'reason': 'Done.'}
+
+    def inputs(self, *paths):
+        return [{'path': p, 'digest': self.context['input_hashes'][p]} for p in paths]
+
+    def replay(self, *rows):
+        lines = [json.dumps({'type': 'integration', 'plan_sha256': self.plan['plan_sha256'], 'packet_sha256': 'k' * 64, **row})
+                 for row in rows]
+        return parallel.replay_journal(o, '\n'.join(lines) + '\n', self.plan, self.cohort, self.context, 'k' * 64)
+
+    def complete(self, integration):
+        return parallel.integration_complete(integration, [{'concern': name, 'status': 'REVIEWED'} for name in self.six[1:]])
+
+    def test_conflicting_dispositions_reopen_the_concern(self):
+        for later in (dict(self.done, status='UNREVIEWED', reason='Unfinished.'), dict(self.done, reason='Different reason.'),
+                      dict(self.done, inputs=self.inputs('source/a.md', 'source/b.md'))):
+            with self.subTest(later=later):
+                result = self.replay(self.done, later)
+                self.assertEqual([row['status'] for row in result['integration']], ['UNREVIEWED'])
+                self.assertEqual(len(result['rejected']), 1)
+                self.assertFalse(self.complete(result['integration']))
+
+    def test_identical_duplicates_and_a_single_completion_remain_complete(self):
+        for rows in ((self.done, self.done), (self.done,)):
+            with self.subTest(rows=len(rows)):
+                result = self.replay(*rows)
+                self.assertEqual(([row['status'] for row in result['integration']], result['rejected']), (['REVIEWED'], []))
+                self.assertTrue(self.complete(result['integration']))
 
 
 if __name__ == '__main__':

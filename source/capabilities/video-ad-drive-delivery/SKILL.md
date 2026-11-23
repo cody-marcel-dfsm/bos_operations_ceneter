@@ -2,8 +2,8 @@
 name: video-ad-drive-delivery
 description: Deliver an approved generated video and traceable production metadata to an authorized Google Drive location through BOS.
 metadata:
-  version: "1.0.14"
-  requires: "{\"bos-mcp-client\":\"1.0.14\"}"
+  version: "1.0.16"
+  requires: "{\"bos-mcp-client\":\"1.0.16\"}"
 ---
 
 # Video Ad Drive Delivery

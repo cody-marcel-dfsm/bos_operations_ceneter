@@ -995,7 +995,7 @@ def _dispatch_budget(command: Sequence[str], context_raw: bytes, schema_raw: byt
 
 @_metadata_owner
 def _review_process(root: Path, prompt: str, prefix: str, *, schema_path: Path | None = None,
-                    cohort_policy: str | None = None) -> dict:
+                    cohort_policy: str | None = None, stdin_payload: bytes | None = None) -> dict:
     run = _RUN.get()
     if run is None:
         raise OracleApprovalError("Independent Oracle must run under a native controller attempt")
@@ -1034,6 +1034,8 @@ def _review_process(root: Path, prompt: str, prefix: str, *, schema_path: Path |
     _atomic_write(run / "model.json", _pretty(metadata))
     prompt += "\nReviewer process configuration:\n" + json.dumps(metadata, sort_keys=True)
     _atomic_write(run / "request.txt", prompt.encode())
+    if stdin_payload is not None:
+        _atomic_write(run / "request-stdin.txt", stdin_payload)
     try:
         from .oracle_core.runner import codex_command
     except ImportError:
@@ -1068,10 +1070,11 @@ def _review_process(root: Path, prompt: str, prefix: str, *, schema_path: Path |
         else:
             import oracle_lifecycle
         completed = _timed(prefix + "_seconds", lambda: oracle_lifecycle.reviewer_process(
-            sys.modules[__name__], root, run, cmd, environment, controller))
+            sys.modules[__name__], root, run, cmd, environment, controller, stdin_payload=stdin_payload))
     else:
         completed = _timed(prefix + "_seconds", lambda: subprocess.run(
-            cmd, cwd=root, capture_output=True, text=True, env=environment))
+            cmd, cwd=root, capture_output=True, text=True, env=environment,
+            input=stdin_payload.decode() if stdin_payload is not None else None))
     process_record = {"exit_code": completed.returncode}
     if hasattr(completed, "native_registration"):
         process_record["native_registration"] = completed.native_registration
@@ -2298,6 +2301,25 @@ def _path_dispositions(root: Path, context: dict, rounds: list[dict]) -> list:
     return selected
 
 
+def _generated_covered(context: dict) -> set:
+    if __package__:
+        from . import oracle_generated_proof as generated
+    else:
+        import oracle_generated_proof as generated
+    return generated.covered_paths(context)
+
+
+def _coverage_complete(context: dict, coverage: Sequence[dict]) -> bool:
+    """Every required path is covered by an admitted row or the exact native proof."""
+    return set(context["required_coverage_paths"]).issubset(
+        {item["path"] for item in coverage} | _generated_covered(context))
+
+
+def _pending_review_paths(context: dict, verified: Sequence[dict]) -> list[str]:
+    return sorted(set(context["required_coverage_paths"]) - {item["path"] for item in verified}
+                  - _generated_covered(context))
+
+
 def _review_context(root: Path, tree: str, paths: list, binding: dict, evidence: dict,
                     proposal_record: Path | None = None) -> dict:
     directory = _series_directory(root, binding["base_commit"])
@@ -2345,6 +2367,19 @@ def _review_context(root: Path, tree: str, paths: list, binding: dict, evidence:
     required_paths = sorted(set(paths) | set(changed) | set(pending_from_prior) | raw_required)
     for name in required_paths:
         inputs.setdefault(name, None)
+    # Derived outputs are proven by regenerating the exact candidate with the
+    # repository's own generator; any difference raises and the round fails closed.
+    if __package__:
+        from . import oracle_generated_proof as generated
+    else:
+        import oracle_generated_proof as generated
+    deterministic = None
+    # Without a declared generator nothing is proven and every path stays with
+    # the model cohorts; a generator that runs and differs still raises.
+    if (generated.applies(required_paths) and publication_scope.get("baseline_commit")
+            and generated.generator_declared(root, tree)):
+        deterministic = generated.prove(sys.modules[__name__], root, tree, publication_scope["baseline_commit"],
+                                        required_paths, _RUN.get())
     reusable, invalidated, validations, invalid_validations = [], [], [], []
     ledger = previous.get("finding_ledger", {}) if previous else {}
     lineage = _CriterionLineage(root, rounds)
@@ -2431,6 +2466,20 @@ def _review_context(root: Path, tree: str, paths: list, binding: dict, evidence:
                "prior_rounds": [{key: item[key] for key in ("round", "candidate_tree", "outcome", "record_sha256")}
                                 for item in rounds]}
     context["publication_scope"] = publication_scope
+    context["deterministic_coverage"] = deterministic
+    # Completed integration concerns carry forward only for the identical
+    # candidate, publication range, required identities, open findings and guards.
+    reusable_integration = []
+    if previous:
+        if __package__:
+            from . import oracle_parallel as integration
+        else:
+            import oracle_parallel as integration
+        reusable_integration = integration.reusable_integration(
+            (previous.get("review") or {}).get("integration_checkpoints", []), candidate_tree=tree,
+            publication_scope=publication_scope, required_paths=required_paths, input_hashes=inputs,
+            prior_findings=ledger, guard_changes=_observation_guard_changes(root, guards, previous))
+    context["reusable_integration"] = reusable_integration
     if __package__:
         from . import command_coverage
     else:
@@ -2441,7 +2490,8 @@ def _review_context(root: Path, tree: str, paths: list, binding: dict, evidence:
     context["attempt_delta"] = {"from_candidate": previous["candidate_tree"] if previous else None,
                                 "to_candidate": tree, "paths": changed}
     context["cumulative_pending_since_verified"] = sorted(set(required_paths) -
-                                                          {item["path"] for item in reusable})
+                                                          {item["path"] for item in reusable} -
+                                                          generated.covered_paths(context))
     _atomic_write(_RUN.get() / "review-context.json", _pretty(context))
     return context
 
@@ -2705,7 +2755,7 @@ def _validate_completed_review(root: Path, review: dict, context: dict, evidence
     # UNREVIEWED entry is in seen and therefore cannot be silently carried.
     coverage += [dict(item, status="CARRIED_FORWARD") for item in context["reusable_coverage"]
                  if item["path"] not in seen]
-    if status == "COMPLETE" and not set(context["required_coverage_paths"]).issubset({item["path"] for item in coverage}):
+    if status == "COMPLETE" and not _coverage_complete(context, coverage):
         raise OracleReviewIncomplete("Oracle did not finish coverage of every changed path")
     ledger = json.loads(json.dumps(context["prior_findings"]))
     open_ids = {key for key, item in ledger.items() if item["state"] == "OPEN"}
@@ -2859,8 +2909,8 @@ def _prepare_round(root: Path, context: dict, review: dict, outcome: str, *, cov
                    finding_ledger=current_ledger, validation_invalidations=invalidations,
                    is_repair_round=context["is_repair_round"], failed_repair_rounds=failed_repairs,
                    repair_plan_file=plan_path, repair_plan_sha256=plan_digest,
-                   pending_review_paths=sorted(set(context["required_coverage_paths"]) -
-                                               {item["path"] for item in verified_coverage}) if outcome in {"INCOMPLETE", "ERROR"} else [],
+                   pending_review_paths=_pending_review_paths(context, verified_coverage)
+                                        if outcome in {"INCOMPLETE", "ERROR"} else [],
                    verified_coverage=verified_coverage,
                    verified_validations=validations)
     if raw_assessment is not None:

@@ -9,7 +9,7 @@ import {isolatedTestCohort} from "./helpers/isolated-test-cohort.mjs";
 import {prepareNativeValidationGit} from "./helpers/native-validation-git.mjs";
 import {assertValidationContinuity,createVerifiedDirectory,prepareNativeValidationResources} from "./helpers/native-validation-state.mjs";
 
-const moduleName="publication_admission_test",classes=["PublicationAdmission", "OwnedDestinationResolution"],expectedCount=35;
+const moduleName="publication_admission_test",classes=["PublicationAdmission", "OwnedDestinationResolution"],expectedCount=36;
 const root=fileURLToPath(new URL("../",import.meta.url));
 const hash=raw=>createHash("sha256").update(raw).digest("hex");
 const testLabel=name=>"Publication admission: "+name.replace(/^publication_admission_test\./u,"").replace(/^PublicationAdmission\./u,"").replace(/^OwnedDestinationResolution\./u,"destination ").replace(/^test_/u,"").replaceAll("_"," ");

@@ -636,3 +636,27 @@ test("new-app binding and declared admission errors survive all generated BOS co
   assert.equal(runtime.interpretJourneyResponse(f.admission_responses[0],{registrationRequest:request}).next,'declared_public_error');
  }
 });
+
+test("every generated native BOSL action validates payloads exactly as HTTPS, including date-time", async () => {
+  const handle = "bos_ctx_v2_" + "c".repeat(64);
+  const context = {context_handle: handle, organization_name: "Synthetic organization", application_name: "Lead Director",
+    installation_name: "Synthetic installation", role_label: "Synthetic role", is_default: true};
+  const action = {type: "object", properties: {href: {type: "string", minLength: 1}, payload: {type: "object"}},
+    required: ["href"], additionalProperties: false};
+  const catalog = {isError: false, structuredContent: {contract_version: "bos-identity-mcp/v2", context_handle: handle, resources: [],
+    tools: [{name: "lead-director.journeys.action", description: "Synthetic native BOSL tool.", inputSchema: action}]}};
+  const timed = {verb: "complete", method: "POST",
+    href: "/bos/apps/example/api/v1/organizations/demo/journeys/synthetic-journey/complete?capability=cap_synthetic_complete",
+    payload_schema: {type: "object", properties: {at: {type: "string", format: "date-time"}}, required: ["at"], additionalProperties: false}};
+  const valid = {at: "2026-11-22T12:00:00Z"};
+  for (const skills of [`${root}/source/platform`, ...generatedRoots]) {
+    const scripts = `${skills}/bos-workflow-orchestrator/scripts`;
+    const {createNativeBoslExecution} = await import(pathToFileURL(`${scripts}/native-bosl-execution.mjs`).href);
+    const {buildActionRequest} = await import(pathToFileURL(`${scripts}/journey-runtime-client.mjs`).href);
+    const native = createNativeBoslExecution({context, catalog});
+    assert.throws(() => native.action(timed, {at: "not-a-date"}), /payload_schema/, skills);
+    assert.throws(() => buildActionRequest(timed, {at: "not-a-date"}), /payload_schema/, skills);
+    assert.deepEqual(native.action(timed, valid).arguments, {href: timed.href, payload: valid}, skills);
+    assert.equal(buildActionRequest(timed, valid).body, JSON.stringify(valid), skills);
+  }
+});

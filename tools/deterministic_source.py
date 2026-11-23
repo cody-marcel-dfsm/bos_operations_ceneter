@@ -250,13 +250,9 @@ def _native_original(root, selected, source, row, record):
     if not contract.result_summary(output, value['exit_code'], tested)['passed']:
         raise ValueError('Spec category output changed or is incomplete')
     if row['category'] == 'focused' and selected['selection']['change_class'] in BUG_CLASSES:
-        before = [r for r in contract.originals(root, selected, 'before') if r['category'] == 'focused'
-                  and r.get('fixtures') == committed and r.get('runtime') == selected['runtime']
-                  and r.get('contract_sha256') == selected['contract_sha256'] and r.get('phase') == 'before'
-                  and Path(r['_record_path']).name == 'focused-before-' + str(r.get('record_sha256')) + '.json'
-                  and r.get('inputs_unchanged') is True
-                  and subprocess.run(['git', 'merge-base', '--is-ancestor', r['commit'], source], cwd=root, capture_output=True).returncode == 0
-                  and _reproduces(r)]
+        # The selected contract or an archived prior revision may hold the reproduction.
+        before = [r for r in contract.fail_before(root, selected, 'focused', committed, chosen['argv'], source)
+                  if _reproduces(r)]
         if not before:
             raise ValueError('Spec category lacks its retained fail-before reproduction')
     return value

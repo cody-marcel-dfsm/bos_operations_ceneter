@@ -25,7 +25,8 @@ SETUP_PROPOSAL = "Problem: synthetic; Cause: synthetic; Recommended change: synt
 
 def fixture_projection(root):
     """Capture actual constructor inputs, including their immutable Git modes."""
-    names = set(o.REVIEW_POLICY_MODULES) | {
+    # Cohorts receive the committed governing texts; Vault documents stay ignored, untracked inputs.
+    names = set(o.REVIEW_POLICY_MODULES) | {name for name in parallel.GOVERNANCE_PATHS if not name.startswith('Vault/')} | {
         'AGENTS.md', '.agents/skills/oracle/SKILL.md', '.gitignore',
         'source.py', 'peer.py', 'dependency.py', 'config.json',
         'package.json', 'package-manifest.json', 'skill-release-manifest.json',
@@ -66,7 +67,7 @@ def fixture_projection(root):
         total += len(body)
         if total > 32*1024*1024: raise ValueError('Constructor input total exceeds bound')
         entries[name] = {'mode':mode,'bytes':len(body),'sha256':hashlib.sha256(body).hexdigest()}
-    if set(entries) != names or len(entries) != 42: raise ValueError('Constructor input membership changed')
+    if set(entries) != names or len(entries) != 44: raise ValueError('Constructor input membership changed')
     return {name:entries[name] for name in sorted(entries)}
 
 
@@ -96,9 +97,10 @@ class ReviewSeries(unittest.TestCase):
             self.assertFalse(any(Path(str(arg)).name == 'codex' for arg in command),
                              'Synthetic fixture attempted an actual Codex process')
             return original_popen(command, *args, **kwargs)
-        def managed(o, root, metadata, command, environment, controller):
+        def managed(o, root, metadata, command, environment, controller, stdin_payload=None):
             self.assertIsNotNone(controller)
-            return run(command, cwd=root, capture_output=True, text=True, env=environment)
+            return run(command, cwd=root, capture_output=True, text=True, env=environment,
+                       input=stdin_payload.decode() if stdin_payload is not None else None)
         with patch.object(lifecycle, 'reviewer_process', side_effect=managed), \
                 patch.object(subprocess, 'Popen', side_effect=guarded), \
                 patch.object(o.subprocess, 'run', side_effect=run):
@@ -118,6 +120,11 @@ class ReviewSeries(unittest.TestCase):
                             "dependency.py": "dependency", "config.json": "{}"}.items():
             path = self.root / name; path.parent.mkdir(parents=True, exist_ok=True); path.write_text(value)
         self.release_metadata("0.0.0")
+        for name in parallel.GOVERNANCE_PATHS:
+            document = self.root / name
+            if not document.exists():
+                document.parent.mkdir(parents=True, exist_ok=True)
+                document.write_text("Synthetic governing text for " + name + "\n")
         copy_review_policy_inputs(self.root)
         patch.object(o, "__file__", str(self.root / "tools/oracle_approval.py")).start()
         self.git("add", "."); self.git("commit", "-qm", "base")
@@ -676,7 +683,7 @@ class ReviewSeries(unittest.TestCase):
 
     def test_historical_preparation_keeps_old_facts_and_current_native_provenance_is_required(self):
         document = self.root / "Vault/docs/own-synthetic-design.md"
-        document.parent.mkdir(parents=True)
+        document.parent.mkdir(parents=True, exist_ok=True)
         document.write_text("original synthetic requirement")
         vault = self.root / "Vault/tmp/synthetic-vault-query.json"
         vault.write_text('{"kind":"synthetic-vault-evidence"}')
@@ -3148,7 +3155,7 @@ class ReviewSeries(unittest.TestCase):
         self.synthetic_reviewer_settings()
         schema = (Path(__file__).resolve().parents[1] / '.agents/skills/oracle/review-output.schema.json').read_text()
         self.change('.agents/skills/oracle/review-output.schema.json', schema)
-        def child(root, prompt, prefix, *, schema_path, cohort_policy):
+        def child(root, prompt, prefix, *, schema_path, cohort_policy, stdin_payload=None):
             run = o._RUN.get(); packet = json.loads((run / 'cohort-context.json').read_text())
             context = json.loads(Path(packet['parent_context']).read_text())
             cohort = packet['cohort']; assessment = self.result(context)
@@ -3213,7 +3220,7 @@ class ReviewSeries(unittest.TestCase):
         self.synthetic_reviewer_settings()
         schema = (Path(__file__).resolve().parents[1] / '.agents/skills/oracle/review-output.schema.json').read_bytes()
         self.change('.agents/skills/oracle/review-output.schema.json', schema.decode())
-        def child(root, prompt, prefix, *, schema_path, cohort_policy):
+        def child(root, prompt, prefix, *, schema_path, cohort_policy, stdin_payload=None):
             run = o._RUN.get(); packet = json.loads((run/'cohort-context.json').read_text())
             context = json.loads(Path(packet['parent_context']).read_text()); cohort = packet['cohort']
             assessment = self.result(context)

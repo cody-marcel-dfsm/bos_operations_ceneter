@@ -6,6 +6,7 @@ The private socket only observes that controller and supplies hashed evidence.
 """
 from __future__ import annotations
 
+import fcntl
 import json
 import os
 from pathlib import Path
@@ -27,7 +28,7 @@ REVIEWER_SECONDS = 180
 STRUCTURAL_WAIT_SECONDS = REVIEWER_SECONDS
 REVIEWER_OUTPUT_BYTES = 8 * 1024 * 1024
 
-def bounded_reviewer_output(o, run, process, token, record):
+def bounded_reviewer_output(o, run, process, token, record, *, stdin_payload=None):
     """Drain both private streams continuously; expose only bounded counts/timing."""
     start=time.monotonic();lock=threading.Lock();chunks=[[],[]];counts=[0,0];overflow=threading.Event();errors=[]
     def drain(stream,index):
@@ -45,7 +46,17 @@ def bounded_reviewer_output(o, run, process, token, record):
     for thread in threads:thread.start()
     failure=None;last=0
     try:
-        process.stdin.write((token+'\n').encode());process.stdin.flush();process.stdin.close();process.stdin=None
+        # The gate consumes only the token line; a sealed payload follows it as
+        # the reviewer's <stdin> block, written concurrently so a full pipe
+        # can never stall the deadline loop.
+        stdin=process.stdin;process.stdin=None;payload=(token+'\n').encode()+(stdin_payload or b'')
+        def feed():
+            try:stdin.write(payload);stdin.flush()
+            except (BrokenPipeError,OSError,ValueError):pass
+            finally:
+                try:stdin.close()
+                except OSError:pass
+        writer=threading.Thread(target=feed,daemon=True);writer.start()
         while True:
             elapsed=time.monotonic()-start
             with lock:current=list(counts)
@@ -152,7 +163,7 @@ def _active_children(o, root, identity):
     return active
 
 
-def reviewer_process(o, root, run, command, environment, controller):
+def reviewer_process(o, root, run, command, environment, controller, *, stdin_payload=None):
     # The shell waits for its private stdin acknowledgement. Parent loss before
     # immutable registration closes that pipe and cannot start a reviewer.
     token = uuid.uuid4().hex
@@ -173,7 +184,7 @@ def reviewer_process(o, root, run, command, environment, controller):
                    "evidence": o._files(root, [str(run / "model.json"), str(run / "request.txt")])}
         record = dict(payload, record_sha256=o._sha(o._canonical(payload)))
         _publish(o, root, path, record)
-        stdout, stderr = bounded_reviewer_output(o,run,process,token,record)
+        stdout, stderr = bounded_reviewer_output(o,run,process,token,record,stdin_payload=stdin_payload)
         _active_children(o, root, controller.identity)
         _publish(o, root, path.with_suffix(".outcome.json"),
                  {"record_sha256": record["record_sha256"], "exit_code": process.returncode})
@@ -358,13 +369,26 @@ def _last(o, root, kind="issue", series=None):
     if not directory.exists():
         return None, 0
     o._metadata_directory(root, directory)
+    # An explicit append-only relocation retires an earlier checkout's segment.
+    # Retired records are checked only as the unchanged hash chain they were;
+    # they never supply a live owner, outcome, child or checkpoint.
+    boundary = _retired(o, root).get(directory.name)
+    retired = boundary["count"] if boundary else 0
     names = sorted(directory.iterdir())
+    if len(names) < retired:
+        raise o.OracleApprovalError("Retired admission chain changed")
     previous = None
     for number, path in enumerate(names, 1):
         if path.name != f"{number:08d}.json":
             raise o.OracleApprovalError("Controller admission chain is incomplete")
         raw = o._custody_read(root, path)[1]
         record = json.loads(raw)
+        if number <= retired:
+            if (record.get("kind") != "boc-review-controller-v1" or record.get("previous_sha256") != previous
+                    or (number == retired and o._sha(raw) != boundary["head_sha256"])):
+                raise o.OracleApprovalError("Retired admission chain changed")
+            previous = o._sha(raw)
+            continue
         if (record.get("kind") != "boc-review-controller-v1" or record.get("root") != str(root)
                 or record.get("previous_sha256") != previous):
             raise o.OracleApprovalError("Controller admission identity changed")
@@ -384,7 +408,178 @@ def _last(o, root, kind="issue", series=None):
                 or o._custody_read(root, Path(record["directory"]) / "identity.json")[1] != raw):
             raise o.OracleApprovalError("Controller process or original invocation custody changed")
         previous = o._sha(raw)
+    if names and len(names) == retired:
+        return None, len(names)
     return (record, len(names)) if names else (None, 0)
+
+
+RELOCATION_KIND = "boc-checkout-relocation-v1"
+
+
+def _relocations(o, root):
+    return o.receipt_path(root).parent / "relocations"
+
+
+def _git_directory_identity(o, root):
+    try:
+        info = os.lstat(Path(root) / ".git")
+    except OSError as exc:
+        raise o.OracleApprovalError("Checkout relocation requires a real .git directory") from exc
+    if not stat.S_ISDIR(info.st_mode):
+        raise o.OracleApprovalError("Checkout relocation requires a real .git directory")
+    return {"device": info.st_dev, "inode": info.st_ino}
+
+
+def _relocation_chain(o, root):
+    directory = _relocations(o, root)
+    if not directory.exists():
+        return []
+    o._metadata_directory(root, directory)
+    chain, previous = [], None
+    for number, path in enumerate(sorted(directory.iterdir()), 1):
+        if path.name != f"{number:08d}.json":
+            raise o.OracleApprovalError("Checkout relocation chain is incomplete")
+        raw = o._custody_read(root, path)[1]
+        record = json.loads(raw)
+        payload = {key: value for key, value in record.items() if key != "record_sha256"}
+        retired = record.get("retired")
+        if (raw != o._pretty(record) or record.get("kind") != RELOCATION_KIND
+                or record.get("previous_sha256") != previous
+                or record.get("record_sha256") != o._sha(o._canonical(payload))
+                or not isinstance(retired, dict)
+                or any(not isinstance(value, dict) or set(value) != {"count", "head_sha256"}
+                       or not isinstance(value["count"], int) or value["count"] < 1
+                       for value in retired.values())
+                or (chain and record.get("from_root") != chain[-1]["to_root"])):
+            raise o.OracleApprovalError("Checkout relocation record changed")
+        previous = o._sha(raw)
+        chain.append(record)
+    return chain
+
+
+def _retired(o, root):
+    """Cumulative retirement boundaries, valid only for this exact checkout."""
+    chain = _relocation_chain(o, root)
+    if not chain:
+        return {}
+    if chain[-1]["to_root"] != str(root):
+        raise o.OracleApprovalError("Checkout relocation does not name this checkout")
+    identity = _git_directory_identity(o, root)
+    if any(record.get("git_dir") != identity for record in chain):
+        raise o.OracleApprovalError("Checkout relocation belongs to another Git directory")
+    return chain[-1]["retired"]
+
+
+def _retirement_plan(o, root, from_root, prior):
+    """Classify each admission chain independently; retire only old-root segments."""
+    controllers = o.receipt_path(root).parent / "controllers"
+    plan = {name: dict(value) for name, value in prior.items()}
+    if not controllers.exists():
+        return plan
+    for directory in sorted(p for p in controllers.iterdir()
+                            if p.name.endswith("admissions") and not p.is_symlink() and p.is_dir()):
+        o._metadata_directory(root, directory)
+        names = sorted(directory.iterdir())
+        boundary = prior.get(directory.name, {"count": 0, "head_sha256": None})
+        if len(names) < boundary["count"]:
+            raise o.OracleApprovalError("Retired admission chain changed")
+        previous, roots = None, set()
+        for number, path in enumerate(names, 1):
+            if path.name != f"{number:08d}.json":
+                raise o.OracleApprovalError("Controller admission chain is incomplete")
+            raw = o._custody_read(root, path)[1]
+            record = json.loads(raw)
+            if record.get("kind") != "boc-review-controller-v1" or record.get("previous_sha256") != previous:
+                raise o.OracleApprovalError("Controller admission chain is malformed")
+            if number == boundary["count"] and o._sha(raw) != boundary["head_sha256"]:
+                raise o.OracleApprovalError("Retired admission chain changed")
+            previous = o._sha(raw)
+            if number > boundary["count"]:
+                roots.add(record.get("root"))
+        if from_root not in roots:
+            continue  # Empty, current-root or unrelated chains stay exactly as they are.
+        if roots != {from_root}:
+            raise o.OracleApprovalError("Admission chain segment mixes roots or names a foreign root")
+        plan[directory.name] = {"count": len(names), "head_sha256": previous}
+    return plan
+
+
+def _retirement_alive(o, root, from_root, directory, start, end):
+    """Treat any live, unreadable or indeterminate original execution as alive."""
+    for number in range(start + 1, end + 1):
+        try:
+            record = json.loads(o._custody_read(root, directory / f"{number:08d}.json")[1])
+            if _alive(record):
+                return True
+            stored = str(record["directory"])
+            if not stored.startswith(from_root + os.sep) or ".." in Path(stored).parts:
+                return True
+            children = Path(str(root) + stored[len(from_root):]) / "children"
+            if children.is_symlink():
+                return True
+            if children.exists():
+                # Registrations use the same exact names _active_children admits;
+                # outcome and failure files beside them are not registrations.
+                for path in children.iterdir():
+                    if not o.re.fullmatch(r"reviewer-[0-9a-f]{32}\.json", path.name):
+                        continue
+                    child = json.loads(path.read_text())
+                    if (not isinstance(child, dict) or not isinstance(child.get("pid"), int)
+                            or not isinstance(child.get("process_group"), int) or _reviewer_group(child)):
+                        return True
+        except (KeyError, TypeError, ValueError, OSError, o.OracleApprovalError):
+            return True
+    return False
+
+
+def relocate(o, root, from_root):
+    """Append one explicit relocation record retiring the old checkout's admissions."""
+    @o._metadata_owner
+    def append(root):
+        if not isinstance(from_root, str) or not os.path.isabs(from_root) or os.path.normpath(from_root) != from_root:
+            raise o.OracleApprovalError("Relocation source must be a normalized absolute root, not relative")
+        if from_root == str(root):
+            raise o.OracleApprovalError("Relocation source is the current checkout")
+        if os.path.lexists(from_root):
+            raise o.OracleApprovalError("Relocation source still exists")
+        identity = _git_directory_identity(o, root)
+        controllers = o.receipt_path(root).parent / "controllers"
+        if not controllers.exists():
+            raise o.OracleApprovalError("Nothing to retire for that root")
+        o._metadata_directory(root, controllers)
+        descriptor = os.open(controllers / ".relocation.lock", os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW, 0o600)
+        try:
+            try:
+                fcntl.flock(descriptor, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except BlockingIOError as exc:
+                raise o.OracleApprovalError("Checkout relocation already in progress") from exc
+            chain = _relocation_chain(o, root)
+            if chain and chain[-1]["to_root"] != from_root:
+                raise o.OracleApprovalError("Checkout relocation chain does not end at the relocation source")
+            if any(record.get("git_dir") != identity for record in chain):
+                raise o.OracleApprovalError("Checkout relocation belongs to another Git directory")
+            prior = chain[-1]["retired"] if chain else {}
+            plan = _retirement_plan(o, root, from_root, prior)
+            if plan == prior:
+                raise o.OracleApprovalError("Nothing to retire for that root")
+            for name, value in plan.items():
+                start = prior.get(name, {}).get("count", 0)
+                if value["count"] > start and _retirement_alive(o, root, from_root, controllers / name, start, value["count"]):
+                    raise o.OracleApprovalError("An original controller or registered reviewer is still alive")
+            if _retirement_plan(o, root, from_root, prior) != plan:
+                raise o.OracleApprovalError("Admission chains moved during relocation")
+            payload = {"kind": RELOCATION_KIND,
+                       "previous_sha256": o._sha(o._pretty(chain[-1])) if chain else None,
+                       "from_root": from_root, "to_root": str(root), "git_dir": identity,
+                       "retired": plan, "recorded_at": o.datetime.now(o.timezone.utc).isoformat()}
+            record = dict(payload, record_sha256=o._sha(o._canonical(payload)))
+            directory = _relocations(o, root)
+            o._metadata_directory(root, directory)
+            _publish(o, root, directory / f"{len(chain) + 1:08d}.json", record)
+            return record
+        finally:
+            os.close(descriptor)
+    return append(Path(root))
 
 
 def _terminal(o, root, identity):
@@ -643,7 +838,9 @@ class Controller:
             else:
                 _finish(o, root, previous, {"status": "ERROR", "error_type": "OracleApprovalError",
                                           "error": "Native controller process exited before its outcome; original evidence retained"})
-        self.identity["previous_sha256"] = o._sha(o._pretty(previous)) if previous else None
+        boundary = _retired(o, root).get(_admissions(o, root, self.identity["review_kind"], self.identity["series_id"]).name)
+        retired_head = boundary["head_sha256"] if boundary and count == boundary["count"] else None
+        self.identity["previous_sha256"] = o._sha(o._pretty(previous)) if previous else retired_head
         identity_path = self.directory / "identity.json"
         _publish(o, root, identity_path, self.identity)
         admissions = _admissions(o, root, self.identity["review_kind"], self.identity["series_id"])
@@ -948,3 +1145,27 @@ def run(o, root, kind, attempt, args, kwargs, *, follow_commits=False, request=N
             o._CONTROLLER.reset(token)
     finally:
         controller.close()
+
+
+def main(argv=None):
+    import argparse
+    parser = argparse.ArgumentParser(description="Native controller lifecycle maintenance")
+    commands = parser.add_subparsers(dest="command", required=True)
+    move = commands.add_parser("relocate", help="Retire a renamed checkout's old-root admissions")
+    move.add_argument("--from", dest="from_root", required=True)
+    arguments = parser.parse_args(argv)
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    import oracle_approval as o
+    root = Path(subprocess.run(["git", "rev-parse", "--show-toplevel"], capture_output=True, text=True,
+                               check=True).stdout.strip())
+    try:
+        record = relocate(o, root, arguments.from_root)
+    except o.OracleApprovalError as exc:
+        sys.stderr.write(f"{exc}\n")
+        return 1
+    print(json.dumps({key: record[key] for key in ("from_root", "to_root", "retired", "record_sha256")}, indent=2))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

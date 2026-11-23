@@ -2,7 +2,7 @@ name: Publication safety
 
 on:
   push:
-    branches: [main, 'codex/release-v*', 'codex/source-*']
+    branches: [main, 'release/*', 'codex/source-*']
     tags: ["v*"]
   pull_request:
     branches: [main]
@@ -30,7 +30,7 @@ jobs:
         run: |
           validation_base_sha="$VALIDATION_BASE_SHA"
           case "$GITHUB_REF" in
-            refs/heads/codex/release-v*|refs/heads/codex/source-*) validation_base_sha="$(git rev-parse origin/main)" ;;
+            refs/heads/codex/source-*|refs/heads/release/*) validation_base_sha="$(git rev-parse origin/main)" ;;
           esac
           python3 tools/validation_contract.py gate --base "$validation_base_sha"
       - name: Identify the Oracle component and CI route
@@ -94,7 +94,7 @@ jobs:
         run: |
           validation_base_sha="$VALIDATION_BASE_SHA"
           case "$GITHUB_REF" in
-            refs/heads/codex/release-v*|refs/heads/codex/source-*) validation_base_sha="$(git rev-parse origin/main)" ;;
+            refs/heads/codex/source-*|refs/heads/release/*) validation_base_sha="$(git rev-parse origin/main)" ;;
           esac
           # Oracle changes select typed CI_ONLY. Native live proof remains required for promotion.
           python3 tools/deterministic_package.py ci --base "$validation_base_sha"
