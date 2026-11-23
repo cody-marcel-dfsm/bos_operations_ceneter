@@ -677,6 +677,58 @@ class Engines(Fixture):
 
 
 class NativeDelta(Fixture):
+    def publication_delta(self, *, patterns=False):
+        published=self.base
+        self.git('remote','add','origin','https://code.example/synthetic/repository.git')
+        self.git('update-ref','refs/remotes/origin/main',published)
+        (self.root/'older_foreign.py').write_text('synthetic_pending = True\n')
+        self.commit('older pending foreign change')
+        scope=['source.mjs','README.md',v.SELECTION,v.CATALOG,'tests/*' if patterns else 'tests/spec.test.mjs']
+        reviewer=lambda *args:dict(APPROVED,review_status='COMPLETE',validation_selection=self.selection(scope_paths=scope))
+        with patch.object(oracle,'_review_settings_binding',return_value={'model':'synthetic','reasoning_effort':None}),patch.object(oracle,'_fresh_origin',return_value=published):
+            oracle.review_proposal(self.root,PROPOSAL,[],None,reviewer)
+        self.commit('newer native prior specification')
+        (self.root/'source.mjs').write_text('export default false;\n')
+        (self.root/'tests/extra.test.mjs').write_text('synthetic additive coverage\n')
+        source=self.commit('current additive change')
+        return published,source,self.git('rev-parse','HEAD^{tree}')
+
+    def test_publication_delta_retains_older_foreign_paths_and_admits_whole_range(self):
+        published,source,tree=self.publication_delta()
+        context=v.delta_context(self.root,source,tree)
+        self.assertIn('older_foreign.py',context['paths'])
+        self.assertEqual(context['binding']['publication_baseline_commit'],published)
+        delta={'kind':v.DELTA_KIND,'binding':copy.deepcopy(context['binding']),'reason':'Complete pending source coverage',
+               'design':None,'acceptance_additions':['The complete pending publication inventory is covered'],
+               'category_additions':[{'name':'focused','tests':['tests/extra.test.mjs'],'fixtures':[]}],
+               'coverage_additions':[{'module':'tests/extra.test.mjs','covers':[0],'purpose':'Covers the additional synthetic condition'}]}
+        selected,audit=v.materialize_delta(self.root,context,delta)
+        contract=v.seal(self.root,selected,PROPOSAL,{'verdict':'APPROVED'},base=source,stamp=stamp(origin_main=published))
+        v.write_selection(self.root,contract);candidate=self.commit('synthetic complete-range selection')
+        self.assertEqual(v.gate(self.root,published,candidate)['status'],'SPEC_SEALED')
+        # Historical reconstruction uses its original bound range after the
+        # published ref advances; a new enrollment must use the new actual ref.
+        self.git('update-ref','refs/remotes/origin/main',source)
+        reconstructed,_=v.reconstruct_delta_record(self.root,audit,delta)
+        self.assertEqual(reconstructed,selected)
+
+    def test_publication_delta_materializes_retained_patterns_and_rejects_stale_scope(self):
+        published,source,tree=self.publication_delta(patterns=True)
+        try:context=v.delta_context(self.root,source,tree)
+        except ValueError as error:self.fail(f'Reviewed patterns must materialize immutable tracked paths: {error}')
+        self.assertIn('older_foreign.py',context['paths'])
+        self.assertIn('tests/spec.test.mjs',context['paths'])
+        self.assertIn('tests/extra.test.mjs',context['paths'])
+        self.assertFalse(any(any(c in path for c in '*?[]') for path in context['paths']))
+        scope=oracle._publication_scope(self.root,tree)
+        forged=copy.deepcopy(scope);forged['range_paths'].remove('older_foreign.py')
+        with self.assertRaises(ValueError):v.delta_context(self.root,source,tree,publication_scope=forged)
+        delta={'kind':v.DELTA_KIND,'binding':copy.deepcopy(context['binding']),'reason':'Preserve exact pending membership',
+               'design':None,'acceptance_additions':['Stale publication membership is refused'],
+               'category_additions':[],'coverage_additions':[{'module':'tests/spec.test.mjs','covers':[0],'purpose':None}]}
+        self.git('update-ref','refs/remotes/origin/main',source)
+        with self.assertRaisesRegex(ValueError,'changed'):v.materialize_delta(self.root,context,delta)
+
     def prepared_delta(self):
         selection=self.selection(scope_paths=['source.mjs','README.md','tests/spec.test.mjs',v.SELECTION,v.CATALOG])
         reviewer=lambda *args:dict(APPROVED,review_status='COMPLETE',validation_selection=selection)

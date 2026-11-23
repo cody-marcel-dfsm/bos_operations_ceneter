@@ -6,124 +6,65 @@
     "model": "gpt-6.1-sol",
     "oracle_sha256": "537e6d8233019c51672015c2d006ea7830effd749fc1672d27cacf3e55eb37e5",
     "host": "Codys-MacBook-Pro.local",
-    "time": "2026-11-23T15:32:16Z",
+    "time": "2026-11-23T16:15:19Z",
     "origin_main": "d6f6dac91af5e962ddc7acaf39efaa302708408b",
     "request_sha256": "fc7562b6053f376e51682f5b2c5654862ae9297b1581c2b29bb956a5093207a3",
-    "proposal_sha256": "07fbc0932182f42beb25e6be6f61ce2d941c42df0584fc245cd089a0afaf7f9a"
+    "proposal_sha256": "2333ba70121be3a319e7959a7f2cbe6094ddd27636f3c3432d8eaf09030beb61"
   },
   "selection": {
     "acceptance": [
-      "Generic application validation requires independently observed selected application contact and scoped description evidence. Application identity, discovery provenance, operation and returned contacts agree; descriptor self-assertion alone establishes no binding or authority.",
-      "Registration copies the exact validated discovered URI, method and context-header declaration while enforcing the complete current-version schema and existing URI, origin and scope checks. Foreign applications, altered contacts, unsafe paths, raw authority selectors and unsupported versions fail closed.",
-      "Discovery refresh, contract-facts projection and callback-source readiness preserve the selected application binding and literal observed declarations without mutating source documents or treating descriptive labels as authorization.",
-      "Admission errors require the actual validated request descriptor and closed correlated public envelope. Only declared HTTP 403 PAID_PLAN_REQUIRED with retryable false and HTTP 503 MCP_ENTITLEMENT_UNAVAILABLE with retryable true receive their corresponding dispositions; undeclared, mismatched, malformed and obsolete HTTP 402 variants fail closed.",
-      "Guidance and synthetic examples report service access decisions without inferring separate application subscriptions, payment prerequisites, trial eligibility or acquisition actions. Preserve literal producer-safe messages, actual retry timing and existing server policy; initiate no login, payment, automatic registration replay or local entitlement evaluation.",
-      "Existing application helper calls, current-version contracts, compile/start behavior, returned actions, callback recovery and native execution allowlists remain compatible. Generic discovery creates no native alias, host capability, credential lifecycle or public API version.",
-      "Canonical guidance and generated consumers remain equivalent, required versions and exact dependency pins remain consistent, and runtime helpers remain usable in generated distributions.",
-      "Individual-record lookup retains graph completion after clarification, every selected-route intermediate node and edge, compact preferred routing, structural fallback, precise partial evidence and ranking provenance. Preserve explicit text, shortest and full-topology requests, plain labels, native visualization priority, renderer-support checks and the focused student-workflow exception."
+      "Current delta capture uses the native resolved publication scope and includes older unpublished changes preceding the prior specification base, with exact baseline, range, source, tree, catalog and prior native archive identities.",
+      "Retained scope patterns expand solely to finite exact tracked membership at the bound relevant trees. The resulting inventory includes changed and deleted publication paths and preserves existing path and test bounds.",
+      "Missing, forged, stale or altered scope, source, catalog, inventory and prior archive evidence fails closed before sealing. No caller or model can select a baseline, supply mutable membership or invent paths.",
+      "Both historical closed binding shapes reconstruct their original selection and audit after remote advancement. Original raw responses, seals, archive identities and receipts remain unchanged and acquire no widened inventory or fresh approval.",
+      "Additive materialization preserves every prior criterion, selected module, fixture, mapping purpose and original criterion-to-module association while admitting only validated additions.",
+      "Native proposal, lifecycle and deterministic admission retain exact-source custody, failure preservation, complete-category requirements and existing publication boundaries. Tests use isolated synthetic repositories and fake reviewers without launching a model or changing deadlines."
     ],
     "acceptance_tests": [
       {
         "covers": [
           0,
           1,
-          5
-        ],
-        "module": "tests/app-discovery.test.mjs",
-        "purpose": "Verify independently selected application contacts, exact identifiers and legacy compatibility."
-      },
-      {
-        "covers": [
-          0,
           2,
-          5
-        ],
-        "module": "tests/journey-discovery.test.mjs",
-        "purpose": "Verify coherent application discovery, refresh and existing operation contracts."
-      },
-      {
-        "covers": [
-          0,
-          1,
-          3,
-          5
-        ],
-        "module": "tests/journey-registration-discovery.test.mjs",
-        "purpose": "Verify complete registration schemas, exact scoped contacts and admission declarations with refusal cases."
-      },
-      {
-        "covers": [
-          1,
           3,
           4,
           5
         ],
-        "module": "tests/journey-runtime-client.test.mjs",
-        "purpose": "Verify descriptor and request custody, exact public errors, literal safe messages and absence of inferred recovery or replay."
-      },
-      {
-        "covers": [
-          0,
-          2
-        ],
-        "module": "tests/contract-facts.test.mjs",
-        "purpose": "Verify selected application provenance and faithful immutable contract projection."
-      },
-      {
-        "covers": [
-          0,
-          2,
-          5
-        ],
-        "module": "tests/callback-source-readiness.test.mjs",
-        "purpose": "Verify selected application readiness without changing callback or service authority."
+        "module": "tests/oracle-implementation-spec.test.mjs",
+        "purpose": "Exercise genuine synthetic native capture, materialization, archive reconstruction, historical compatibility and source-movement refusal."
       },
       {
         "covers": [
           1,
+          2,
+          3,
+          4,
           5
         ],
-        "module": "tests/external-dependency-adapter.test.mjs",
-        "purpose": "Preserve trusted transport, scope continuity and existing native execution admission."
+        "module": "tests/validation-contract.test.mjs",
+        "purpose": "Verify exact inventory and selection rules, historical reconstruction, full-range admission and unchanged validation requirements."
       },
       {
         "covers": [
-          4,
-          6
+          2,
+          5
         ],
-        "module": "tests/journey-package-parity.test.mjs",
-        "purpose": "Verify corrected canonical guidance, neutral example wording and equivalent generated lifecycle consumers."
+        "module": "tests/oracle-lifecycle.test.mjs",
+        "purpose": "Preserve native custody, incomplete-result handling, retained checkpoints and exact-candidate lifecycle admission."
       },
       {
         "covers": [
-          6
+          5
         ],
-        "module": "tests/versioned-skills.test.mjs",
-        "purpose": "Verify required skill versions and exact dependency metadata."
+        "module": "tests/deterministic-lanes.test.mjs",
+        "purpose": "Verify deterministic source and package consumers retain sealed-contract and publication boundaries."
       },
       {
         "covers": [
-          5,
-          6,
-          7
+          5
         ],
-        "module": "tests/package-model.test.mjs",
-        "purpose": "Preserve product composition, connection ownership and scoped workflow exceptions."
-      },
-      {
-        "covers": [
-          5,
-          6
-        ],
-        "module": "tests/muse-package.test.mjs",
-        "purpose": "Verify generated package compatibility and unchanged host connection boundaries."
-      },
-      {
-        "covers": [
-          7
-        ],
-        "module": "tests/lead-graph-regression.test.mjs",
-        "purpose": "Verify graph handoff closure, compact complete routes, truthful partial graphs, plain labels and generated native-renderer selection."
+        "module": "tests/deterministic-oracle.test.mjs",
+        "purpose": "Preserve component-artifact verification limits and refusal of unauthorized source promotion."
       }
     ],
     "categories": [
@@ -134,97 +75,56 @@
       },
       {
         "fixtures": [
-          "tests/helpers/synthetic-bos-discovery-service.mjs",
-          "tests/fixtures/journey-registration-contract.json",
-          "tests/fixtures/current-app-registration.json"
+          "tests/oracle_spec_test.py",
+          "tests/validation_contract_test.py",
+          "tests/published_fixture.py",
+          "tests/oracle_review_series.py",
+          "tests/privacy_coverage_test.py",
+          "tests/helpers/isolated-test-cohort.mjs"
         ],
         "name": "focused",
         "tests": [
-          "tests/app-discovery.test.mjs",
-          "tests/journey-discovery.test.mjs",
-          "tests/journey-registration-discovery.test.mjs",
-          "tests/journey-runtime-client.test.mjs"
+          "tests/oracle-implementation-spec.test.mjs",
+          "tests/validation-contract.test.mjs"
         ]
       },
       {
         "fixtures": [
-          "tests/helpers/synthetic-bos-discovery-service.mjs",
-          "tests/helpers/synthetic-notifications.mjs",
-          "tests/helpers/lead-graph-acceptance.mjs",
-          "tests/fixtures/journey-registration-contract.json",
-          "tests/fixtures/current-app-registration.json"
+          "tests/oracle_lifecycle_test.py",
+          "tests/oracle_review_series.py",
+          "tests/published_fixture.py",
+          "tests/deterministic_source_test.py",
+          "tests/deterministic_package_test.py",
+          "tests/helpers/isolated-test-cohort.mjs",
+          "tests/helpers/native-validation-git.mjs",
+          "tests/helpers/native-validation-state.mjs"
         ],
         "name": "interactions",
         "tests": [
-          "tests/contract-facts.test.mjs",
-          "tests/callback-source-readiness.test.mjs",
-          "tests/external-dependency-adapter.test.mjs",
-          "tests/journey-package-parity.test.mjs",
-          "tests/versioned-skills.test.mjs",
-          "tests/package-model.test.mjs",
-          "tests/muse-package.test.mjs",
-          "tests/lead-graph-regression.test.mjs"
+          "tests/oracle-lifecycle.test.mjs",
+          "tests/deterministic-lanes.test.mjs",
+          "tests/deterministic-oracle.test.mjs"
         ]
       }
     ],
     "change_class": "deep_bug_fix",
     "design": null,
-    "reason": "Discovery binding and admission-response handling cross validation, request construction, readiness, projection and generated guidance. Retain the prior client suites and all refusal cases. Correct only the service-policy interpretation and neutral example wording while preserving runtime boundaries. Establish native fail-before continuity using the revised consumed fixture and unchanged acceptance tests against the original implementation baseline; retain historical results under their original identities. Preserve intervening immutable contracts and source receipts through native successor adoption. Complete every selected category and general source/publication gate, retain the original request clock and 300-second delivery obligation, and report source validation separately from live acceptance.",
-    "revision_of": "516a039ad3c2a1a847f3916577a4f2e3c627c9938840fea8e4c34d443d53a99e",
+    "reason": "Repair native publication-inventory capture and historical replay across proposal, validation and deterministic admission consumers. Capture genuine assertion failure before implementation with identical focused tests and fixtures retained for the passing run. Preserve historical records, all pending downstream obligations, complete-category requirements, original delivery clocks and the fixed 300-second delivery policy. This bounded intermediate workflow selection grants no source publication or downstream implementation authority.",
+    "revision_of": "4cb059bfafa9fde163fbf10ef2e0fccb5ebadf079def1b55791a600f7d57630c",
     "scope_paths": [
-      "source/platform/bos-app-discovery/scripts/validate-discovery.mjs",
-      "source/platform/bos-app-discovery/scripts/project-contract-facts.mjs",
-      "source/platform/bos-workflow-orchestrator/scripts/journey-runtime-client.mjs",
-      "source/platform/bos-workflow-orchestrator/scripts/callback-source-readiness.mjs",
-      "source/platform/bos-app-discovery/SKILL.md",
-      "source/platform/bos-app-discovery/references/discovery-contract.md",
-      "source/platform/bos-workflow-orchestrator/SKILL.md",
-      "source/platform/bos-workflow-orchestrator/references/journey-lifecycle.md",
-      "source/platform/*/SKILL.md",
-      "source/capabilities/*/SKILL.md",
-      "source/verticals/*/*/SKILL.md",
-      "tests/app-discovery.test.mjs",
-      "tests/journey-discovery.test.mjs",
-      "tests/journey-registration-discovery.test.mjs",
-      "tests/journey-runtime-client.test.mjs",
-      "tests/contract-facts.test.mjs",
-      "tests/callback-source-readiness.test.mjs",
-      "tests/external-dependency-adapter.test.mjs",
-      "tests/journey-package-parity.test.mjs",
-      "tests/helpers/synthetic-bos-discovery-service.mjs",
-      "tests/fixtures/current-app-registration.json",
+      "tools/validation_contract.py",
+      "tools/oracle_approval.py",
+      "tools/validation-contract.md",
       "tools/validation-selection.json",
-      "README.md",
-      "package.json",
-      "package-lock.json",
-      "package-manifest.json",
-      "skill-release-manifest.json",
-      "products/bos/product.json",
-      "products/education-center/product.json",
-      "products/bos/openai/bos-skills.zip",
-      "products/education-center/openai/education-center-skills.zip",
-      "clients/*/*/*/skills/*/SKILL.md",
-      "clients/copilot/skills/*/SKILL.md",
-      "clients/*/*/*/skills/bos-app-discovery/scripts/validate-discovery.mjs",
-      "clients/*/*/*/skills/bos-app-discovery/scripts/project-contract-facts.mjs",
-      "clients/*/*/*/skills/bos-app-discovery/references/discovery-contract.md",
-      "clients/*/*/*/skills/bos-workflow-orchestrator/scripts/journey-runtime-client.mjs",
-      "clients/*/*/*/skills/bos-workflow-orchestrator/scripts/callback-source-readiness.mjs",
-      "clients/*/*/*/skills/bos-workflow-orchestrator/references/journey-lifecycle.md",
-      "clients/claude/plugins/*/.bos-product.json",
-      "clients/claude/plugins/*/.claude-plugin/plugin.json",
-      "clients/codex/plugins/*/.bos-product.json",
-      "clients/codex/plugins/*/.codex-plugin/plugin.json",
-      "clients/muse/plugins/*/.bos-product.json",
-      "clients/muse/plugins/*/.muse-plugin/plugin.json",
-      "clients/copilot/products/*/.bos-product.json",
-      "clients/gemini/extensions/*/.bos-product.json",
-      "clients/gemini/extensions/*/gemini-extension.json",
-      "clients/gemini/extensions/*/plugin.json"
+      "tests/oracle_spec_test.py",
+      "tests/validation_contract_test.py",
+      "tests/oracle-implementation-spec.test.mjs",
+      "tests/validation-contract.test.mjs",
+      "scripts/check-customer-data.mjs"
     ]
   },
-  "base_commit": "b41e3c102bd4b6eb0fd428db6d4608e32b6a09e9",
-  "base_tree": "94a85a69a66cbba71b54d226aa7c06599473a266",
+  "base_commit": "fc2eb1e4acaa0aee19bcab5b85dfc8f4d44aeedc",
+  "base_tree": "cdf331232041047a6a0b5ed7d5f00c0ffeab7487",
   "catalog_sha256": "51ee7ae8c1533604f7b2c68b9efba9d1b9d6f340d724d7c208dba434325859b3",
   "runtime": {
     "node": "v22.11.0",
@@ -234,8 +134,8 @@
     "architecture": "arm64",
     "options_sha256": "ebc442c160f8629073a82976daadaba1d95a60a38d768c81c8eb06598aedcac5"
   },
-  "proposal_sha256": "07fbc0932182f42beb25e6be6f61ce2d941c42df0584fc245cd089a0afaf7f9a",
-  "review_sha256": "233e61a49c577dfcfe65de5c84e72565b405546e5a09387e46f751ea95cf0da1",
+  "proposal_sha256": "2333ba70121be3a319e7959a7f2cbe6094ddd27636f3c3432d8eaf09030beb61",
+  "review_sha256": "94af817cdb21dc5c8d63b9c621db35fe6fbf085a58b0190b2ccd3dfc5523ee80",
   "commands": [
     {
       "category": "sanity",
@@ -254,21 +154,20 @@
         "--test",
         "--test-reporter=tap",
         "--test-concurrency=1",
-        "tests/app-discovery.test.mjs",
-        "tests/journey-discovery.test.mjs",
-        "tests/journey-registration-discovery.test.mjs",
-        "tests/journey-runtime-client.test.mjs"
+        "tests/oracle-implementation-spec.test.mjs",
+        "tests/validation-contract.test.mjs"
       ],
       "tests": [
-        "tests/app-discovery.test.mjs",
-        "tests/journey-discovery.test.mjs",
-        "tests/journey-registration-discovery.test.mjs",
-        "tests/journey-runtime-client.test.mjs"
+        "tests/oracle-implementation-spec.test.mjs",
+        "tests/validation-contract.test.mjs"
       ],
       "fixtures": [
-        "tests/helpers/synthetic-bos-discovery-service.mjs",
-        "tests/fixtures/journey-registration-contract.json",
-        "tests/fixtures/current-app-registration.json"
+        "tests/oracle_spec_test.py",
+        "tests/validation_contract_test.py",
+        "tests/published_fixture.py",
+        "tests/oracle_review_series.py",
+        "tests/privacy_coverage_test.py",
+        "tests/helpers/isolated-test-cohort.mjs"
       ]
     },
     {
@@ -278,31 +177,24 @@
         "--test",
         "--test-reporter=tap",
         "--test-concurrency=1",
-        "tests/contract-facts.test.mjs",
-        "tests/callback-source-readiness.test.mjs",
-        "tests/external-dependency-adapter.test.mjs",
-        "tests/journey-package-parity.test.mjs",
-        "tests/versioned-skills.test.mjs",
-        "tests/package-model.test.mjs",
-        "tests/muse-package.test.mjs",
-        "tests/lead-graph-regression.test.mjs"
+        "tests/oracle-lifecycle.test.mjs",
+        "tests/deterministic-lanes.test.mjs",
+        "tests/deterministic-oracle.test.mjs"
       ],
       "tests": [
-        "tests/contract-facts.test.mjs",
-        "tests/callback-source-readiness.test.mjs",
-        "tests/external-dependency-adapter.test.mjs",
-        "tests/journey-package-parity.test.mjs",
-        "tests/versioned-skills.test.mjs",
-        "tests/package-model.test.mjs",
-        "tests/muse-package.test.mjs",
-        "tests/lead-graph-regression.test.mjs"
+        "tests/oracle-lifecycle.test.mjs",
+        "tests/deterministic-lanes.test.mjs",
+        "tests/deterministic-oracle.test.mjs"
       ],
       "fixtures": [
-        "tests/helpers/synthetic-bos-discovery-service.mjs",
-        "tests/helpers/synthetic-notifications.mjs",
-        "tests/helpers/lead-graph-acceptance.mjs",
-        "tests/fixtures/journey-registration-contract.json",
-        "tests/fixtures/current-app-registration.json"
+        "tests/oracle_lifecycle_test.py",
+        "tests/oracle_review_series.py",
+        "tests/published_fixture.py",
+        "tests/deterministic_source_test.py",
+        "tests/deterministic_package_test.py",
+        "tests/helpers/isolated-test-cohort.mjs",
+        "tests/helpers/native-validation-git.mjs",
+        "tests/helpers/native-validation-state.mjs"
       ]
     }
   ],
@@ -315,6 +207,6 @@
     "reasoning_effort": "medium",
     "maximum_reasoning_effort": "medium"
   },
-  "contract_sha256": "4cb059bfafa9fde163fbf10ef2e0fccb5ebadf079def1b55791a600f7d57630c",
-  "seal": "696865fa9e80e583850b8476c09c99561aeb8315d6f76f5a1cb33a9648a3ef59"
+  "contract_sha256": "59850010f7bbea7cc5f3917375a16c80c5d33be0cf519c72563338e679638916",
+  "seal": "b895cd0217945474858110c89b52d1b8b17519a9b41a8fcdc6c5d34d6efe4d86"
 }
