@@ -179,7 +179,8 @@ test('native registration carries discovered app evidence only with a matching s
  const descriptor={name:NATIVE_BOSL_TOOLS.register,description:'Synthetic current scoped registration.',inputSchema:{type:'object',properties:{document:f.registration_contract.input_schema},required:['document'],additionalProperties:false}};
  const catalog={isError:false,structuredContent:{contract_version:'bos-identity-mcp/v2',context_handle:context.context_handle,resources:[],tools:[descriptor]}};
  const native=createNativeBoslExecution({context,catalog});
- const result=native.register(f.registration_contract,document,{application});
+ let result;
+ assert.doesNotThrow(()=>{result=native.register(f.registration_contract,document,{application});},'A valid same-app discovered registration must preserve its local application binding');
  assert.equal(result.tool_name,descriptor.name);assert.equal(result.context_handle,context.context_handle);
  assert.deepEqual(result.arguments,{document});assert.equal(result.registrationRequest.href,f.registration_contract.execution.uri);
  assert.throws(()=>native.register(f.registration_contract,document),/application|lead-director|URI|scope/i,'Legacy default stays strict without discovered app evidence');
