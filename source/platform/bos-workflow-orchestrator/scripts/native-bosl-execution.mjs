@@ -85,7 +85,7 @@ export function createNativeBoslExecution({context, catalog}) {
     graphExport: () => call(NATIVE_BOSL_TOOLS.graphExport, {}),
     // Returns {http_status, body, headers} for interpretJourneyResponse.
     unwrap(envelope) {
-      const {isError, result} = unwrapNativeRead(envelope, context);
+      const {result} = unwrapNativeRead(envelope, context);
       if (!object(result) || !Number.isInteger(result.http_status) ||
           result.ttlMs !== 0 || result.cacheScope !== "private") {
         throw new Error("Native BOSL result must carry an integer http_status and private uncached scope.");
@@ -94,9 +94,6 @@ export function createNativeBoslExecution({context, catalog}) {
         if (!object(result.error)) throw new Error("Native BOSL refusal must carry a public error object.");
         return {http_status: result.http_status, body: {error: result.error}, headers: object(result.headers) ? result.headers : {}};
       }
-      // An MCP error envelope keeps its failure disposition: only a structured
-      // refusal is surfaced, and a success-shaped body is never accepted.
-      if (isError) throw new Error("Native BOSL tool reported an MCP error without a structured refusal.");
       if (!Object.hasOwn(result, "body")) throw new Error("Native BOSL result requires a body or error.");
       return {http_status: result.http_status, body: result.body, headers: object(result.headers) ? result.headers : {}};
     }
