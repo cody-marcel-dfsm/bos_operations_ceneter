@@ -669,3 +669,15 @@ adds no pool, and changes no default, unit deadline, selected vector or category
 timeout. Existing custom Git wrappers and Linux routing remain preserved by the
 unchanged helper. This bounded consumer adaptation is authorized by the genuine
 76-criterion spec; all complete current native checks remain mandatory.
+
+
+### Exact implementation guidance amendment
+
+The owner-requested Retell development-iteration guidance admits exactly
+`source/platform/implementation/SKILL.md` through `BODY_SKILLS`, its ordinary
+skill/version identities and generated consumer copies. Reuse the existing
+bound agent and engine; this instruction changes no provider runtime, account,
+credentials, transport or public API version. The native scope test admits that
+exact skill and retains the unrelated-skill body rejection. Existing complete
+sealed-spec, package generation/parity, privacy, history and publication checks
+remain required; this amendment grants no provider-operation authority.

@@ -94,7 +94,9 @@ MUSE_GUIDANCE = {
     'source/platform/bos-visual-output/references/graph-rendering.md',
     'tests/muse-workflow-guidance.test.mjs',
 }
-BODY_SKILLS = {'source/platform/bos-mcp-client/SKILL.md',
+# Owner-requested Retell iteration guidance: exact implementation skill only.
+BODY_SKILLS = {'source/platform/implementation/SKILL.md',
+               'source/platform/bos-mcp-client/SKILL.md',
                'source/platform/submit-feedback/SKILL.md',
                'source/platform/submit-feedback/references/feedback-contract.md',
                'source/platform/bos-mcp-client/references/identity-context.md'}

@@ -3,7 +3,7 @@
   "release": "0.0.225",
   "skills": {
     "ada": {
-      "version": "0.0.9",
+      "version": "0.0.10",
       "requires": {
         "bos-app-discovery": "1.0.15",
         "bos-mcp-client": "1.0.14",
@@ -12,7 +12,7 @@
       "path": "source/platform/ada",
       "files": {
         "SKILL.md": {
-          "sha256": "179a2a98dee8bafd849385444906a378f898d6cf95a1b8aa101e3f32364d11dc",
+          "sha256": "38fd3b5cbeaa079467a9014b67c0f1da144fdb37e8f7c6710b6d9ed3e6a0b7a0",
           "mode": 420
         },
         "agents/openai.yaml": {
@@ -28,7 +28,7 @@
           "mode": 420
         },
         "references/journey-view.md": {
-          "sha256": "96e8ca7bf1d8fadf346cdd685c61beb6614763519aeb42894c90ef394a373667",
+          "sha256": "0e834be3f9e247981da904a4578892a21d40bb5e7e5541fbef580a069c8b26a2",
           "mode": 420
         },
         "references/runtime-export.md": {
@@ -48,7 +48,7 @@
           "mode": 420
         },
         "scripts/journey-view.mjs": {
-          "sha256": "734e5d1bfd559fe153b2d8592ef99f3981eb31295dbd5028d41870f01da808a9",
+          "sha256": "25516879ab6c34e4987824b548e612a8cfa519ae1de8f871e46d8c0fb18bcf05",
           "mode": 420
         },
         "scripts/turn-safeguards.mjs": {
@@ -57,7 +57,7 @@
         }
       },
       "effective": {
-        "bos": "27852527e5da70cd76d9d7e0055744c451ccab4275e31cfda6e652191315e7cc"
+        "bos": "19c50ac5d5498f99158ff6201a427e84994cfc7b6b63051a2da44d6967c4565f"
       }
     },
     "agent-call-operations": {
@@ -984,12 +984,12 @@
       }
     },
     "implementation": {
-      "version": "1.0.14",
+      "version": "1.0.15",
       "requires": {},
       "path": "source/platform/implementation",
       "files": {
         "SKILL.md": {
-          "sha256": "fb95151c29afd072a6ff5663306889a17af98c06625f7af582e2f5c6f7bcc369",
+          "sha256": "a3e89b6a1b14311e5d028f7951285500f77daff2328df4305d59958206f024c7",
           "mode": 420
         },
         "agents/openai.yaml": {
@@ -998,7 +998,7 @@
         }
       },
       "effective": {
-        "bos": "7aa70d9ad9ad6ed0b0d93f10a33f95bd9e8e2cfdd5118c6945fc27cff2664d22"
+        "bos": "b69237321ff7d80efe3a9ed074df9f21b79f08043e900992cb1696d6521a7e5a"
       }
     },
     "landing-page-copywriting": {
