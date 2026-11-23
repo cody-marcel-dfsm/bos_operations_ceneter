@@ -4,12 +4,12 @@
   "stamp": {
     "engine": "claude",
     "model": "claude-opus-5-5",
-    "oracle_sha256": "892ad8c0d8413e07c6956c24cf2f634aeadbeaa2f73e4532b19386f6d9c7f326",
+    "oracle_sha256": "de76ce6e2550bf626c7f4be33a3d9d741023142850b3c635fe2d6845012173b6",
     "host": "Codys-MacBook-Pro.local",
-    "time": "2026-11-23T22:09:34Z",
+    "time": "2026-11-23T23:04:56Z",
     "origin_main": "b994663ddc5e6e804f39f050ff1ec0e84c3845be",
     "request_sha256": "fc7562b6053f376e51682f5b2c5654862ae9297b1581c2b29bb956a5093207a3",
-    "proposal_sha256": "a01e2699f035634ba98a36dd242377fa3dbe095d232e9a2b802598fd62c52d81"
+    "proposal_sha256": "457a6c496b3ddc06e9072674c4b320e6e03559de196f69d75222c65a7b2a8c43"
   },
   "selection": {
     "acceptance": [
@@ -54,7 +54,8 @@
       "Valid repeated LF and CRLF continuations around a typed byte-count key still remove only the integer value from the phone view. Non-integer or malformed values stay unchanged, and every other privacy view still reads the original text.",
       "Contact data and blocked identifiers placed next to a byte-count slot, whether well-formed or malformed, are still detected. All existing typed-slot and privacy worker cases keep their current results.",
       "Portable feature test-plan binding enforces the same rules as the canonical binding: a 65536-byte raw plan limit, closed plan and row key sets, exact kind, design path and design digest, a nonempty feature, a nonempty list of safe runtime paths each inside the selected scope under the same fnmatch semantics, planned modules that are selected, unique and carry nonempty purposes and covers, and coverage that exactly equals the listed runtime paths. A finite synthetic parity matrix shows that valid portable output equals the canonical binding and that every malformed, out-of-scope or mismatched case is refused. The portable code stays standard-library only and keeps its existing contract versions.",
-      "Before any hashing or sealing, portable spec materialization refuses every sealed value that matches the canonical secret-like or local-absolute-path patterns, including reason, acceptance criteria, test-mapping purposes and nested provenance fields. Diagnostics name the offending field and never echo its value. Valid synthetic output and the existing seal formula and identity stay unchanged, and the tests use assembled synthetic values only."
+      "Before any hashing or sealing, portable spec materialization refuses every sealed value that matches the canonical secret-like or local-absolute-path patterns, including reason, acceptance criteria, test-mapping purposes and nested provenance fields. Diagnostics name the offending field and never echo its value. Valid synthetic output and the existing seal formula and identity stay unchanged, and the tests use assembled synthetic values only.",
+      "The publication-safety CI job selects the explicit standard ubuntu-24.04 x64 runner instead of a moving label. It keeps the pinned Python 3.13.5 runtime, pinned action SHAs, locked dependency and model hashes, component-present setup, closed versus general dispatch and exact-source checks unchanged. A focused assertion against the actual workflow fails on the moving-label source and passes after the correction. The existing portable export/CI consumer also checks the publication job runner and Python pin. Actual exact-source required CI must pass, with no skip, attestation, runtime fallback or gate waiver."
     ],
     "acceptance_tests": [
       {
@@ -69,7 +70,8 @@
           21,
           26,
           40,
-          41
+          41,
+          42
         ],
         "module": "tests/oracle-implementation-spec.test.mjs",
         "purpose": "Exercise genuine synthetic native capture, materialization, archive reconstruction, historical compatibility and source-movement refusal."
@@ -305,7 +307,8 @@
       {
         "covers": [
           17,
-          18
+          18,
+          42
         ],
         "module": "tests/oracle-public-export.test.mjs",
         "purpose": "Verifies immutable export and equivalent synthetic credential-negative rejection fixtures."
@@ -549,8 +552,8 @@
     ],
     "change_class": "deep_bug_fix",
     "design": null,
-    "reason": "Additive bug-fix delta. The portable proposal-to-spec component must match the canonical feature test-plan binding and the canonical refusal of unpublishable sealed text. The focused reproduction uses existing focused fixtures and production functions, compared against the canonical implementation, captured before the fix with test bytes unchanged afterward. The existing portable-core interaction module executes the portable consumer cases. No new module, category, fixture, contract version or authority is added.",
-    "revision_of": "418f883c1bc746e08445e00569c68b5a18d8486676dcd7e25eeb929e8c339e07",
+    "reason": "The publication CI job used a moving runner label whose current image has no build of the pinned Python runtime. Pinning an explicit supported runner is a small fix to existing CI configuration. It is proven by a focused workflow assertion that fails before the fix and passes after it, plus the existing export/CI interaction consumer. All earlier criteria, modules and fixtures are retained.",
+    "revision_of": "6a16f3a08ce8184962ceb2e539e34eeb7e8e707aa66302ef30d6a5b4a342a90c",
     "scope_paths": [
       ".github/workflows/publication-safety.yml",
       "README.md",
@@ -1076,8 +1079,8 @@
       "tools/vault_index.py"
     ]
   },
-  "base_commit": "0f1f9d880ffd4901c254fb67ebe28b96b06b5897",
-  "base_tree": "2032ad29ab4c10fde75485f8826fa64a5c378947",
+  "base_commit": "d489fae15cfac82779d6ec18b8fc942e93761faa",
+  "base_tree": "5cfe55780ac5ef210b5d4cfe5b978d3fbeeae340",
   "catalog_sha256": "51ee7ae8c1533604f7b2c68b9efba9d1b9d6f340d724d7c208dba434325859b3",
   "runtime": {
     "node": "v22.11.0",
@@ -1087,8 +1090,8 @@
     "architecture": "arm64",
     "options_sha256": "ebc442c160f8629073a82976daadaba1d95a60a38d768c81c8eb06598aedcac5"
   },
-  "proposal_sha256": "a01e2699f035634ba98a36dd242377fa3dbe095d232e9a2b802598fd62c52d81",
-  "review_sha256": "6fa8fd35c291bd83543407d103cd815bb4065db7e4edf0f4ad00176f03919942",
+  "proposal_sha256": "457a6c496b3ddc06e9072674c4b320e6e03559de196f69d75222c65a7b2a8c43",
+  "review_sha256": "ca79192fa8a5ccc8c4159fd712c7843907d1d960c6713f6b37251f4ee5102e6f",
   "commands": [
     {
       "category": "sanity",
@@ -1263,6 +1266,6 @@
     "reasoning_effort": "medium",
     "maximum_reasoning_effort": "medium"
   },
-  "contract_sha256": "6a16f3a08ce8184962ceb2e539e34eeb7e8e707aa66302ef30d6a5b4a342a90c",
-  "seal": "076a4643876e36bff1b2134c13555261ea8d3837ffa833faf2f0257a7e411738"
+  "contract_sha256": "990d28a1dd3dd19dea3cb7a935dcbe5f649bd73a142e45682b1437bb3a226887",
+  "seal": "2de016fd06b8eafb1ffc269e4ef9f49fbc0f0c754898f97190222a672053ff64"
 }

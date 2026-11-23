@@ -1318,5 +1318,17 @@ class PortableContractBoundaryParity(unittest.TestCase):
                         self.assertNotIn(value,str(error.exception))
 
 
+
+class SupportedPublicationRunner(unittest.TestCase):
+    def test_publication_runner_preserves_the_supported_locked_python_contract(self):
+        text = (REPOSITORY / '.github/workflows/publication-safety.yml').read_text()
+        self.assertEqual(text.count('runs-on:'), 1)
+        self.assertRegex(text, r'(?m)^    runs-on: ubuntu-24\.04$')
+        self.assertIn("python-version: '3.13.5'", text)
+        self.assertIn('actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065', text)
+        self.assertIn('--require-hashes --only-binary=:all: --no-deps -r tools/oracle_public/requirements.lock', text)
+        self.assertIn('913d7300ceae3b2dbc2c50d1de4baacab4be7b9380491c27fab7418616a16ec3', text)
+        self.assertIn("if: steps.oracle_profile.outputs.component_present == 'true'", text)
+
 if __name__ == '__main__':
     unittest.main()
