@@ -11,6 +11,7 @@ import subprocess
 import sys
 import tempfile
 import time
+import textwrap
 import unittest
 from unittest.mock import patch
 
@@ -676,6 +677,70 @@ class Engines(Fixture):
             self.launch(json.dumps({'is_error': True, 'result': 'synthetic failure'}))
 
 
+class PublicationCIDispatch(Fixture):
+    def oracle_range(self, *, mixed=False, unknown=False):
+        name='unlisted.py' if unknown else 'cli.py'
+        path=self.root/'tools/oracle_core'/name;path.parent.mkdir();path.write_text('synthetic component source\n')
+        if mixed:(self.root/'source.mjs').write_text('export default false;\n')
+        return self.commit('synthetic publication range')
+
+    def test_known_mixed_range_uses_general_route_and_still_declares_component_setup(self):
+        from tools import deterministic_oracle as profile
+        source=self.oracle_range(mixed=True)
+        self.assertFalse(profile.applies(self.root,self.base,source))
+        self.assertTrue(profile.component_present(self.root,self.base,source))
+
+    def test_pure_known_and_unknown_mixed_ranges_keep_closed_admission(self):
+        from tools import deterministic_oracle as profile
+        known=self.oracle_range()
+        self.assertTrue(profile.applies(self.root,self.base,known))
+        (self.root/'tools/oracle_core/unlisted.py').write_text('synthetic unknown source\n')
+        (self.root/'source.mjs').write_text('export default false;\n');unknown=self.commit()
+        self.assertTrue(profile.applies(self.root,self.base,unknown))
+        with self.assertRaisesRegex(ValueError,'Outside'):profile.scope(self.root,self.base,unknown)
+
+    def test_general_ci_consumes_required_native_applicability_without_duplicate_execution(self):
+        from tools import deterministic_package as package,deterministic_oracle as profile,command_coverage
+        with patch.object(package,'current_ci_source',return_value=self.base),patch.object(profile,'applies',return_value=False), \
+             patch.object(package.contract,'gate',return_value={'status':'SPEC_SEALED','seal':'synthetic'}), \
+             patch.object(package.native,'scope',side_effect=ValueError('ordinary runtime')), \
+             patch.object(package,'scope',side_effect=ValueError('ordinary runtime')), \
+             patch.object(package.contract,'ci_execute',side_effect=AssertionError('Native-only categories were duplicated')) as duplicate, \
+             patch.object(command_coverage,'ci',return_value=[]) as required:
+            self.assertEqual(package.ci(self.root,self.base,'synthetic'),0)
+        duplicate.assert_not_called();required.assert_called_once_with(self.root,self.base)
+
+    def test_actual_workflow_keeps_public_runtime_setup_for_mixed_component_ranges(self):
+        workflow=(REPOSITORY/'.github/workflows/publication-safety.yml').read_text()
+        script=textwrap.dedent(workflow.split("python3 - <<'PY'\n",1)[1].split('\n          PY',1)[0])
+        (self.root/'tools/__init__.py').write_text('')
+        stub=self.root/'tools/deterministic_oracle.py';output=self.root/'github-output'
+        for present in (True,False):
+            stub.write_text('from types import SimpleNamespace\nnative=SimpleNamespace(git=lambda *args: "synthetic")\n'
+                            'def applies(*args):return False\n'
+                            f'def component_present(*args):return {present!r}\n'
+                            'def scope(*args):raise AssertionError("Mixed range entered closed scope")\n')
+            output.write_text('')
+            env={**os.environ,'PYTHONPATH':str(self.root),'VALIDATION_BASE_SHA':self.base,'GITHUB_REF':'refs/heads/main','GITHUB_OUTPUT':str(output)}
+            run=subprocess.run([sys.executable,'-B','-c',script],cwd=self.root,env=env,capture_output=True,text=True)
+            self.assertEqual(run.returncode,0,run.stderr)
+            values=dict(line.split('=',1) for line in output.read_text().splitlines())
+            guards=__import__('re').findall(r"^\s+if:\s+steps\.oracle_profile\.outputs\.([a-z_]+)\s*==\s*'true'",workflow,__import__('re').M)
+            self.assertGreaterEqual(len(guards),2)
+            self.assertEqual([values.get(key)=='true' for key in guards],[present]*len(guards))
+
+    def test_public_chroma_uses_declared_runtime_override(self):
+        executable=self.root/'configured-python';marker=self.root/'runtime-used'
+        executable.write_text('#!/usr/bin/env python3\nimport os,sys\nfrom pathlib import Path\n'
+                              'Path(os.environ["SYNTHETIC_RUNTIME_MARKER"]).write_text("used")\n'
+                              'sys.stderr.write("Ran 5 tests in 0.01s\\n\\nOK\\n")\n')
+        executable.chmod(0o700)
+        run=subprocess.run(['node','--test','tests/oracle-public-chroma.test.mjs'],cwd=REPOSITORY,
+                           env={**os.environ,'ORACLE_PUBLIC_PYTHON':str(executable),'SYNTHETIC_RUNTIME_MARKER':str(marker)},capture_output=True,text=True)
+        self.assertEqual(run.returncode,0,run.stderr)
+        self.assertTrue(marker.exists(),'The configured runtime was ignored in favor of the private local fallback')
+
+
 class NativeDelta(Fixture):
     def publication_delta(self, *, patterns=False):
         published=self.base
@@ -767,6 +832,37 @@ class NativeDelta(Fixture):
                                      {'module':'tests/extra.test.mjs','covers':[0],'purpose':'Proves the additional condition'}]}
         return prior,context,delta
 
+    def schema_accepts(self,schema,values):
+        code="import Ajv from 'ajv';import fs from 'node:fs';const x=JSON.parse(fs.readFileSync(0,'utf8'));const v=new Ajv({strict:false}).compile(x.schema);process.stdout.write(JSON.stringify(x.values.map(value=>v(value))));"
+        run=subprocess.run(['node','--input-type=module','-e',code],cwd=REPOSITORY,
+                           input=json.dumps({'schema':schema,'values':values}),capture_output=True,text=True)
+        self.assertEqual(run.returncode,0,run.stderr)
+        return json.loads(run.stdout)
+
+    def test_codex_supported_binding_schema_preserves_exact_logical_closure(self):
+        _,context,_=self.prepared_delta();schema=v.delta_schema(context)['properties']['binding']
+        def compound_constants(value):
+            if isinstance(value,dict):return ('const' in value and isinstance(value['const'],(dict,list))) or any(compound_constants(x) for x in value.values())
+            return isinstance(value,list) and any(compound_constants(x) for x in value)
+        self.assertFalse(compound_constants(schema),'Actual Codex HTTP400 rejects the object-valued binding const')
+        exact=context['binding'];variants=[copy.deepcopy(exact),{**exact,'extra':'untrusted'}]
+        for key in exact:
+            variants.append({k:value for k,value in exact.items() if k!=key})
+            variants.append(dict(exact,**{key:'tampered'}))
+        legacy={**copy.deepcopy(schema),'const':exact}
+        expected=[True]+[False]*(len(variants)-1)
+        self.assertEqual(self.schema_accepts(schema,variants),expected)
+        self.assertEqual(self.schema_accepts(legacy,variants),expected)
+
+    def test_delta_design_schema_matches_legal_prior_class_without_normalization(self):
+        _,context,delta=self.prepared_delta()
+        schema=v.delta_schema(context)['properties']['design']
+        self.assertEqual(self.schema_accepts(schema,[None,'Implementation summary']),[True,False])
+        invalid=copy.deepcopy(delta);invalid['design']='Implementation summary'
+        with self.assertRaisesRegex(ValueError,'Only a feature'):v.materialize_delta(self.root,context,invalid)
+        feature=copy.deepcopy(context);feature['prior']['selection']['change_class']='feature'
+        self.assertEqual(self.schema_accepts(v.delta_schema(feature)['properties']['design'],[None,'design/synthetic.md']),[False,True])
+
     def test_sanity_seal_without_native_prior_never_dispatches_an_additive_approval(self):
         self.sealed(scope_paths=['source.mjs',v.SELECTION,v.CATALOG,'tests/spec.test.mjs']);self.commit()
         from unittest.mock import Mock
@@ -794,7 +890,9 @@ class NativeDelta(Fixture):
                 finally:oracle._PROPOSAL_DELTA.reset(token)
         finally:oracle._RUN.reset(active);oracle._METADATA_ROOT.reset(metadata)
         selected=captured[0][1]['properties']['validation_selection']
-        self.assertEqual(selected['properties']['binding']['const'],context['binding'])
+        closed=selected['properties']['binding']
+        self.assertEqual({key:value['const'] for key,value in closed['properties'].items()},context['binding'])
+        self.assertEqual(set(closed['required']),set(context['binding']));self.assertFalse(closed['additionalProperties'])
         self.assertNotIn('scope_paths',selected['properties'])
         self.assertNotIn('"scope_paths": [',captured[0][0])
         self.assertEqual(captured[1][1]['properties']['validation_selection']['properties']['revision_of'],
@@ -812,7 +910,9 @@ class NativeDelta(Fixture):
         self.assertEqual(audit['retained_coverage_sha256'],v.digest(prior['selection']['acceptance_tests']))
         self.assertEqual(v.materialize_delta(self.root,context,delta),(value,audit))
         schema=v.delta_schema(context)
-        self.assertEqual(schema['properties']['binding']['const'],context['binding'])
+        closed=schema['properties']['binding']
+        self.assertEqual({key:value['const'] for key,value in closed['properties'].items()},context['binding'])
+        self.assertEqual(set(closed['required']),set(context['binding']));self.assertFalse(closed['additionalProperties'])
         self.assertFalse(schema['additionalProperties'])
 
     def test_older_closed_binding_reconstructs_only_with_the_actual_verified_native_prior(self):

@@ -31,6 +31,27 @@ import {createDeterministicZip} from "../scripts/lib/deterministic-zip.mjs";
 // use JSONL and retained test/probe output also uses these base suffixes.
 const operationalSuffixes = [".tap", ".ndjson", ".stderr", ".stdout", ".json", ".jsonl", ".log", ".stdout.log", ".stderr.log", ".tap.log"];
 
+test("complete Git SCP repository transport stays distinct from contact and secret data", () => {
+  const account = ["git", "github.com"].join("@");
+  const remote = `${account}:synthetic-owner/sample.git`;
+  for (const text of [remote, JSON.stringify({ssh_url: remote}), `git clone ${remote}\n`]) {
+    assert.deepEqual(customerDataFindings(text, "synthetic-transport.json", new Set()), []);
+  }
+  for (const value of [account, `${account}:owner/../repo.git`, `${account}:owner/repo.git?token=value`,
+    `${account}:owner/repo.git#fragment`, `${account}:owner/repo.git/extra`, `${account}:owner/repo`,
+    `https://${remote}`, `ssh://${account}/owner/repo.git`, `secret:${remote}`,
+    ["person", "github.com"].join("@") + ":owner/repo.git",
+    ["git", "other-host.invalidated"].join("@") + ":owner/repo.git"]) {
+    assert(customerDataFindings(value, "synthetic-transport.json", new Set()).some(row => row.endsWith("non-synthetic email address")), value);
+  }
+  const contact = ["person", "production-domain.invalidated"].join("@");
+  const phone = ["202", "867", "5309"].join("-");
+  const findings = customerDataFindings(`${remote}\n${contact}\n${phone}`, "synthetic-transport.json", new Set([sha256("synthetic owner")]));
+  for (const suffix of ["non-synthetic email address", "non-fictional phone number", "prohibited customer identifier digest"]) {
+    assert(findings.some(row => row.endsWith(suffix)));
+  }
+});
+
 test("exact immutable public legal notice keeps attribution while changed/copy/customer content remains rejected", async () => {
   const path="source/host-runtime/bos-journey-notifications/vendor/WS-LICENSE.txt";
   const text=await readFile(join(root,path),"utf8");
