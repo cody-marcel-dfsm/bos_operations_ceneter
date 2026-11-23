@@ -63,9 +63,9 @@ export function createNativeBoslExecution({context, catalog}) {
     // The discovered registration contract validates the document exactly as
     // for HTTPS. The local-only registrationRequest binds the unchanged
     // submission for interpretJourneyResponse review; it is never sent.
-    register(contract, document) {
+    register(contract, document, options = {}) {
       if (!object(document)) throw new Error("Native registration requires the complete raw BOSL document.");
-      const registrationRequest = buildJourneyRegistrationRequest(contract, context.context_handle, document);
+      const registrationRequest = buildJourneyRegistrationRequest(contract, context.context_handle, document, options);
       const native = call(NATIVE_BOSL_TOOLS.register, {document: JSON.parse(registrationRequest.body)});
       return Object.freeze({...native, registrationRequest});
     },
