@@ -6,10 +6,10 @@
     "model": "gpt-6.1-sol",
     "oracle_sha256": "a63d021e2e029392fa5321ccd2c9be2ff8a361af8606a5e491e32d0562283057",
     "host": "aio",
-    "time": "2026-11-23T03:18:54Z",
+    "time": "2026-11-23T03:57:26Z",
     "origin_main": "7dc8a3bbfe9c925fbbe10812f4c0bb8397f18888",
     "request_sha256": "e70f107ea7a8cb9d81c468722cef8667bc37edecf3258920ca5c77f87bc018e3",
-    "proposal_sha256": "7a5a27b5b0ea17d6d58ef13e2d4ccfe882fba9154f2de2f05fb97fc0c26c827a"
+    "proposal_sha256": "0c4ad994973afa837f0bdec29d8c51272ecc1988ad2b77488e8f7b6552f4bb4c"
   },
   "selection": {
     "acceptance": [
@@ -37,7 +37,9 @@
       "Release preparation, prepared-record validation, deterministic publication and published-state verification consistently use release/<major>.<minor>.<patch>. Legacy IDE-specific release refs and malformed release refs are rejected for new operations. Publication safety admits release/* push events and resolves their gate base from origin/main while preserving existing main, source-ref and tag handling, exact-source CI, leased promotion and remote readback. Existing remote legacy refs remain untouched.",
       "An exact-context native envelope marked isError:true cannot expose a successful registration, lifecycle action or graph result, even with a success-shaped body and successful HTTP status. Preserve a valid returned public error when present; otherwise refuse the envelope. Valid isError:false responses and existing refusal handling remain compatible.",
       "Journal observations become eligible only for interrupted cohorts with intact original per-cohort preparation seals and intact shared plan and context. Altered source pages, schema, governance, context, seals or shared preparation admit neither clean coverage nor integration observations. Retain original raw journal bytes and unfinished or error outcomes without approval.",
-      "Journal coverage names only real assigned paths present in the sealed input inventory, and every consumed input binds a real current identity with its exact digest. Virtual retained-criterion paths and input identities never enter replayed source coverage; native criterion expansion remains responsible for those obligations."
+      "Journal coverage names only real assigned paths present in the sealed input inventory, and every consumed input binds a real current identity with its exact digest. Virtual retained-criterion paths and input identities never enter replayed source coverage; native criterion expansion remains responsible for those obligations.",
+      "The sealed cohort packet digest includes its final governance-bundle and checkpoint-journal bindings. An intact interrupted cohort can recover its eligible observations through the actual recovery consumer; changing either binding rejects adoption while preserving original artifacts and execution status.",
+      "Synthetic review workspaces supply every mandatory governing document and imported executable dependency, including the generated-output proof module, and reviewer stubs accept and forward the governance stdin payload. The immutable fourteen-module review-policy inventory remains unchanged. Review-series, governance, performance, source-frontier and publication-admission runners discover and execute their complete declared cases without skips, weakened assertions or substituted production behavior; publication admission declares all 36 cases."
     ],
     "acceptance_tests": [
       {
@@ -144,7 +146,8 @@
       },
       {
         "covers": [
-          21
+          21,
+          26
         ],
         "module": "tests/publication-admission.test.mjs",
         "purpose": "Exercise release planning and immutable prepared-record consumers with neutral refs, rejected legacy refs, exact candidate binding and unchanged publication safeguards."
@@ -169,6 +172,44 @@
         ],
         "module": "tests/shipment-workflow.test.mjs",
         "purpose": "Verify neutral release refs through shipment preparation and publication consumers while preserving immutable decisions, concurrent authorship and failure handling."
+      },
+      {
+        "covers": [
+          16,
+          17,
+          19,
+          23,
+          25,
+          26
+        ],
+        "module": "tests/oracle-review-series.test.mjs",
+        "purpose": "Exercise complete review-series cases through production recovery and custody consumers with final packet bindings, complete synthetic governance and imported proof dependencies."
+      },
+      {
+        "covers": [
+          19,
+          26
+        ],
+        "module": "tests/oracle-governance.test.mjs",
+        "purpose": "Verify governing-document admission, independent proposal and receipt gates, complete synthetic module dependencies and exclusion of maintainer workflows from customer packages."
+      },
+      {
+        "covers": [
+          19,
+          20,
+          26
+        ],
+        "module": "tests/oracle-performance.test.mjs",
+        "purpose": "Preserve bounded preparation and dispatch checks while supplying complete synthetic governance and forwarding its stdin payload through reviewer stubs."
+      },
+      {
+        "covers": [
+          19,
+          23,
+          26
+        ],
+        "module": "tests/oracle-source-frontier.test.mjs",
+        "purpose": "Exercise immutable source-page preparation and forged-page refusal with complete synthetic governance at the actual cohort delivery boundary."
       }
     ],
     "categories": [
@@ -206,7 +247,10 @@
           "tests/helpers/native-validation-state.mjs",
           "tests/command_coverage_test.py",
           "tests/shipment_workflow_test.py",
-          "tests/oracle_review_series.py"
+          "tests/oracle_review_series.py",
+          "tests/oracle-fixture.mjs",
+          "tests/oracle_fixture.py",
+          "tests/oracle_source_frontier_test.py"
         ],
         "name": "interactions",
         "tests": [
@@ -218,14 +262,18 @@
           "tests/publication-admission.test.mjs",
           "tests/deterministic-lanes.test.mjs",
           "tests/command-coverage.test.mjs",
-          "tests/shipment-workflow.test.mjs"
+          "tests/shipment-workflow.test.mjs",
+          "tests/oracle-review-series.test.mjs",
+          "tests/oracle-governance.test.mjs",
+          "tests/oracle-performance.test.mjs",
+          "tests/oracle-source-frontier.test.mjs"
         ]
       }
     ],
     "change_class": "deep_bug_fix",
     "design": null,
-    "reason": "Retain every existing acceptance criterion, module, fixture and mapping. The proposed revision preserves the existing contract while accommodating integrated history and generated release-version files within its scope. Cross-area publication and review-evidence custody require adversarial focused cases and actual completeness, pending-path, controller, lifecycle and publication interactions. No unrelated recurrence suite is selected. Preserve unchanged-test fail-before/pass-after evidence, historical outcomes, original request clocks, existing reviewer deadlines and the 300-second delivery budget. Reuse native validation only with matching consumed inputs, dependency closure, environment and retained outputs. Synthetic checks establish no published-client acceptance.",
-    "revision_of": "9b2dfa9e931e6915a59ab3df931955b5a0c32eecf1f3266cf7c4facd01637025",
+    "reason": "Retain every existing acceptance criterion, module, fixture, mapping purpose and original criterion/module pair. Add final packet-binding recovery and complete synthetic-workspace requirements, with the four affected interaction runners and their supporting fixtures. Cross-area publication and review-evidence custody require adversarial focused cases and actual completeness, pending-path, controller, lifecycle and publication interactions. Keep the immutable fourteen-module policy inventory, existing assertions and complete case discovery. No unrelated recurrence suite is selected. Preserve unchanged-test fail-before/pass-after evidence, historical outcomes, original request clocks, existing reviewer deadlines and the 300-second delivery budget. Reuse native validation only with matching consumed inputs, dependency closure, environment and retained outputs. Synthetic checks establish no published-client acceptance.",
+    "revision_of": "3f3b9b9233022d4527f2963a900fbf5eca22771b6a2f86dba42c1a00f16ccd30",
     "scope_paths": [
       "AGENTS.md",
       "README.md",
@@ -290,11 +338,19 @@
       "tests/command_coverage_test.py",
       "tests/shipment_workflow_test.py",
       "tests/command-coverage.test.mjs",
-      "tests/shipment-workflow.test.mjs"
+      "tests/shipment-workflow.test.mjs",
+      "tests/oracle-review-series.test.mjs",
+      "tests/oracle_review_series.py",
+      "tests/oracle-governance.test.mjs",
+      "tests/oracle-fixture.mjs",
+      "tests/oracle_fixture.py",
+      "tests/oracle-performance.test.mjs",
+      "tests/oracle-source-frontier.test.mjs",
+      "tests/oracle_source_frontier_test.py"
     ]
   },
-  "base_commit": "95ab27b761aeb0b85d32c3ab9c9b75017a77bc33",
-  "base_tree": "c0f8f01072e104867079bd855398c07f042a70bf",
+  "base_commit": "a3ab51455ad3c241c2e7a538c7fb45fe9b17a0ca",
+  "base_tree": "16b72740141a174a7125258137b9bf91d2c5f30e",
   "catalog_sha256": "9a96f1cd2a973457f9da681dddcc5161aa8ffda188b092d849e5bc83999391c8",
   "runtime": {
     "node": "v26.12.0",
@@ -304,8 +360,8 @@
     "architecture": "x86_64",
     "options_sha256": "ebc442c160f8629073a82976daadaba1d95a60a38d768c81c8eb06598aedcac5"
   },
-  "proposal_sha256": "7a5a27b5b0ea17d6d58ef13e2d4ccfe882fba9154f2de2f05fb97fc0c26c827a",
-  "review_sha256": "e92e2c4484c5eb024c0b9ffcc22d4d720b459d40c5b9505905b6142b6a67383b",
+  "proposal_sha256": "0c4ad994973afa837f0bdec29d8c51272ecc1988ad2b77488e8f7b6552f4bb4c",
+  "review_sha256": "06cbf56cfe2decc10c8944eefd8988e24a83690655e132493df0d918fac4bf00",
   "commands": [
     {
       "category": "sanity",
@@ -358,7 +414,11 @@
         "tests/publication-admission.test.mjs",
         "tests/deterministic-lanes.test.mjs",
         "tests/command-coverage.test.mjs",
-        "tests/shipment-workflow.test.mjs"
+        "tests/shipment-workflow.test.mjs",
+        "tests/oracle-review-series.test.mjs",
+        "tests/oracle-governance.test.mjs",
+        "tests/oracle-performance.test.mjs",
+        "tests/oracle-source-frontier.test.mjs"
       ],
       "tests": [
         "tests/journey-package-parity.test.mjs",
@@ -369,7 +429,11 @@
         "tests/publication-admission.test.mjs",
         "tests/deterministic-lanes.test.mjs",
         "tests/command-coverage.test.mjs",
-        "tests/shipment-workflow.test.mjs"
+        "tests/shipment-workflow.test.mjs",
+        "tests/oracle-review-series.test.mjs",
+        "tests/oracle-governance.test.mjs",
+        "tests/oracle-performance.test.mjs",
+        "tests/oracle-source-frontier.test.mjs"
       ],
       "fixtures": [
         "tests/helpers/synthetic-bos-discovery-service.mjs",
@@ -384,7 +448,10 @@
         "tests/helpers/native-validation-state.mjs",
         "tests/command_coverage_test.py",
         "tests/shipment_workflow_test.py",
-        "tests/oracle_review_series.py"
+        "tests/oracle_review_series.py",
+        "tests/oracle-fixture.mjs",
+        "tests/oracle_fixture.py",
+        "tests/oracle_source_frontier_test.py"
       ]
     }
   ],
@@ -397,6 +464,6 @@
     "reasoning_effort": "medium",
     "maximum_reasoning_effort": "medium"
   },
-  "contract_sha256": "3f3b9b9233022d4527f2963a900fbf5eca22771b6a2f86dba42c1a00f16ccd30",
-  "seal": "9ee506769d3581e1241aba85459406ba064b8dfff17683c6e49d49915bbc49eb"
+  "contract_sha256": "b0ff5ba994147ffa1d816d34d632af31ebd99e434d95d0b74fee3d33f03435e1",
+  "seal": "12164dd2b4d516757aa14d10689a0769cc138fbb1a8ced9ac718eb1d03d7270b"
 }
