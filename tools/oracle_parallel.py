@@ -165,7 +165,15 @@ def replay_journal(o, text, plan, cohort, context, packet_sha256):
                 if not isinstance(row.get("reason"), str) or not row["reason"].strip():
                     raise ValueError("integration concern lacks a reason")
                 o._checked_inputs(row.get("inputs"), effective)
-                integration.setdefault(row["concern"], {key: row[key] for key in ("concern", "status", "inputs", "reason")})
+                entry = {key: row[key] for key in ("concern", "status", "inputs", "reason")}
+                prior = integration.get(row["concern"])
+                if prior is None or prior == entry:
+                    integration[row["concern"]] = entry
+                else:
+                    # Conflicting dispositions never keep an earlier completion.
+                    integration[row["concern"]] = dict(entry, status="UNREVIEWED",
+                                                       reason="Conflicting journal dispositions require reassessment")
+                    rejected.append({"line": number, "reason": "conflicting integration disposition: " + row["concern"]})
             else:
                 raise ValueError("unknown journal type")
         except (ValueError, KeyError, TypeError, o.OracleApprovalError) as exc:

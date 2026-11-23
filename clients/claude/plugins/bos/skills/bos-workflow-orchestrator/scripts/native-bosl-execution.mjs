@@ -1,5 +1,5 @@
 import Ajv2020 from "./vendor/ajv2020.bundle.mjs";
-import {buildJourneyRegistrationRequest, validateActionEnvelope} from "./journey-runtime-client.mjs";
+import {buildJourneyRegistrationRequest, validateActionEnvelope, validatePayload} from "./journey-runtime-client.mjs";
 import {unwrapNativeRead, validateCurrentContext} from "./native-callback-contract.mjs";
 
 // Owner-directed native BOSL execution exception (2026-11-19). These exact
@@ -76,10 +76,8 @@ export function createNativeBoslExecution({context, catalog}) {
         return call(NATIVE_BOSL_TOOLS.action, {href: action.href});
       }
       if (!payload.length) throw new Error("action requires a body declared by payload_schema");
-      const ajvPayload = new Ajv2020({strict: false, validateFormats: false});
-      if (!ajvPayload.compile(action.payload_schema)(payload[0])) {
-        throw new Error("action payload does not match payload_schema");
-      }
+      // The same validator as HTTPS, including date-time formats.
+      validatePayload(payload[0], action.payload_schema);
       return call(NATIVE_BOSL_TOOLS.action, {href: action.href, payload: structuredClone(payload[0])});
     },
     graphExport: () => call(NATIVE_BOSL_TOOLS.graphExport, {}),

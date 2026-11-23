@@ -203,7 +203,7 @@ export function validateActionEnvelope(action, { lifecycleOnly = false } = {}) {
   return action;
 }
 
-function validatePayload(payload, schema) {
+export function validatePayload(payload, schema) {
   const ajv = new Ajv2020({ allErrors: true, strict: false });
   ajv.addFormat("date-time", {
     type: "string",
