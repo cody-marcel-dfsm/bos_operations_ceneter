@@ -92,6 +92,8 @@ assert.equal(run.status,0,`${run.stdout}\n${run.stderr}`);assert.match(run.stder
 
 
 test('portable published proposal fixtures enforce plan and private-value boundaries',()=>{
+const parity=spawnSync('Vault/index/venv/bin/python',['-B','-c','import validation_contract as native; from oracle_core import spec; assert [(p.pattern,p.flags) for p in native.PRIVATE_PATTERNS] == [(p.pattern,p.flags) for p in spec.PRIVATE_PATTERNS]'],{cwd:new URL('../',import.meta.url),env:{...process.env,PYTHONPATH:'tools',PYTHONDONTWRITEBYTECODE:'1'},encoding:'utf8',timeout:10000,maxBuffer:1024*1024});
+assert.equal(parity.status,0,`${parity.stdout}\n${parity.stderr}`);
 const run=spawnSync('Vault/index/venv/bin/python',['-B','tools/oracle_public/tests/test_proposal_to_spec.py'],{cwd:new URL('../',import.meta.url),env:{...process.env,PYTHONPATH:'tools',PYTHONDONTWRITEBYTECODE:'1'},encoding:'utf8',timeout:90000,maxBuffer:4*1024*1024});
 assert.equal(run.status,0,`${run.stdout}\n${run.stderr}`);assert.match(run.stderr,/Ran 4 tests/);assert.doesNotMatch(run.stderr,/skipped=/);
 });

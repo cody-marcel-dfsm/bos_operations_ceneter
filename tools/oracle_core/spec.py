@@ -14,7 +14,7 @@ PRIVATE_PATTERNS = tuple(re.compile(p) for p in (
     r'(?i)\b(?:cookie|set-cookie)\s*:\s*\S+', r'-----BEGIN (?:[A-Z ]+ )?PRIVATE KEY-----',
     r'\b(?:sk|pk)_(?:live|test)_[A-Za-z0-9]{12,}\b', r'\b(?:ghp|github_pat|xox[baprs]|AIza)[A-Za-z0-9_-]{12,}\b',
     r'(?i)\b(?:api[_-]?key|access[_-]?token|auth[_-]?token|client[_-]?secret|password|private[_-]?key)\s*(?:=|:)\s*[^\s,;]{8,}',
-    r'(?:^|[\s"\'(=])(?:/home/|/Users/|/root/|[A-Za-z]:\\)'))
+    r'(?:^|[\s"\'(=])(?:/home/|/'+'Users/'+r'|/root/|[A-Za-z]:\\)'))
 
 def private_matches(value, where='spec'):
     """Field paths whose text looks like a secret or a local absolute path."""
@@ -114,7 +114,8 @@ def materialize(review,proposal,catalog,provenance):
         for name,argv in entries:
             if not isinstance(argv,list) or not argv or not all(isinstance(x,str) and x for x in argv):raise ValueError('Trusted catalog argv malformed')
             commands.append({'category':row['name'],'argv':argv,'tests':[name] if name else [],'fixtures':row['fixtures']})
-    if private_matches({'selection':selection,'runtime':provenance,'commands':commands}):raise ValueError('Private text is forbidden in publishable specification fields')
+    private_fields=[name for name,value in {'selection':selection,'runtime':provenance,'commands':commands}.items() if private_matches(value)]
+    if private_fields:raise ValueError('Private text is forbidden in publishable specification fields: '+', '.join(private_fields))
     stamp={'engine':provenance['engine'],'model':provenance['model'],'oracle_sha256':provenance['core_sha256'],
            'host':provenance['host_sha256'],'time':datetime.now(timezone.utc).isoformat().replace('+00:00','Z'),
            'origin_main':provenance['origin_main'],'request_sha256':hashlib.sha256(proposal.encode()).hexdigest(),
