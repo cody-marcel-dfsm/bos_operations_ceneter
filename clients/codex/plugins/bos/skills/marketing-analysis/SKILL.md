@@ -2,8 +2,8 @@
 name: marketing-analysis
 description: Organize, audit, and analyze tenant-scoped marketing campaigns across SendGrid, email, Calendar, GA4, Google Ads, attribution, contact hygiene, suppressions, and campaign artifacts.
 metadata:
-  version: "1.0.14"
-  requires: "{\"bos-mcp-client\":\"1.0.14\",\"email-account-routing\":\"1.0.14\"}"
+  version: "1.0.15"
+  requires: "{\"bos-mcp-client\":\"1.0.15\",\"email-account-routing\":\"1.0.15\"}"
 ---
 
 

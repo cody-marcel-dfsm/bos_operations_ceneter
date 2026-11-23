@@ -127,7 +127,12 @@ plugin never inherits either historical BOS default.
    remove existing operational native compatibility. The owner-directed native
    BOSL execution exception adds exactly `lead-director.journeys.register`,
    `lead-director.journeys.action` and `bos.graph_export.read` under steps 6
-   and 7. Preserve existing native
+   and 7. The separately advertised operational `feedback.items.wait`
+   uses this same native execution path with its exact current closed schema and
+   returned item cursor; it requires no exported credential or socket subprocess.
+   Follow the feedback skill's item-connection procedure for peer acknowledgment,
+   design handoff and active continuation. These preserve existing operational
+   native compatibility and grant no idle wake or additional authority. Preserve existing native
    discovery/control and embedded-resource delivery. Never convert a Describe
    operation key into `tool_name` or invent an alias for an unadvertised operation.
    Keep raw org/app/install/role IDs out of business arguments and verify the returned context before using its result.

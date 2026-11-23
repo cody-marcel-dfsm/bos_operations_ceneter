@@ -2,8 +2,8 @@
 name: collision-call-audit-email
 description: Turn collision-repair prospect calls, transcripts, CRM evidence, public research, and audit artifacts into evidence-controlled profiles and personalized follow-up email drafts.
 metadata:
-  version: "1.0.14"
-  requires: "{\"bos-mcp-client\":\"1.0.14\"}"
+  version: "1.0.15"
+  requires: "{\"bos-mcp-client\":\"1.0.15\"}"
 ---
 
 

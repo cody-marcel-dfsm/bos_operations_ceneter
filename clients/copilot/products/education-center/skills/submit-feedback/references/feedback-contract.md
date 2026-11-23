@@ -200,9 +200,11 @@ IDs return the same denial.
 Create and resolve events retain notification intent for a configured authorized
 team recipient. Notices contain the feedback ID and event only; the recipient
 signs in to read the report. A receipt does not prove notification delivery.
-The native read/comment tools alone create no push subscription. Item-scoped
-streaming requires the currently advertised discussion descriptor and an admitted
-authenticated host, as described in [item-discussion.md](item-discussion.md).
+The native read/comment tools alone create no push subscription.
+Active item observation uses the freshly advertised `feedback.items.wait` through
+the existing signed-in BOS connection, or the currently advertised discussion
+descriptor with an admitted authenticated socket host, as described in
+[item-discussion.md](item-discussion.md).
 An unsupported host retains ordinary tracking; poll only for the requested
 interval and duration. Issues, discussion and media remain private;
 only separately authorized code patches may become public.
@@ -312,3 +314,14 @@ The client supplies no request identity, idempotency key, attempt identity,
 retry counter, reconciliation state, or execution state. BOS Service derives
 request identity and owns idempotency, bounded retries, and uncertain-outcome
 reconciliation.
+
+
+## Paired connection and design handoff
+
+Follow [the connection and handoff procedure](item-discussion.md) for transport
+selection, the same-item peer exchange, an expected complete design and its read
+acknowledgment, active returned-cursor continuation, gaps and uncertain writes.
+A substantive correlated peer response can fulfill the handshake; committed comment
+storage alone proves no peer participation. An expired journey wait is re-armed only
+through its current returned state/actions and establishes no transport deadline or
+idle wake. Keep all existing disclosure, sanitization, media and lifecycle boundaries.

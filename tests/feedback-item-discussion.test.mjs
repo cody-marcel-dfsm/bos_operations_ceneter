@@ -225,3 +225,47 @@ test("legacy lifetime max_commands still bounds a legacy producer's socket", asy
   for (let n = 0; n < 2; n++) {await f.session.submitComment({body: `legacy ${n}`}); await settle(() => f.session.commentStatus().status === "committed");}
   await assert.rejects(f.session.submitComment({body: "legacy over"})); await f.session.close(); await running;
 });
+
+// The instructions carry real tool examples: validate their closed envelopes and
+// actual returned-cursor continuation rather than asserting editorial wording.
+test("native item-wait examples use schema-valid closed requests and the returned journal cursor", async () => {
+  const guide = await readFile(new URL("../source/platform/submit-feedback/references/item-discussion.md", import.meta.url), "utf8");
+  const examples = [...guide.matchAll(/```json\n([\s\S]*?)\n```/gu)].map(match => JSON.parse(match[1]));
+  const requests = examples.filter(value => value.tool_name === "feedback.items.wait");
+  const initial = requests.find(value => value.arguments?.wait_seconds === 0);
+  const continued = requests.find(value => value.arguments?.wait_seconds > 0);
+  const frame = examples.find(value => value.type === "journal");
+  assert.ok(initial && continued && frame, "Worked instructions need initialization, its actual journal, and a held continuation");
+  const keys = value => Object.keys(value).sort();
+  for (const request of requests) {
+    assert.deepEqual(keys(request), ["arguments", "tool_name"]);
+    assert.ok(keys(request.arguments).every(key => ["feedback_id", "cursor", "wait_seconds"].includes(key)));
+    assert.match(request.arguments.feedback_id, /^FB-[0-9]{4}-[0-9]{6,128}$/u);
+    assert.ok(Number.isInteger(request.arguments.wait_seconds) && request.arguments.wait_seconds >= 0 && request.arguments.wait_seconds <= 25);
+  }
+  assert.deepEqual(keys(initial.arguments), ["feedback_id", "wait_seconds"]);
+  assert.deepEqual(keys(frame), ["comments", "cursor", "earlier_history", "feedback_id", "history", "type"]);
+  assert.equal(frame.feedback_id, initial.arguments.feedback_id);
+  assert.equal(continued.arguments.feedback_id, frame.feedback_id);
+  assert.equal(continued.arguments.cursor, frame.cursor);
+  assert.match(frame.cursor, new RegExp(`^fj1:${frame.feedback_id}:[0-9]{1,12}:[0-9]{1,12}$`, "u"));
+  assert.ok(Array.isArray(frame.comments) && frame.comments.length <= 50);
+  assert.ok(Array.isArray(frame.history) && frame.history.length <= 50);
+  assert.equal(typeof frame.earlier_history, "boolean");
+});
+
+test("every active product ships the same item-connection and handoff reference", async () => {
+  const {listProducts, resolveProductSkills, root} = await import("../scripts/lib/package-model.mjs");
+  const canonical = await readFile(join(root, "source/platform/submit-feedback/references/item-discussion.md"), "utf8");
+  const hosts = {codex: "codex/plugins", claude: "claude/plugins", copilot: "copilot/products", gemini: "gemini/extensions", muse: "muse/plugins"};
+  let consumers = 0;
+  for (const {manifest} of await listProducts()) {
+    if (manifest.release_status === "disabled") continue;
+    if (!(await resolveProductSkills(manifest)).some(skill => skill.name === "submit-feedback")) continue;
+    for (const host of manifest.clients) {
+      assert.equal(await readFile(join(root, "clients", hosts[host], manifest.name, "skills/submit-feedback/references/item-discussion.md"), "utf8"), canonical);
+      consumers++;
+    }
+  }
+  assert.ok(consumers >= 5, "Canonical connection guidance must reach all maintained host consumers");
+});
