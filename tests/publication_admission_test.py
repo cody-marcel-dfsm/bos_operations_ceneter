@@ -956,7 +956,29 @@ def owned_remote(test, root, commit):
         ' with os.fdopen(fd,"w") as stream:stream.write(json.dumps({"action":action,"target":"owned_fixture_bare"})+"\\n")',
         'os.execv(REAL,[REAL,*args])',
     ])+"\n"
-    executable.write_text(script);executable.chmod(0o700)
+    # Only transport-capable commands enter the Python checks below. Ordinary
+    # local commands exec real Git directly from /bin/sh: starting an
+    # interpreter for each of thousands of local Git calls dominated the
+    # publication runner. The first non-"-c" argument selects the path exactly
+    # as the Python check parses it, so leading options cannot bypass it.
+    transport=Path(directory.name)/'transport.py'
+    transport.write_text(script);transport.chmod(0o700)
+    quote=lambda value:"'"+value.replace("'","'\\''")+"'"
+    executable.write_text("\n".join([
+        '#!/bin/sh',
+        'BARE='+quote(str(remote)),
+        '[ -d "$BARE" ] && [ ! -L "$BARE" ] || { echo "Synthetic bare remote moved" >&2; exit 1; }',
+        'skip=0; action=',
+        'for arg do',
+        ' if [ "$skip" = 1 ]; then skip=0; continue; fi',
+        ' if [ "$arg" = -c ]; then skip=1; continue; fi',
+        ' action=$arg; break',
+        'done',
+        'case "$action" in',
+        ' push|fetch|ls-remote|clone|pull|submodule|maintenance|remote|"") exec '+quote(str(transport))+' "$@" ;;',
+        'esac',
+        'exec '+quote(_REAL_GIT)+' "$@"',
+    ])+"\n");executable.chmod(0o700)
     environment=patch.dict(os.environ,{'PATH':str(directory.name)+os.pathsep+os.environ.get('PATH','')})
     environment.start();test.addCleanup(environment.stop)
     test.transport_journal=Path(directory.name)/'transport.jsonl'
