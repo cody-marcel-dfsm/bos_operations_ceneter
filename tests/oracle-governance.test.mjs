@@ -108,7 +108,16 @@ test("ordinary agents call the Oracle utility and cannot act as approver", () =>
   assert.match(workflow, /permissions:\s+contents: read\s+statuses: read/);
   assert.match(commandCoverage, /approved = public_status\.verify_publication\(root, candidate, execute=execute\)/);
   assert.match(commandCoverage, /if digest:[\s\S]*REUSED_NATIVE_APPLICABILITY[\s\S]*else:[\s\S]*execute\(command\["command"\], cwd=root, check=True\)/);
-  assert.match(oracleUtility, /"--ignore-user-config"/i);
+  assert.match(oracleUtility, /from \.oracle_core\.runner import codex_command/);
+  assert.match(oracleUtility, /cmd = codex_command\("codex",model,effort,root,schema_path,output,prompt,developer_instructions,/);
+  const emitted = JSON.parse(execFileSync("python3", ["-c", [
+    "import json",
+    "from pathlib import Path",
+    "from tools.oracle_core.runner import codex_command",
+    "print(json.dumps(codex_command('codex','synthetic-model',None,Path.cwd(),Path('synthetic-schema.json'),Path('synthetic-result.json'),'synthetic prompt','synthetic policy',sandbox='danger-full-access',portable=False)))"
+  ].join("; ")], {cwd: root, encoding: "utf8"}));
+  assert.ok(emitted.includes("--ignore-user-config"));
+  assert.ok(emitted.includes("--ephemeral"));
   assert.match(oracleUtility, /vault_index\.py", "evidence", VAULT_QUERY/i);
   assert.match(oracleUtility, /vault-query\.json/i);
   assert.match(oracleUtility, /Technical approval never requires human deployment permission/i);

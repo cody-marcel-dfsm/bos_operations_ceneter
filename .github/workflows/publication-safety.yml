@@ -42,7 +42,7 @@ jobs:
           from tools import deterministic_oracle as profile
           root=Path.cwd()
           base=os.environ['VALIDATION_BASE_SHA']
-          if os.environ.get('GITHUB_REF','').startswith(('refs/heads/codex/release-v','refs/heads/codex/source-')):
+          if os.environ.get('GITHUB_REF','').startswith(('refs/heads/release/','refs/heads/codex/source-')):
               base=profile.native.git(root,'rev-parse','origin/main')
           source=profile.native.git(root,'rev-parse','HEAD')
           selected=profile.applies(root,base,source)
