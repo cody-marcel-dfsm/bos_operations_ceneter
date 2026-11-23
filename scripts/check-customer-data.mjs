@@ -265,7 +265,7 @@ export function byteCountPrivacyText(text) {
   // retain every other byte and all original text in the other privacy views.
   const continuation = String.raw`(?:\r?\n# )*`;
   const suffix = [..."_bytes"].join(continuation) + continuation;
-  const spacing = String.raw`(?:\s|\r?\n# )*`;
+  const spacing = String.raw`(?:\r?\n# |(?!\r?\n# )\s)*`;
   const slot = new RegExp("(" + suffix + String.raw`\\*"` + spacing + ":" + spacing +
     String.raw`)\d+(?![\d.eE])`, "gu");
   return text.replace(slot, "$10")
