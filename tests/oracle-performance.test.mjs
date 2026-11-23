@@ -200,10 +200,13 @@ with tempfile.TemporaryDirectory() as directory:
     git('init','-q');git('config','user.name','Synthetic Reviewer');git('config','user.email','review@example.invalid')
     for name,text in {'AGENTS.md':'governed','.agents/skills/oracle/SKILL.md':'synthetic authority',
                       '.agents/skills/oracle/review-output.schema.json':'{}','candidate.txt':'base','package.json':'{"private":true,"version":"0.0.0","scripts":{}}\\n',
-                      '.gitignore':'Vault/\\n__pycache__/\\n'}.items():
+                      '.gitignore':'Vault/\\n__pycache__/\\n',
+                      # Every cohort receives the complete governing texts; supply synthetic ones.
+                      'Vault/docs/CONSTITUTION.md':'synthetic constitution','Vault/docs/architecture.md':'synthetic architecture',
+                      'tools/validation-contract.md':'synthetic validation contract'}.items():
         path=root/name;path.parent.mkdir(parents=True,exist_ok=True);path.write_text(text)
     (root/'.agents/skills/oracle/review-output.schema.json').write_bytes((repository/'.agents/skills/oracle/review-output.schema.json').read_bytes())
-    (root/'tools').mkdir();shutil.copy(repository/'tools/codex_child_model.py',root/'tools/codex_child_model.py')
+    (root/'tools').mkdir(exist_ok=True);shutil.copy(repository/'tools/codex_child_model.py',root/'tools/codex_child_model.py')
     git('add','.');git('commit','-qm','base')
     original_run=subprocess.run;original_popen=subprocess.Popen;reviewer_launches=[]
     def guarded(command,*args,**kwargs):
@@ -232,10 +235,11 @@ with tempfile.TemporaryDirectory() as directory:
                 for name in packet['cohort']['integration_checks']])
         Path(command[command.index('--output-last-message')+1]).write_text(json.dumps(result))
         return subprocess.CompletedProcess(command,0,'retained stdout','retained stderr')
-    def managed(owner,root,run,command,environment,controller):
+    def managed(owner,root,run,command,environment,controller,stdin_payload=None):
         assert controller is not None
         reviewer_launches.append(command)
-        return child(command,cwd=root,capture_output=True,text=True,env=environment)
+        return child(command,cwd=root,capture_output=True,text=True,env=environment,
+                     input=stdin_payload.decode() if stdin_payload is not None else None)
     lifecycle.reviewer_process=managed
     o.subprocess.run=child;o.selected_model=lambda:'actual-caller-model'
     o.review_proposal(root,'Problem: repeated; Cause: setup; Recommended change: combined',[],None)
