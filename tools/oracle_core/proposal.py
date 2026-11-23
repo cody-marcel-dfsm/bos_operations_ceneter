@@ -14,25 +14,44 @@ def core_identity():
 
 
 def source(root):
-    manifest=root/'oracle-export-manifest.json'
-    if manifest.is_file():
-        value=json.loads(relative(root,'oracle-export-manifest.json').read_text());return value.get('source_commit'),value.get('source_tree')
+    """Explicit own-project fetched baseline, or admitted artifact provenance."""
+    import re
+    root=Path(root).resolve()
     owner=subprocess.run(['git','rev-parse','--show-toplevel'],cwd=root,capture_output=True,text=True)
-    if owner.returncode or Path(owner.stdout.strip()).resolve()!=Path(root).resolve():return None,None
-    run=subprocess.run(['git','rev-parse','HEAD','HEAD^{tree}'],cwd=root,capture_output=True,text=True)
-    values=run.stdout.splitlines()
-    return tuple(values) if run.returncode==0 and len(values)==2 else (None,None)
+    if owner.returncode==0 and Path(owner.stdout.strip()).resolve()==root:
+        run=subprocess.run(['git','rev-parse','HEAD','HEAD^{tree}','refs/remotes/origin/main^{commit}'],cwd=root,capture_output=True,text=True)
+        values=run.stdout.splitlines()
+        if run.returncode or len(values)!=3 or any(not re.fullmatch('[a-f0-9]{40}',v) for v in values):
+            raise ValueError('Own project requires its fetched origin/main before model execution')
+        ancestry=subprocess.run(['git','merge-base','--is-ancestor',values[2],values[0]],cwd=root,capture_output=True)
+        if ancestry.returncode:raise ValueError('Fetched project upstream is not reachable from its current source')
+        return tuple(values)
+    manifest=relative(root,'oracle-export-manifest.json')
+    value=json.loads(manifest.read_text())
+    values=tuple(value.get(k) for k in ['source_commit','source_tree','origin_main'])
+    if any(not isinstance(v,str) or not re.fullmatch('[a-f0-9]{40}',v) for v in values):
+        raise ValueError('Admitted artifact requires explicit upstream and source identities')
+    return values
+
+
+def tool_source(root):
+    # An installed artifact's public provenance is data owned by this package.
+    # Generic projects never inherit a sibling or ancestor project's metadata.
+    if Path(root).resolve()!=Path(__file__).resolve().parent.parent:return None
+    path=Path(root)/'oracle-export-manifest.json'
+    return json.loads(relative(root,path.name).read_text()).get('source_commit') if path.is_file() else None
 
 
 def prepare(config_path,proposal,*,mode="native_cli"):
     root,config=load(config_path)
+    commit,tree,origin_main=source(root)
     index=Index(relative(root,config['corpus']['root']),config['corpus']['sources'],relative(root,config['state'],exists=False)/'index')
     evidence=index.snapshot_evidence(proposal);evidence.pop('timings',None)
     policy=relative(root,config['policy']).read_text();catalog=json.loads(relative(root,config['catalog']).read_text())
-    context=context_input(policy,proposal,evidence,catalog);runtime=runner.preflight(config['runner']);commit,tree=source(root)
+    context=context_input(policy,proposal,evidence,catalog);runtime=runner.preflight(config['runner'])
     binding={'execution_mode':mode,'project':config['project'],'config_sha256':digest(Path(config_path).read_bytes()),'context_sha256':identity(context),
-             'core_sha256':core_identity(),'runtime':runtime,'source_commit':commit,'source_tree':tree}
-    if mode=='native_cli' and (not commit or not tree):raise ValueError('Exact Git root or admitted export source identity required before model execution')
+             'core_sha256':core_identity(),'runtime':runtime,'source_commit':commit,'source_tree':tree,'origin_main':origin_main,'tool_source_commit':tool_source(root)}
+    if mode=='native_cli' and (not commit or not tree or not origin_main):raise ValueError('Exact Git root or admitted export source identity required before model execution')
     provenance={**binding,'engine':runtime['engine'],'model':runtime['model'],'host_sha256':digest(platform.node().encode())}
     return root,config,context,binding,provenance
 

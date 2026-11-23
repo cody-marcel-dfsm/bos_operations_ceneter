@@ -67,7 +67,7 @@ def materialize(review,proposal,catalog,provenance):
     validate_review(review,catalog)
     if review['verdict']=='REJECTED':return None
     import re
-    if any(not isinstance(provenance.get(k),str) or not re.fullmatch('[a-f0-9]{40}',provenance[k]) for k in ['source_commit','source_tree']):raise ValueError('An exact declared Git or export source identity is required')
+    if any(not isinstance(provenance.get(k),str) or not re.fullmatch('[a-f0-9]{40}',provenance[k]) for k in ['source_commit','source_tree','origin_main']):raise ValueError('An exact declared Git or export source identity is required')
     if any(not isinstance(provenance.get(k),str) or not re.fullmatch('[a-f0-9]{64}',provenance[k]) for k in ['core_sha256','host_sha256']):raise ValueError('Exact core/runtime identity required')
     selection=review['validation_selection'];commands=[]
     for row in selection['categories']:
@@ -80,7 +80,7 @@ def materialize(review,proposal,catalog,provenance):
             commands.append({'category':row['name'],'argv':argv,'tests':[name] if name else [],'fixtures':row['fixtures']})
     stamp={'engine':provenance['engine'],'model':provenance['model'],'oracle_sha256':provenance['core_sha256'],
            'host':provenance['host_sha256'],'time':datetime.now(timezone.utc).isoformat().replace('+00:00','Z'),
-           'origin_main':provenance.get('source_commit'),'request_sha256':hashlib.sha256(proposal.encode()).hexdigest(),
+           'origin_main':provenance['origin_main'],'request_sha256':hashlib.sha256(proposal.encode()).hexdigest(),
            'proposal_sha256':hashlib.sha256(proposal.encode()).hexdigest()}
     value={'schema':'boc.validation-contract/v2','kind':'oracle-spec/1','stamp':stamp,'selection':selection,
            'base_commit':provenance.get('source_commit'),'base_tree':provenance.get('source_tree'),'catalog_sha256':identity(catalog),

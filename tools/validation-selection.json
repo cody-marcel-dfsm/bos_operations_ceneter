@@ -4,23 +4,23 @@
   "stamp": {
     "engine": "codex",
     "model": "gpt-6.1-sol",
-    "oracle_sha256": "dae2fb07ccd8bfcd1130950d5517ccee25a1d327e07e21152b058c7e1d62ec86",
+    "oracle_sha256": "96a60d0fc5995506d4579625137910c3b6bfcbe644a9003bb227c9fe68a769e0",
     "host": "Codys-MacBook-Pro.local",
-    "time": "2026-11-23T05:55:44Z",
+    "time": "2026-11-23T06:31:56Z",
     "origin_main": "d6f6dac91af5e962ddc7acaf39efaa302708408b",
     "request_sha256": null,
-    "proposal_sha256": "c8fe4e82a4d43c44403b3592cb9175307cf71ea617c3b28f23831ff66e7cb96e"
+    "proposal_sha256": "79db3279d14bf1cd858e6d6e147c624328579934fae39b44a0ceb8b7162f5148"
   },
   "selection": {
     "acceptance": [
       "Extract one reusable proposal, runner, retrieval, specification, seal and custody implementation while preserving existing command and import behavior through project adapters.",
       "Standalone execution requires explicit project, trusted policy, catalog, corpus, model capabilities, budget and state configuration. Missing or ambiguous configuration fails closed, and retrieved corpus content remains untrusted evidence.",
       "Real local Chroma indexing and search operate on synthetic public fixtures without skips, preserve source, chunk and configuration identities, reject stale evidence and publish index state consistently.",
-      "Proposal results and generated specifications preserve the current oracle-spec/1 format, complete acceptance-to-test bindings and exact input identities. Malformed, incomplete and uncertain executions retain their actual outcomes without automatic replay or paid fallback. Recovery of completed model output requires matching input, configuration, corpus, core, runtime and result identities; stale or tampered recovery fails closed.",
-      "Export reads immutable committed inputs through a complete closed mapping, rejects unsafe or unlisted members and produces independently verifiable artifact bytes with license, attribution and provenance. The exact public inventory includes its explicitly mapped CI workflow. Source provenance distinguishes the canonical commit identity from independently established upstream publication.",
+      "Proposal results and generated specifications preserve the current oracle-spec/1 format, complete acceptance-to-test bindings and exact input identities. Malformed, incomplete and uncertain executions retain their actual outcomes without automatic replay or paid fallback. Recovery of completed model output requires matching input, configuration, corpus, core, runtime and result identities; stale or tampered recovery fails closed. Materialization requires an explicit valid upstream origin distinct from tool-source identity, includes it in operation and recovery bindings, and never substitutes source_commit. An exact project Git root supplies its own HEAD, tree and reachable existing origin/main; parent repositories are excluded, and missing upstream fails before model execution.",
+      "Export reads immutable committed inputs through a complete closed mapping, rejects unsafe or unlisted members and produces independently verifiable artifact bytes with license, attribution and provenance. The exact public inventory includes its explicitly mapped CI workflow. Source provenance distinguishes the canonical commit identity from independently established upstream publication. The sole added generation input is the existing sealed candidate specification: require a regular immutable blob, valid existing family seal, lowercase 40-hex upstream commit, commit existence and ancestry to the candidate. Export only origin_main as the additional generated manifest key; preserve the 31-member inventory and exclude the raw specification, policy and approval evidence.",
       "A fresh exported installation runs independently of private knowledge, sibling checkouts and undeclared host configuration. Private material, credentials, operational state and product packages remain outside the artifact. Its public CI executes all four public test modules and the real labelled retrieval benchmark without model or provider calls or credentials.",
-      "A separate deterministic verification profile binds complete committed source, selected tests, artifact bytes, runtime, dependencies and retained outputs. Existing profiles and publication restrictions remain enforced, with no completed-source model fallback. Full native VERIFIED requires every selected module. Public CI executes a separately typed CI_ONLY projection omitting exactly the native live-proposal module, makes no provider calls and receives no provider credentials. Publication rejects CI_ONLY as a substitute for a current full native receipt and rejects missing, stale or tampered native evidence. Only a separately declared bounded setup stage in the existing CI job or explicitly mapped public workflow may provision the pinned Python runtime, binary-only hash-locked dependencies and hash-verified public embedding archive. Archive admission enforces download and extracted-size limits and rejects unsafe paths, links, duplicate entries and unsupported member types. Optional caching contains only verified public setup inputs and revalidates restored bytes. Missing, incompatible or unverified setup fails closed; validation runtime never installs or downloads missing inputs. Receipts bind runtime, dependency-lock and embedding identities. Explicit artifact-only validation binds the genuine sealed feature base, executes the complete native selected commands and standalone export checks, and records COMPONENT_ARTIFACT_VERIFIED with source_publication=false. Current origin observation remains separate metadata. Every OC push and promotion path refuses artifact-only receipts, including when origin later matches their base; existing whole-range source-publication guards remain enforced. Public upload requires current full native component proof, followed by independent public CI and exact-commit artifact readback.",
-      "A bounded normal-plan model-adapter demonstration consumes only public example inputs and records a truthful conceptual proposal outcome with exact configuration and model evidence.",
+      "A separate deterministic verification profile binds complete committed source, selected tests, artifact bytes, runtime, dependencies and retained outputs. Existing profiles and publication restrictions remain enforced, with no completed-source model fallback. Full native VERIFIED requires every selected module. Public CI executes a separately typed CI_ONLY projection omitting exactly the native live-proposal module, makes no provider calls and receives no provider credentials. Publication rejects CI_ONLY as a substitute for a current full native receipt and rejects missing, stale or tampered native evidence. Only a separately declared bounded setup stage in the existing CI job or explicitly mapped public workflow may provision the pinned Python runtime, binary-only hash-locked dependencies and hash-verified public embedding archive. Archive admission enforces download and extracted-size limits and rejects unsafe paths, links, duplicate entries and unsupported member types. Optional caching contains only verified public setup inputs and revalidates restored bytes. Missing, incompatible or unverified setup fails closed; validation runtime never installs or downloads missing inputs. Receipts bind runtime, dependency-lock and embedding identities. Explicit artifact-only validation binds the genuine sealed feature base, executes the complete native selected commands and standalone export checks, and records COMPONENT_ARTIFACT_VERIFIED with source_publication=false. Current origin observation remains separate metadata. Every source push and promotion path refuses artifact-only receipts, including when origin later matches their base; existing whole-range source-publication guards remain enforced. Public upload requires current full native component proof, followed by independent public CI and exact-commit artifact readback. The native witness requires exact equality between the immutable candidate specification upstream, generated manifest upstream, completed provenance upstream and materialized specification stamp, and rejects absent, malformed or mismatched values.",
+      "A bounded normal-plan model-adapter demonstration consumes only public example inputs and records a truthful conceptual proposal outcome with exact configuration and model evidence. Its upstream provenance matches the immutable exported manifest and candidate specification while tool-source identity remains separately bound.",
       "Benchmark output identifies execution mode, independently authored labels, corpus, embedding, model and source identities and measured results without unsupported comparative claims."
     ],
     "acceptance_tests": [
@@ -63,7 +63,7 @@
           3
         ],
         "module": "tests/oracle-public-core.test.mjs",
-        "purpose": "Verify extracted core composition, adapter compatibility, configuration admission and trusted-policy separation."
+        "purpose": "Verify core composition, adapter compatibility and trusted-policy separation; require explicit distinct upstream provenance, exact own-root Git precedence, parent-root refusal, pre-model denial and upstream-bound recovery with no fallback."
       },
       {
         "covers": [
@@ -88,7 +88,7 @@
           5
         ],
         "module": "tests/oracle-public-export.test.mjs",
-        "purpose": "Verify immutable complete mapping, the explicit public workflow, truthful source provenance, fresh-copy independence, all public test modules and benchmark execution, and negative export boundaries."
+        "purpose": "Verify immutable complete mapping, public workflow and fresh-copy independence; admit only the declared sealed generation input, export only its validated ancestor origin, retain exact member counts and reject missing, tampered, malformed, nonregular, missing-object and nonancestor provenance."
       },
       {
         "covers": [
@@ -96,14 +96,14 @@
           6
         ],
         "module": "tests/deterministic-oracle.test.mjs",
-        "purpose": "Verify native input and output custody, full-proof artifact admission, genuine feature-base binding, separate origin metadata, permanent artifact-only OC push and promotion refusal including later matching origin, unchanged whole-range guards, distinct CI evidence, zero-provider public workflow execution, pinned setup integrity, archive bounds, cache tampering refusal and runtime no-provisioning behavior."
+        "purpose": "Verify native custody and exact candidate-manifest-provenance-stamp upstream equality, including a distinct tool-source commit and negative mismatches; retain full component proof, separate current-origin observation, permanent artifact-only publication refusal, existing whole-range guards, provider-free CI and pinned setup integrity."
       },
       {
         "covers": [
           6
         ],
         "module": "tests/deterministic-lanes.test.mjs",
-        "purpose": "Preserve existing deterministic profile scope and dispatcher behavior while admitting only the separate new profile and refusing artifact-only receipts at OC publication entrypoints."
+        "purpose": "Preserve existing deterministic profile scope and dispatcher behavior while admitting only the separate profile and refusing artifact-only receipts at source publication entrypoints."
       },
       {
         "covers": [
@@ -111,7 +111,7 @@
           7
         ],
         "module": "tests/oracle-public-live-proposal.test.mjs",
-        "purpose": "Record one bounded actual conceptual proposal execution and verify exact-bound materialization recovery without repeating the model call."
+        "purpose": "Record one bounded actual conceptual proposal execution with exact upstream and tool-source provenance, and verify exact-bound materialization recovery without repeating the model call."
       },
       {
         "covers": [
@@ -172,8 +172,8 @@
     ],
     "change_class": "feature",
     "design": "Vault/docs/design/portable-oracle-publication.md",
-    "reason": "Retain all nine criteria, twelve selected modules and existing category fixtures. Add exactly the public workflow template to the bounded scope and adopt the supplied catalog inventory. Extend existing export and deterministic-profile checks for complete credential-free public CI, component-artifact custody, separate origin observation, truthful provenance and unconditional refusal of artifact-only evidence at source publication entrypoints. Preserve complete canonical dependency custody, existing profile restrictions, historical outcomes and the original request clock. The 300-second end-to-end obligation and structural, retrieval/export/benchmark, conceptual-model and receipt/publication budgets of 120, 60, 90 and 30 seconds remain unchanged. Full native verification precedes upload; public CI and remote readback remain separately required. Completed-source verification remains deterministic.",
-    "revision_of": "12f8d58332181fbd952855160735c85af0b0ed02b6a239b87529beb39a4e58eb",
+    "reason": "Revise the existing feature contract solely for explicit upstream provenance and custody. Retain all nine criteria, twelve selected modules, existing categories and fixtures, 61 scope paths, 44 runtime/assets and 31 public members. Extend existing controlled cases to distinguish upstream from tool source, verify immutable sealed generation input, refuse invalid provenance before model execution, bind recovery and native witnesses, and preserve every publication guard. No new configuration, provider, network operation or public API version is selected. Complete the existing native contract and independent provider-free public CI; completed-source verification remains deterministic. Preserve original request clocks, historical outcomes and the 300-second end-to-end obligation with existing 120/60/90/30-second component budgets; revisions establish no renewed clock or timing success.",
+    "revision_of": "b3730f3aec66210dcaf77b9c4f1ec4bb643a4ba41c05901c0cb527a4971f948b",
     "scope_paths": [
       "tools/oracle_core/__init__.py",
       "tools/oracle_core/cli.py",
@@ -238,8 +238,8 @@
       "tools/oracle_public/.github/workflows/ci.yml"
     ]
   },
-  "base_commit": "df870a6b58073a6df13f44a9f73f34cae16c5de5",
-  "base_tree": "fe3592e1059cec0f6e29df12c8f6699a62c599cd",
+  "base_commit": "c0ce6759301564d540a2b943582d261fa8b4934d",
+  "base_tree": "eee48fd60a17cd0c29b76872b8ad4471683efbcd",
   "catalog_sha256": "9b999fb8fb53625b380232919ccbae149a4ac4e3b099e4c6087b902841e198eb",
   "runtime": {
     "node": "v22.11.0",
@@ -249,8 +249,8 @@
     "architecture": "arm64",
     "options_sha256": "ebc442c160f8629073a82976daadaba1d95a60a38d768c81c8eb06598aedcac5"
   },
-  "proposal_sha256": "c8fe4e82a4d43c44403b3592cb9175307cf71ea617c3b28f23831ff66e7cb96e",
-  "review_sha256": "cfa1ec8c7fdb615a911a22073d029744e14b3ae1fad46af9184fa8f8329b9789",
+  "proposal_sha256": "79db3279d14bf1cd858e6d6e147c624328579934fae39b44a0ceb8b7162f5148",
+  "review_sha256": "ec502a32222f6ba068fa7ab6ffe1333db9165a53bad757a641d6f54eb94180f4",
   "commands": [
     {
       "category": "sanity",
@@ -340,15 +340,15 @@
   },
   "design_binding": {
     "design": "Vault/docs/design/portable-oracle-publication.md",
-    "design_sha256": "e65576bfe8794e9033bb89d87b1840d09a88feabe57a2d64ce69cee88094e7ff",
+    "design_sha256": "3d099f46e02c8699b9161bd763fb6af40d70aa6bb29307042cfbf9018201aa8a",
     "plan": "Vault/docs/design/portable-oracle-publication.test-plan.json",
-    "plan_sha256": "0a292d0f4fe49b64212934e4e6eb1668216991cf57617ef18194660ce5030e2a",
+    "plan_sha256": "f96aff49799e59d0ef57fba6758932e3f92c72414b101e45973b529c58545aec",
     "tests": [
       "tests/deterministic-oracle.test.mjs",
       "tests/oracle-public-core.test.mjs",
       "tests/oracle-public-export.test.mjs"
     ]
   },
-  "contract_sha256": "b3730f3aec66210dcaf77b9c4f1ec4bb643a4ba41c05901c0cb527a4971f948b",
-  "seal": "576b5ca9a07f4c060ec71ed5a934be19977589f4cc91b50050efb3f175e8f323"
+  "contract_sha256": "c13e496506a2b2e639265809faad275391d7433380032483d3bc1e60968f39b3",
+  "seal": "897249fa312132f45ada9eb045db5d5934b474d4c56709b49901a4588da4099c"
 }

@@ -4,7 +4,7 @@ import test from 'node:test';
 
 test('portable actual proposal core binds results and recovers without another judge',()=>{
 const code=String.raw`
-import json,tempfile,unittest
+import json,tempfile,unittest,subprocess
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor
 from unittest.mock import patch
@@ -22,7 +22,7 @@ class Core(unittest.TestCase):
   self.catalog={'schema':'boc.validation-catalog/v1','classes':CLASSES,'sanity':['python','-m','unittest','discover','-s','tests'],'modules':{'tests/example.py':['python','-m','unittest','tests.example']}}
   (self.root/'catalog.json').write_text(json.dumps(self.catalog))
   self.config={'project':'synthetic-public-test','policy':'policy.md','catalog':'catalog.json','corpus':{'root':'corpus','sources':['architecture.md']},'state':'.oracle','runner':{'engine':'codex','executable':'codex','model':'gpt-6.1-sol','reasoning_effort':'medium','timeout_seconds':90,'sandbox':'read-only','max_output_bytes':8388608}}
-  (self.root/'oracle-export-manifest.json').write_text(json.dumps({'source_commit':'c'*40,'source_tree':'d'*40,'synthetic_fixture':True}))
+  (self.root/'oracle-export-manifest.json').write_text(json.dumps({'source_commit':'c'*40,'source_tree':'d'*40,'origin_main':'e'*40,'synthetic_fixture':True}))
   self.path=self.root/'oracle.project.json';self.path.write_text(json.dumps(self.config));self.calls=0
   # Explicit synthetic adapter/runtime; CI needs no model CLI or credentials.
   runtime=patch.object(runner,'preflight',side_effect=lambda c:{'engine':c['engine'],'model':c['model'],'executable_sha256':'e'*64,'capabilities':{'sandbox':'read-only','apps':False,'mcp':False,'shell':False,'automatic_project_context':False},'timeout_seconds':90,'maximum_output_bytes':8388608,'environment_sha256':'f'*64})
@@ -34,7 +34,7 @@ class Core(unittest.TestCase):
   core=(ROOT/'tools/oracle_core/seal.py').read_bytes();self.assertEqual((ROOT/'tools/oracle_spec_seal.py').read_bytes(),b'# Generated from tools/oracle_core/seal.py; edit the canonical core and regenerate.\n'+core)
  def test_current_format_and_one_judge(self):
   result=proposal.judge(self.path,'Bind exact tests','.oracle/spec.json',adapter=self.adapter)
-  self.assertTrue(seal_matches(result['spec']));spec.verify(result['spec']);self.assertEqual(result['provenance']['execution_mode'],'synthetic')
+  self.assertTrue(seal_matches(result['spec']));spec.verify(result['spec']);self.assertEqual(result['spec']['stamp']['origin_main'],'e'*40);self.assertNotEqual(result['spec']['stamp']['origin_main'],result['provenance']['source_commit']);self.assertEqual(result['provenance']['execution_mode'],'synthetic')
   again=proposal.judge(self.path,'Bind exact tests','.oracle/spec.json',adapter=self.adapter)
   self.assertEqual(result,again);self.assertEqual(self.calls,1)
  def test_writer_failure_recovers_without_judge(self):
@@ -58,6 +58,15 @@ class Core(unittest.TestCase):
   self.review['validation_selection']['categories'][1]['tests']=['tests/unlisted.py']
   with self.assertRaises(ValueError):spec.validate_review(self.review,self.catalog)
  def test_missing_config_and_escaping_corpus_deny(self):
+  # Controlled Git fixture demonstrates an actual distinct upstream/source pair.
+  (self.root/'oracle-export-manifest.json').unlink()
+  with self.assertRaises((ValueError,FileNotFoundError)):proposal.source(self.root)
+  def git(*args):return subprocess.check_output(['git',*args],cwd=self.root,stderr=subprocess.DEVNULL,text=True).strip()
+  git('init','-q','-b','main');git('config','user.name','Synthetic');git('config','user.email','synthetic@example.invalid');git('add','.');git('commit','-qm','Synthetic initial source')
+  with self.assertRaises(ValueError):proposal.source(self.root)
+  upstream=git('rev-parse','HEAD');git('update-ref','refs/remotes/origin/main',upstream)
+  (self.root/'policy.md').write_text('Synthetic current project policy');git('add','.');git('commit','-qm','Synthetic current source')
+  commit,tree,origin=proposal.source(self.root);self.assertEqual(origin,upstream);self.assertNotEqual(commit,origin)
   self.config.pop('policy');self.path.write_text(json.dumps(self.config))
   from oracle_core.config import load
   with self.assertRaises(ValueError):load(self.path)
