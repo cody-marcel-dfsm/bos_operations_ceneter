@@ -2,14 +2,14 @@
   "schema": "boc.validation-contract/v2",
   "kind": "oracle-spec/1",
   "stamp": {
-    "engine": "codex",
-    "model": "gpt-6.1-sol",
-    "oracle_sha256": "537e6d8233019c51672015c2d006ea7830effd749fc1672d27cacf3e55eb37e5",
+    "engine": "claude",
+    "model": "claude-opus-5-5",
+    "oracle_sha256": "81e61ab30255fc7b5ea8205f3b30da541fc006b6ad328d15ab8d4a08cfe129af",
     "host": "Codys-MacBook-Pro.local",
-    "time": "2026-11-23T16:15:19Z",
+    "time": "2026-11-23T16:56:03Z",
     "origin_main": "d6f6dac91af5e962ddc7acaf39efaa302708408b",
-    "request_sha256": "fc7562b6053f376e51682f5b2c5654862ae9297b1581c2b29bb956a5093207a3",
-    "proposal_sha256": "2333ba70121be3a319e7959a7f2cbe6094ddd27636f3c3432d8eaf09030beb61"
+    "request_sha256": "8f7f72b3bb447c7f63e0174aafa0ce618a27829db8cee6c0500a559a9faa43c6",
+    "proposal_sha256": "91759804a38340b9d35d7b94da80d511d1bef8163ffc1963c261c79546c68c45"
   },
   "selection": {
     "acceptance": [
@@ -18,7 +18,12 @@
       "Missing, forged, stale or altered scope, source, catalog, inventory and prior archive evidence fails closed before sealing. No caller or model can select a baseline, supply mutable membership or invent paths.",
       "Both historical closed binding shapes reconstruct their original selection and audit after remote advancement. Original raw responses, seals, archive identities and receipts remain unchanged and acquire no widened inventory or fresh approval.",
       "Additive materialization preserves every prior criterion, selected module, fixture, mapping purpose and original criterion-to-module association while admitting only validated additions.",
-      "Native proposal, lifecycle and deterministic admission retain exact-source custody, failure preservation, complete-category requirements and existing publication boundaries. Tests use isolated synthetic repositories and fake reviewers without launching a model or changing deadlines."
+      "Native proposal, lifecycle and deterministic admission retain exact-source custody, failure preservation, complete-category requirements and existing publication boundaries. Tests use isolated synthetic repositories and fake reviewers without launching a model or changing deadlines.",
+      "An explicit send, submit, record, report or report-session feedback request authorizes exactly one privacy-minimized submission without requiring a further confirmation step, including its inspected and sanitized media.",
+      "Necessary in-scope discovered-bug reporting, evidence continuation and linking, and discussion follow-ups reuse the existing task authority without a redundant confirmation. Materially ambiguous targets and unrelated actions still require appropriate user input, and settings failures still report only after the user requests reporting.",
+      "Text and media minimization and inspection, fresh selected-context authorization, server-derived execution scope, uncertain-result no-replay and canonical reporter-completion semantics remain unchanged.",
+      "Every maintained canonical caller and reference and every generated client copy and archive applies the same authorization rule. Component versions, dependency pins and package composition remain valid and consistent, and no public API version, server permission, default or role changes.",
+      "Dependent skills whose only change is a component version pin keep unchanged record lookup routing, graph completion, compact default route presentation and focused student-workflow behavior."
     ],
     "acceptance_tests": [
       {
@@ -65,6 +70,62 @@
         ],
         "module": "tests/deterministic-oracle.test.mjs",
         "purpose": "Preserve component-artifact verification limits and refusal of unauthorized source promotion."
+      },
+      {
+        "covers": [
+          6,
+          7,
+          8,
+          9
+        ],
+        "module": "tests/feedback-evidence-guidance.test.mjs",
+        "purpose": "Verify the explicit-request and task-authority rule, preserved privacy and media safeguards, continuation payload limits and parity across every generated feedback consumer."
+      },
+      {
+        "covers": [
+          6,
+          7,
+          8
+        ],
+        "module": "tests/feedback-lifecycle.test.mjs",
+        "purpose": "Verify single submission, fresh selected-context mutations, reporter authority, reply attribution and uncertain-result no-replay behavior."
+      },
+      {
+        "covers": [
+          9
+        ],
+        "module": "tests/versioned-skills.test.mjs",
+        "purpose": "Verify native component version advancement, exact dependency pins and historical-content constraints."
+      },
+      {
+        "covers": [
+          9
+        ],
+        "module": "tests/skill-dependencies.test.mjs",
+        "purpose": "Verify cross-product dependency resolution and valid generated pins."
+      },
+      {
+        "covers": [
+          8,
+          9
+        ],
+        "module": "tests/package-model.test.mjs",
+        "purpose": "Verify package composition, data minimization and generated product boundaries."
+      },
+      {
+        "covers": [
+          7,
+          9
+        ],
+        "module": "tests/plugin-settings.test.mjs",
+        "purpose": "Verify the settings failure caller reports only after a reporting request and stays compatible with the feedback rule."
+      },
+      {
+        "covers": [
+          10
+        ],
+        "module": "tests/lead-graph-regression.test.mjs",
+        "purpose": "Verify graph completion, compact route presentation and focused student-workflow scope are unchanged by dependent version-pin updates."
       }
     ],
     "categories": [
@@ -80,12 +141,15 @@
           "tests/published_fixture.py",
           "tests/oracle_review_series.py",
           "tests/privacy_coverage_test.py",
-          "tests/helpers/isolated-test-cohort.mjs"
+          "tests/helpers/isolated-test-cohort.mjs",
+          "tests/helpers/synthetic-bos-discovery-service.mjs"
         ],
         "name": "focused",
         "tests": [
           "tests/oracle-implementation-spec.test.mjs",
-          "tests/validation-contract.test.mjs"
+          "tests/validation-contract.test.mjs",
+          "tests/feedback-evidence-guidance.test.mjs",
+          "tests/feedback-lifecycle.test.mjs"
         ]
       },
       {
@@ -97,20 +161,26 @@
           "tests/deterministic_package_test.py",
           "tests/helpers/isolated-test-cohort.mjs",
           "tests/helpers/native-validation-git.mjs",
-          "tests/helpers/native-validation-state.mjs"
+          "tests/helpers/native-validation-state.mjs",
+          "tests/helpers/lead-graph-acceptance.mjs"
         ],
         "name": "interactions",
         "tests": [
           "tests/oracle-lifecycle.test.mjs",
           "tests/deterministic-lanes.test.mjs",
-          "tests/deterministic-oracle.test.mjs"
+          "tests/deterministic-oracle.test.mjs",
+          "tests/versioned-skills.test.mjs",
+          "tests/skill-dependencies.test.mjs",
+          "tests/package-model.test.mjs",
+          "tests/plugin-settings.test.mjs",
+          "tests/lead-graph-regression.test.mjs"
         ]
       }
     ],
     "change_class": "deep_bug_fix",
     "design": null,
-    "reason": "Repair native publication-inventory capture and historical replay across proposal, validation and deterministic admission consumers. Capture genuine assertion failure before implementation with identical focused tests and fixtures retained for the passing run. Preserve historical records, all pending downstream obligations, complete-category requirements, original delivery clocks and the fixed 300-second delivery policy. This bounded intermediate workflow selection grants no source publication or downstream implementation authority.",
-    "revision_of": "4cb059bfafa9fde163fbf10ef2e0fccb5ebadf079def1b55791a600f7d57630c",
+    "reason": "Keep the prior publication-inventory repair contract unchanged and add a cross-surface instruction correction. An explicit feedback request authorizes one sanitized submission, and an existing task's authority covers necessary in-scope bug reports and discussion follow-ups, without a redundant confirmation. Privacy, selected-context, server-authority, no-replay and reporter-completion safeguards are kept. The correction touches canonical feedback and settings skills, every generated client mirror and archive, and the version pins of dependent components. That makes it a deep fix with interaction coverage for version, dependency, package and graph-composition consumers. Prior criteria, modules, fixtures, mapping purposes, pending downstream obligations and the fixed 300-second delivery policy stay unchanged. This selection grants no source publication authority.",
+    "revision_of": "59850010f7bbea7cc5f3917375a16c80c5d33be0cf519c72563338e679638916",
     "scope_paths": [
       "tools/validation_contract.py",
       "tools/oracle_approval.py",
@@ -120,11 +190,181 @@
       "tests/validation_contract_test.py",
       "tests/oracle-implementation-spec.test.mjs",
       "tests/validation-contract.test.mjs",
-      "scripts/check-customer-data.mjs"
+      "scripts/check-customer-data.mjs",
+      "tests/feedback-evidence-guidance.test.mjs",
+      "tests/feedback-lifecycle.test.mjs",
+      "tests/versioned-skills.test.mjs",
+      "tests/skill-dependencies.test.mjs",
+      "tests/package-model.test.mjs",
+      "tests/plugin-settings.test.mjs",
+      "tests/lead-graph-regression.test.mjs",
+      "tests/helpers/synthetic-bos-discovery-service.mjs",
+      "tests/helpers/lead-graph-acceptance.mjs",
+      "package-manifest.json",
+      "skill-release-manifest.json",
+      "products/bos/openai/bos-skills.zip",
+      "products/education-center/openai/education-center-skills.zip",
+      "source/capabilities/agent-call-operations/SKILL.md",
+      "source/capabilities/review-outreach/SKILL.md",
+      "source/capabilities/sendgrid-campaign-operations/SKILL.md",
+      "source/platform/bos-customer-initialization/SKILL.md",
+      "source/platform/bos-plugin-console/SKILL.md",
+      "source/platform/bos-plugin-settings-initialization/SKILL.md",
+      "source/platform/bos-plugin-settings/SKILL.md",
+      "source/platform/manage-customer-extension/SKILL.md",
+      "source/platform/submit-feedback/SKILL.md",
+      "source/platform/submit-feedback/references/feedback-contract.md",
+      "source/verticals/education-center/camp-capacity-planning/SKILL.md",
+      "source/verticals/education-center/education-center-class-operations/SKILL.md",
+      "source/verticals/education-center/education-center-director-daily-planner/SKILL.md",
+      "source/verticals/education-center/education-center-instructor-operations/SKILL.md",
+      "source/verticals/education-center/education-center-invoice-operations/SKILL.md",
+      "source/verticals/education-center/education-center-paid-attribution-operations/SKILL.md",
+      "source/verticals/education-center/education-center-parent-communications/SKILL.md",
+      "source/verticals/education-center/education-center-service-routing/SKILL.md",
+      "source/verticals/education-center/education-center-student-operations/SKILL.md",
+      "source/verticals/education-center/education-center-trial-reconciliation/SKILL.md",
+      "source/verticals/education-center/local-school-market-research/SKILL.md",
+      "source/verticals/education-center/partnership-proposal-builder/SKILL.md",
+      "clients/claude/plugins/bos/skills/bos-customer-initialization/SKILL.md",
+      "clients/claude/plugins/bos/skills/bos-plugin-console/SKILL.md",
+      "clients/claude/plugins/bos/skills/bos-plugin-settings-initialization/SKILL.md",
+      "clients/claude/plugins/bos/skills/bos-plugin-settings/SKILL.md",
+      "clients/claude/plugins/bos/skills/manage-customer-extension/SKILL.md",
+      "clients/claude/plugins/bos/skills/submit-feedback/SKILL.md",
+      "clients/claude/plugins/bos/skills/submit-feedback/references/feedback-contract.md",
+      "clients/claude/plugins/education-center/skills/agent-call-operations/SKILL.md",
+      "clients/claude/plugins/education-center/skills/bos-google-review-outreach/SKILL.md",
+      "clients/claude/plugins/education-center/skills/bos-plugin-settings-initialization/SKILL.md",
+      "clients/claude/plugins/education-center/skills/bos-plugin-settings/SKILL.md",
+      "clients/claude/plugins/education-center/skills/camp-capacity-planning/SKILL.md",
+      "clients/claude/plugins/education-center/skills/education-center-class-operations/SKILL.md",
+      "clients/claude/plugins/education-center/skills/education-center-director-daily-planner/SKILL.md",
+      "clients/claude/plugins/education-center/skills/education-center-instructor-operations/SKILL.md",
+      "clients/claude/plugins/education-center/skills/education-center-invoice-operations/SKILL.md",
+      "clients/claude/plugins/education-center/skills/education-center-paid-attribution-operations/SKILL.md",
+      "clients/claude/plugins/education-center/skills/education-center-parent-communications/SKILL.md",
+      "clients/claude/plugins/education-center/skills/education-center-service-routing/SKILL.md",
+      "clients/claude/plugins/education-center/skills/education-center-student-operations/SKILL.md",
+      "clients/claude/plugins/education-center/skills/education-center-trial-reconciliation/SKILL.md",
+      "clients/claude/plugins/education-center/skills/local-school-market-research/SKILL.md",
+      "clients/claude/plugins/education-center/skills/manage-customer-extension/SKILL.md",
+      "clients/claude/plugins/education-center/skills/partnership-proposal-builder/SKILL.md",
+      "clients/claude/plugins/education-center/skills/sendgrid-campaign-operations/SKILL.md",
+      "clients/claude/plugins/education-center/skills/submit-feedback/SKILL.md",
+      "clients/claude/plugins/education-center/skills/submit-feedback/references/feedback-contract.md",
+      "clients/codex/plugins/bos/skills/bos-customer-initialization/SKILL.md",
+      "clients/codex/plugins/bos/skills/bos-plugin-console/SKILL.md",
+      "clients/codex/plugins/bos/skills/bos-plugin-settings-initialization/SKILL.md",
+      "clients/codex/plugins/bos/skills/bos-plugin-settings/SKILL.md",
+      "clients/codex/plugins/bos/skills/manage-customer-extension/SKILL.md",
+      "clients/codex/plugins/bos/skills/submit-feedback/SKILL.md",
+      "clients/codex/plugins/bos/skills/submit-feedback/references/feedback-contract.md",
+      "clients/codex/plugins/education-center/skills/agent-call-operations/SKILL.md",
+      "clients/codex/plugins/education-center/skills/bos-google-review-outreach/SKILL.md",
+      "clients/codex/plugins/education-center/skills/bos-plugin-settings-initialization/SKILL.md",
+      "clients/codex/plugins/education-center/skills/bos-plugin-settings/SKILL.md",
+      "clients/codex/plugins/education-center/skills/camp-capacity-planning/SKILL.md",
+      "clients/codex/plugins/education-center/skills/education-center-class-operations/SKILL.md",
+      "clients/codex/plugins/education-center/skills/education-center-director-daily-planner/SKILL.md",
+      "clients/codex/plugins/education-center/skills/education-center-instructor-operations/SKILL.md",
+      "clients/codex/plugins/education-center/skills/education-center-invoice-operations/SKILL.md",
+      "clients/codex/plugins/education-center/skills/education-center-paid-attribution-operations/SKILL.md",
+      "clients/codex/plugins/education-center/skills/education-center-parent-communications/SKILL.md",
+      "clients/codex/plugins/education-center/skills/education-center-service-routing/SKILL.md",
+      "clients/codex/plugins/education-center/skills/education-center-student-operations/SKILL.md",
+      "clients/codex/plugins/education-center/skills/education-center-trial-reconciliation/SKILL.md",
+      "clients/codex/plugins/education-center/skills/local-school-market-research/SKILL.md",
+      "clients/codex/plugins/education-center/skills/manage-customer-extension/SKILL.md",
+      "clients/codex/plugins/education-center/skills/partnership-proposal-builder/SKILL.md",
+      "clients/codex/plugins/education-center/skills/sendgrid-campaign-operations/SKILL.md",
+      "clients/codex/plugins/education-center/skills/submit-feedback/SKILL.md",
+      "clients/codex/plugins/education-center/skills/submit-feedback/references/feedback-contract.md",
+      "clients/copilot/products/bos/skills/bos-customer-initialization/SKILL.md",
+      "clients/copilot/products/bos/skills/bos-plugin-console/SKILL.md",
+      "clients/copilot/products/bos/skills/bos-plugin-settings-initialization/SKILL.md",
+      "clients/copilot/products/bos/skills/bos-plugin-settings/SKILL.md",
+      "clients/copilot/products/bos/skills/manage-customer-extension/SKILL.md",
+      "clients/copilot/products/bos/skills/submit-feedback/SKILL.md",
+      "clients/copilot/products/bos/skills/submit-feedback/references/feedback-contract.md",
+      "clients/copilot/products/education-center/skills/agent-call-operations/SKILL.md",
+      "clients/copilot/products/education-center/skills/bos-google-review-outreach/SKILL.md",
+      "clients/copilot/products/education-center/skills/bos-plugin-settings-initialization/SKILL.md",
+      "clients/copilot/products/education-center/skills/bos-plugin-settings/SKILL.md",
+      "clients/copilot/products/education-center/skills/camp-capacity-planning/SKILL.md",
+      "clients/copilot/products/education-center/skills/education-center-class-operations/SKILL.md",
+      "clients/copilot/products/education-center/skills/education-center-director-daily-planner/SKILL.md",
+      "clients/copilot/products/education-center/skills/education-center-instructor-operations/SKILL.md",
+      "clients/copilot/products/education-center/skills/education-center-invoice-operations/SKILL.md",
+      "clients/copilot/products/education-center/skills/education-center-paid-attribution-operations/SKILL.md",
+      "clients/copilot/products/education-center/skills/education-center-parent-communications/SKILL.md",
+      "clients/copilot/products/education-center/skills/education-center-service-routing/SKILL.md",
+      "clients/copilot/products/education-center/skills/education-center-student-operations/SKILL.md",
+      "clients/copilot/products/education-center/skills/education-center-trial-reconciliation/SKILL.md",
+      "clients/copilot/products/education-center/skills/local-school-market-research/SKILL.md",
+      "clients/copilot/products/education-center/skills/manage-customer-extension/SKILL.md",
+      "clients/copilot/products/education-center/skills/partnership-proposal-builder/SKILL.md",
+      "clients/copilot/products/education-center/skills/sendgrid-campaign-operations/SKILL.md",
+      "clients/copilot/products/education-center/skills/submit-feedback/SKILL.md",
+      "clients/copilot/products/education-center/skills/submit-feedback/references/feedback-contract.md",
+      "clients/gemini/extensions/bos/skills/bos-customer-initialization/SKILL.md",
+      "clients/gemini/extensions/bos/skills/bos-plugin-console/SKILL.md",
+      "clients/gemini/extensions/bos/skills/bos-plugin-settings-initialization/SKILL.md",
+      "clients/gemini/extensions/bos/skills/bos-plugin-settings/SKILL.md",
+      "clients/gemini/extensions/bos/skills/manage-customer-extension/SKILL.md",
+      "clients/gemini/extensions/bos/skills/submit-feedback/SKILL.md",
+      "clients/gemini/extensions/bos/skills/submit-feedback/references/feedback-contract.md",
+      "clients/gemini/extensions/education-center/skills/agent-call-operations/SKILL.md",
+      "clients/gemini/extensions/education-center/skills/bos-google-review-outreach/SKILL.md",
+      "clients/gemini/extensions/education-center/skills/bos-plugin-settings-initialization/SKILL.md",
+      "clients/gemini/extensions/education-center/skills/bos-plugin-settings/SKILL.md",
+      "clients/gemini/extensions/education-center/skills/camp-capacity-planning/SKILL.md",
+      "clients/gemini/extensions/education-center/skills/education-center-class-operations/SKILL.md",
+      "clients/gemini/extensions/education-center/skills/education-center-director-daily-planner/SKILL.md",
+      "clients/gemini/extensions/education-center/skills/education-center-instructor-operations/SKILL.md",
+      "clients/gemini/extensions/education-center/skills/education-center-invoice-operations/SKILL.md",
+      "clients/gemini/extensions/education-center/skills/education-center-paid-attribution-operations/SKILL.md",
+      "clients/gemini/extensions/education-center/skills/education-center-parent-communications/SKILL.md",
+      "clients/gemini/extensions/education-center/skills/education-center-service-routing/SKILL.md",
+      "clients/gemini/extensions/education-center/skills/education-center-student-operations/SKILL.md",
+      "clients/gemini/extensions/education-center/skills/education-center-trial-reconciliation/SKILL.md",
+      "clients/gemini/extensions/education-center/skills/local-school-market-research/SKILL.md",
+      "clients/gemini/extensions/education-center/skills/manage-customer-extension/SKILL.md",
+      "clients/gemini/extensions/education-center/skills/partnership-proposal-builder/SKILL.md",
+      "clients/gemini/extensions/education-center/skills/sendgrid-campaign-operations/SKILL.md",
+      "clients/gemini/extensions/education-center/skills/submit-feedback/SKILL.md",
+      "clients/gemini/extensions/education-center/skills/submit-feedback/references/feedback-contract.md",
+      "clients/muse/plugins/bos/skills/bos-customer-initialization/SKILL.md",
+      "clients/muse/plugins/bos/skills/bos-plugin-console/SKILL.md",
+      "clients/muse/plugins/bos/skills/bos-plugin-settings-initialization/SKILL.md",
+      "clients/muse/plugins/bos/skills/bos-plugin-settings/SKILL.md",
+      "clients/muse/plugins/bos/skills/manage-customer-extension/SKILL.md",
+      "clients/muse/plugins/bos/skills/submit-feedback/SKILL.md",
+      "clients/muse/plugins/bos/skills/submit-feedback/references/feedback-contract.md",
+      "clients/muse/plugins/education-center/skills/agent-call-operations/SKILL.md",
+      "clients/muse/plugins/education-center/skills/bos-google-review-outreach/SKILL.md",
+      "clients/muse/plugins/education-center/skills/bos-plugin-settings-initialization/SKILL.md",
+      "clients/muse/plugins/education-center/skills/bos-plugin-settings/SKILL.md",
+      "clients/muse/plugins/education-center/skills/camp-capacity-planning/SKILL.md",
+      "clients/muse/plugins/education-center/skills/education-center-class-operations/SKILL.md",
+      "clients/muse/plugins/education-center/skills/education-center-director-daily-planner/SKILL.md",
+      "clients/muse/plugins/education-center/skills/education-center-instructor-operations/SKILL.md",
+      "clients/muse/plugins/education-center/skills/education-center-invoice-operations/SKILL.md",
+      "clients/muse/plugins/education-center/skills/education-center-paid-attribution-operations/SKILL.md",
+      "clients/muse/plugins/education-center/skills/education-center-parent-communications/SKILL.md",
+      "clients/muse/plugins/education-center/skills/education-center-service-routing/SKILL.md",
+      "clients/muse/plugins/education-center/skills/education-center-student-operations/SKILL.md",
+      "clients/muse/plugins/education-center/skills/education-center-trial-reconciliation/SKILL.md",
+      "clients/muse/plugins/education-center/skills/local-school-market-research/SKILL.md",
+      "clients/muse/plugins/education-center/skills/manage-customer-extension/SKILL.md",
+      "clients/muse/plugins/education-center/skills/partnership-proposal-builder/SKILL.md",
+      "clients/muse/plugins/education-center/skills/sendgrid-campaign-operations/SKILL.md",
+      "clients/muse/plugins/education-center/skills/submit-feedback/SKILL.md",
+      "clients/muse/plugins/education-center/skills/submit-feedback/references/feedback-contract.md"
     ]
   },
-  "base_commit": "fc2eb1e4acaa0aee19bcab5b85dfc8f4d44aeedc",
-  "base_tree": "cdf331232041047a6a0b5ed7d5f00c0ffeab7487",
+  "base_commit": "9723523451b60f853f09f216661c2fe28f340692",
+  "base_tree": "7e97bb7f72b53330c25ae4b12952be909b057285",
   "catalog_sha256": "51ee7ae8c1533604f7b2c68b9efba9d1b9d6f340d724d7c208dba434325859b3",
   "runtime": {
     "node": "v22.11.0",
@@ -134,8 +374,8 @@
     "architecture": "arm64",
     "options_sha256": "ebc442c160f8629073a82976daadaba1d95a60a38d768c81c8eb06598aedcac5"
   },
-  "proposal_sha256": "2333ba70121be3a319e7959a7f2cbe6094ddd27636f3c3432d8eaf09030beb61",
-  "review_sha256": "94af817cdb21dc5c8d63b9c621db35fe6fbf085a58b0190b2ccd3dfc5523ee80",
+  "proposal_sha256": "91759804a38340b9d35d7b94da80d511d1bef8163ffc1963c261c79546c68c45",
+  "review_sha256": "e1f549e184baf022dc2c9a0c19a204ebd658423cb2803b20c93da416de715c20",
   "commands": [
     {
       "category": "sanity",
@@ -155,11 +395,15 @@
         "--test-reporter=tap",
         "--test-concurrency=1",
         "tests/oracle-implementation-spec.test.mjs",
-        "tests/validation-contract.test.mjs"
+        "tests/validation-contract.test.mjs",
+        "tests/feedback-evidence-guidance.test.mjs",
+        "tests/feedback-lifecycle.test.mjs"
       ],
       "tests": [
         "tests/oracle-implementation-spec.test.mjs",
-        "tests/validation-contract.test.mjs"
+        "tests/validation-contract.test.mjs",
+        "tests/feedback-evidence-guidance.test.mjs",
+        "tests/feedback-lifecycle.test.mjs"
       ],
       "fixtures": [
         "tests/oracle_spec_test.py",
@@ -167,7 +411,8 @@
         "tests/published_fixture.py",
         "tests/oracle_review_series.py",
         "tests/privacy_coverage_test.py",
-        "tests/helpers/isolated-test-cohort.mjs"
+        "tests/helpers/isolated-test-cohort.mjs",
+        "tests/helpers/synthetic-bos-discovery-service.mjs"
       ]
     },
     {
@@ -179,12 +424,22 @@
         "--test-concurrency=1",
         "tests/oracle-lifecycle.test.mjs",
         "tests/deterministic-lanes.test.mjs",
-        "tests/deterministic-oracle.test.mjs"
+        "tests/deterministic-oracle.test.mjs",
+        "tests/versioned-skills.test.mjs",
+        "tests/skill-dependencies.test.mjs",
+        "tests/package-model.test.mjs",
+        "tests/plugin-settings.test.mjs",
+        "tests/lead-graph-regression.test.mjs"
       ],
       "tests": [
         "tests/oracle-lifecycle.test.mjs",
         "tests/deterministic-lanes.test.mjs",
-        "tests/deterministic-oracle.test.mjs"
+        "tests/deterministic-oracle.test.mjs",
+        "tests/versioned-skills.test.mjs",
+        "tests/skill-dependencies.test.mjs",
+        "tests/package-model.test.mjs",
+        "tests/plugin-settings.test.mjs",
+        "tests/lead-graph-regression.test.mjs"
       ],
       "fixtures": [
         "tests/oracle_lifecycle_test.py",
@@ -194,7 +449,8 @@
         "tests/deterministic_package_test.py",
         "tests/helpers/isolated-test-cohort.mjs",
         "tests/helpers/native-validation-git.mjs",
-        "tests/helpers/native-validation-state.mjs"
+        "tests/helpers/native-validation-state.mjs",
+        "tests/helpers/lead-graph-acceptance.mjs"
       ]
     }
   ],
@@ -207,6 +463,6 @@
     "reasoning_effort": "medium",
     "maximum_reasoning_effort": "medium"
   },
-  "contract_sha256": "59850010f7bbea7cc5f3917375a16c80c5d33be0cf519c72563338e679638916",
-  "seal": "b895cd0217945474858110c89b52d1b8b17519a9b41a8fcdc6c5d34d6efe4d86"
+  "contract_sha256": "c60df148b42c00186a5d667035eb271e22558717ff640b10abb5e294f14a757c",
+  "seal": "5d27667e229ed9a401097cbe166fde3d16f38ebc594a0e11365b2ccd4e3b2a5d"
 }

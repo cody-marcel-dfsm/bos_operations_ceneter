@@ -2,8 +2,8 @@
 name: bos-plugin-settings
 description: Read and change typed BOS plugin settings through native client controls or conversation, using authority-scoped cache, confirmed server mutations, bounded recovery, and feedback-ready failures.
 metadata:
-  version: "1.0.24"
-  requires: "{\"bos-mcp-client\":\"1.0.14\",\"bos-plugin-console\":\"1.0.24\",\"bos-plugin-settings-initialization\":\"1.0.24\",\"submit-feedback\":\"1.0.24\"}"
+  version: "1.0.25"
+  requires: "{\"bos-mcp-client\":\"1.0.14\",\"bos-plugin-console\":\"1.0.25\",\"bos-plugin-settings-initialization\":\"1.0.25\",\"submit-feedback\":\"1.0.25\"}"
 ---
 
 
@@ -192,9 +192,11 @@ after failed or indeterminate updates.
 For a terminal protocol, server-invariant, or repeated request-shape failure,
 return the sanitized code, support reference, attempts, recovery actions,
 operation state, and current confirmed value. Prepare a privacy-minimized bug
-draft and expose **Report this issue**. Invoke `submit-feedback` only after the
-user requests reporting; that skill obtains explicit confirmation before its
-mutation.
+summary. Invoke `submit-feedback` when the user requests reporting or the
+failure is a necessary discovered-bug report within the authorized task or
+repair. That authority covers the sanitized report and necessary in-scope
+follow-ups without another confirmation. For an unsolicited report outside
+that scope, retain a draft and expose **Report this issue**.
 
 Never include credentials, tokens, raw authority identifiers, raw MCP payloads,
 stack traces, website bodies, or unrelated customer records in progress,

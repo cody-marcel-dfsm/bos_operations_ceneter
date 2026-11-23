@@ -27,6 +27,18 @@ on an older producer. Offer no unsupported fields or guessed routes.
 native `bos_execute` equivalent. A compatible consumer may publish before that
 capability is deployed; use begins after the producer advertises it.
 
+## User authorization
+
+An explicit send, submit, record or report-session request authorizes one
+sanitized feedback submission without another confirmation. Authorized task or
+repair work also covers necessary in-scope discovered-bug reports, evidence
+continuations and links, and discussion follow-ups. Clarify material missing
+scope, target or input, or a genuinely new action outside that authorization.
+An unsolicited idea or complaint alone supplies no authority to submit unrelated
+data. Preserve current selected-context and operation authorization, media
+inspection, minimization, uncertain-result no-replay and reporter-completion
+rules for every authorized action.
+
 ## Required fields
 
 - `category`: `bug`, `enhancement`, `usability`, `documentation`,
@@ -220,11 +232,13 @@ endpoints, upload URLs or relationship fields. HTTPS calls use the returned
 method and URI through the existing BOS adapter; native tools retain their own
 advertised envelope. Do not pass an HTTPS descriptor as `bos_execute` arguments.
 
-Obtain applicable user authorization for both creating an evidence continuation
-and linking it to the existing discussion. Preserve the submission confirmation
-and sanitization rules above. Read the original report in the same selected
-scope, retain its original target, and inspect and sanitize the media before
-asserting `sanitized: true`. Explain that the continuation creates another private
+Existing user authorization for the report or task covers both creating an
+in-scope evidence continuation and linking it to the existing discussion when
+needed to deliver the evidence. Proceed without an additional confirmation;
+clarify only material missing scope, target or input, or a new action outside
+that authorization. Preserve the sanitization rules above. Read the original
+report in the same selected scope, retain its original target, and inspect and
+sanitize the media before asserting `sanitized: true`. Explain that the continuation creates another private
 report: it is not an in-place attachment to a comment. Reference the original
 feedback ID in supported title/message text; retain the original discussion and
 lifecycle as the primary work item.
