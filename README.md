@@ -150,27 +150,59 @@ marketplace afterward.
 
 ### Claude Cowork/Desktop
 
-Choose the intended Claude account and personal or organization workspace using
-actual host/organization policy and marketplace availability. Confirm access with
-the workspace owner when those requirements are unclear.
+Use this sequence in the Claude account and workspace where you intend to do
+business work. If you have two Claude instances, such as a personal instance and
+a work or organization instance, choose the intended one first. Check its signed-in
+account and selected personal or organization workspace before installing, and
+keep the following steps in that same instance and workspace. Follow your
+organization's plugin policy; ask its workspace owner for access when the BOS
+marketplace is unavailable.
 
-1. Open **Customize → Plugins**.
+1. Open **Customize → Plugins** in that Claude instance.
 2. Add
    `https://github.com/cody-marcel-dfsm/bos_operations_ceneter` as a
-   marketplace.
-3. Install **BOS** and **Education Operation Center**. The BOS plugin ships
-   its own package-owned MCP connection (`mcpServers: "./.mcp.json"`), so no
-   separate connector setup is required.
-4. Select **Authenticate**/**Connect** on the BOS plugin and complete its
-   native sign-in.
-5. Start a new Cowork task and request one authenticated Education Operation
-   Center read to verify the connection.
+   marketplace and install the published **BOS** and **Education Operation
+   Center** plugins offered there. Enable both plugins.
+3. Select **Authenticate**/**Connect** on the BOS plugin. Sign in with your
+   intended BOS identity and complete the host's sign-in flow. BOS supplies the
+   connection shared by dependent products; no separate connector setup is
+   required.
+4. Start a new Cowork task in the same Claude account and workspace, then paste:
 
-Each host keeps its own BOS connection and grant to the same intended BOS
-identity. Select the intended BOS context from fresh authorized choices after
-sign-in. Reuse a provider connection when current server-returned readiness and
-authority permit the operation; follow the advertised connection or recovery
-action when required.
+   > Help me verify BOS and Education Operation Center. Show the current
+   > authorized organization, application and role choices in plain language.
+   > Use my explicit choice or an existing confirmed default; ask me to choose
+   > when the context remains ambiguous. Verify the selected context, discover
+   > an available read-only Education Operation Center capability, and run one
+   > safe, bounded read. Report the selected organization, application and role,
+   > the capability tested, and its actual result. If access, a required plugin
+   > or provider authorization is missing, show the next supported action.
+
+5. Complete any required choice or consent, then let Claude finish that same
+   verification request. Success means an available capability was actually
+   called and returned an authorized result. An empty result is valid. A plugin
+   listing or a sign-in confirmation alone leaves verification unfinished.
+
+Claude login selects your host account and workspace. BOS sign-in connects your
+BOS identity to that Claude instance; the authorized BOS organization,
+application and role are selected separately. Each host keeps its own BOS
+connection and grant, so complete the supported BOS sign-in when another
+instance requires it. Changing an authorized BOS context uses the existing
+connection.
+
+Provider consent, such as permission for Google or Calimatic, is a separate step
+only when the requested capability requires it. Reuse a ready provider connection
+when BOS permits it, or follow the secure authorization action BOS returns.
+Enter credentials only on the supported secure page and keep them out of chat.
+
+For CRM-dependent work, first verify a supported My CRM distribution for Claude.
+This release has not established My CRM installation and verification in Claude;
+see [the independent CRM product limitation](#required-independent-crm-product).
+
+#### Maintainer verification and recovery
+
+The following commands are for maintainers with the repository and Claude CLI.
+The customer sequence above completes through Claude.
 
 Run `npm run install:verify:claude-runtime` after installation and each update.
 The verifier follows Claude's active `plugin list --json` `installPath`, checks
