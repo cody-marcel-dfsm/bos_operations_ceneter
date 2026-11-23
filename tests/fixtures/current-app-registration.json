@@ -2514,7 +2514,7 @@
       "body": {
         "error": {
           "code": "PAID_PLAN_REQUIRED",
-          "message": "A current paid work-app subscription is required.",
+          "message": "Current BOS service access is required for this operation.",
           "retryable": false,
           "correlation_id": "corr_synthetic_mcp_admission",
           "details": []
@@ -2526,7 +2526,7 @@
       "body": {
         "error": {
           "code": "MCP_ENTITLEMENT_UNAVAILABLE",
-          "message": "Entitlement evidence is temporarily unavailable.",
+          "message": "BOS service access is temporarily unavailable.",
           "retryable": true,
           "correlation_id": "corr_synthetic_mcp_admission",
           "details": []

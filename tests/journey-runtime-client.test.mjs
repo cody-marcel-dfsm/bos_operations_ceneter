@@ -16,6 +16,15 @@ import {
 
 const contextHandle = `bos_ctx_v2_${"a".repeat(64)}`;
 
+test("admission guidance preserves service-owned paid and qualifying-trial decisions", async () => {
+  const {readFile} = await import("node:fs/promises");
+  for (const relative of ["SKILL.md", "references/journey-lifecycle.md"]) {
+    const guidance = await readFile(new URL(`../source/platform/bos-workflow-orchestrator/${relative}`, import.meta.url), "utf8");
+    assert.match(guidance, /paid, qualifying-trial and prepared\/lifecycle admission remain service-owned/u);
+    assert.doesNotMatch(guidance, /payment is a prerequisite|HTTP 403 prerequisite/u);
+  }
+});
+
 const identity = "meeting-follow-up:approved-fixture";
 const start = {
   verb: "start",

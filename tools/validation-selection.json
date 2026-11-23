@@ -4,121 +4,126 @@
   "stamp": {
     "engine": "codex",
     "model": "gpt-6.1-sol",
-    "oracle_sha256": "12eaf593a010dfbc632f367eaa4e7cb2b73bdab741d8e70bf147b865fc00215b",
+    "oracle_sha256": "537e6d8233019c51672015c2d006ea7830effd749fc1672d27cacf3e55eb37e5",
     "host": "Codys-MacBook-Pro.local",
-    "time": "2026-11-23T07:02:11Z",
+    "time": "2026-11-23T15:32:16Z",
     "origin_main": "d6f6dac91af5e962ddc7acaf39efaa302708408b",
-    "request_sha256": null,
-    "proposal_sha256": "581d8fa901926d928e28d2d72d24a6bb325b12bd124cda0b02381584f4c2aeb1"
+    "request_sha256": "fc7562b6053f376e51682f5b2c5654862ae9297b1581c2b29bb956a5093207a3",
+    "proposal_sha256": "07fbc0932182f42beb25e6be6f61ce2d941c42df0584fc245cd089a0afaf7f9a"
   },
   "selection": {
     "acceptance": [
-      "Extract one reusable proposal, runner, retrieval, specification, seal and custody implementation while preserving existing command and import behavior through project adapters.",
-      "Standalone execution requires explicit project, trusted policy, catalog, corpus, model capabilities, budget and state configuration. Missing or ambiguous configuration fails closed, and retrieved corpus content remains untrusted evidence.",
-      "Real local Chroma indexing and search operate on synthetic public fixtures without skips, preserve source, chunk and configuration identities, reject stale evidence and publish index state consistently.",
-      "Proposal results and generated specifications preserve the current oracle-spec/1 format, complete acceptance-to-test bindings and exact input identities. Malformed, incomplete and uncertain executions retain their actual outcomes without automatic replay or paid fallback. Recovery of completed model output requires matching input, configuration, corpus, core, runtime and result identities; stale or tampered recovery fails closed. Materialization requires an explicit valid upstream origin distinct from tool-source identity, includes it in operation and recovery bindings, and never substitutes source_commit. An exact project Git root supplies its own HEAD, tree and reachable existing origin/main; parent repositories are excluded, and missing upstream fails before model execution.",
-      "Export reads immutable committed inputs through a complete closed mapping, rejects unsafe or unlisted members and produces independently verifiable artifact bytes with license, attribution and provenance. The exact public inventory includes its explicitly mapped CI workflow. Source provenance distinguishes the canonical commit identity from independently established upstream publication. The sole added generation input is the existing sealed candidate specification: require a regular immutable blob, valid existing family seal, lowercase 40-hex upstream commit, commit existence and ancestry to the candidate. Export only origin_main as the additional generated manifest key; preserve the 31-member inventory and exclude the raw specification, policy and approval evidence.",
-      "A fresh exported installation runs independently of private knowledge, sibling checkouts and undeclared host configuration. Private material, credentials, operational state and product packages remain outside the artifact. Its public CI executes all four public test modules and the real labelled retrieval benchmark without model or provider calls or credentials.",
-      "A separate deterministic verification profile binds complete committed source, selected tests, artifact bytes, runtime, dependencies and retained outputs. Existing profiles and publication restrictions remain enforced, with no completed-source model fallback. Full native VERIFIED requires every selected module. Public CI executes a separately typed CI_ONLY projection omitting exactly the native live-proposal module, makes no provider calls and receives no provider credentials. Publication rejects CI_ONLY as a substitute for a current full native receipt and rejects missing, stale or tampered native evidence. Only a separately declared bounded setup stage in the existing CI job or explicitly mapped public workflow may provision the pinned Python runtime, binary-only hash-locked dependencies and hash-verified public embedding archive. Archive admission enforces download and extracted-size limits and rejects unsafe paths, links, duplicate entries and unsupported member types. Optional caching contains only verified public setup inputs and revalidates restored bytes. Missing, incompatible or unverified setup fails closed; validation runtime never installs or downloads missing inputs. Receipts bind runtime, dependency-lock and embedding identities. Explicit artifact-only validation binds the genuine sealed feature base, executes the complete native selected commands and standalone export checks, and records COMPONENT_ARTIFACT_VERIFIED with source_publication=false. Current origin observation remains separate metadata. Every source push and promotion path refuses artifact-only receipts, including when origin later matches their base; existing whole-range source-publication guards remain enforced. Public upload requires current full native component proof, followed by independent public CI and exact-commit artifact readback. The native witness requires exact equality between the immutable candidate specification upstream, generated manifest upstream, completed provenance upstream and materialized specification stamp, and rejects absent, malformed or mismatched values.",
-      "A bounded normal-plan model-adapter demonstration consumes only public example inputs and records a truthful conceptual proposal outcome with exact configuration and model evidence. Its upstream provenance matches the immutable exported manifest and candidate specification while tool-source identity remains separately bound.",
-      "Benchmark output identifies execution mode, independently authored labels, corpus, embedding, model and source identities and measured results without unsupported comparative claims."
+      "Generic application validation requires independently observed selected application contact and scoped description evidence. Application identity, discovery provenance, operation and returned contacts agree; descriptor self-assertion alone establishes no binding or authority.",
+      "Registration copies the exact validated discovered URI, method and context-header declaration while enforcing the complete current-version schema and existing URI, origin and scope checks. Foreign applications, altered contacts, unsafe paths, raw authority selectors and unsupported versions fail closed.",
+      "Discovery refresh, contract-facts projection and callback-source readiness preserve the selected application binding and literal observed declarations without mutating source documents or treating descriptive labels as authorization.",
+      "Admission errors require the actual validated request descriptor and closed correlated public envelope. Only declared HTTP 403 PAID_PLAN_REQUIRED with retryable false and HTTP 503 MCP_ENTITLEMENT_UNAVAILABLE with retryable true receive their corresponding dispositions; undeclared, mismatched, malformed and obsolete HTTP 402 variants fail closed.",
+      "Guidance and synthetic examples report service access decisions without inferring separate application subscriptions, payment prerequisites, trial eligibility or acquisition actions. Preserve literal producer-safe messages, actual retry timing and existing server policy; initiate no login, payment, automatic registration replay or local entitlement evaluation.",
+      "Existing application helper calls, current-version contracts, compile/start behavior, returned actions, callback recovery and native execution allowlists remain compatible. Generic discovery creates no native alias, host capability, credential lifecycle or public API version.",
+      "Canonical guidance and generated consumers remain equivalent, required versions and exact dependency pins remain consistent, and runtime helpers remain usable in generated distributions.",
+      "Individual-record lookup retains graph completion after clarification, every selected-route intermediate node and edge, compact preferred routing, structural fallback, precise partial evidence and ranking provenance. Preserve explicit text, shortest and full-topology requests, plain labels, native visualization priority, renderer-support checks and the focused student-workflow exception."
     ],
     "acceptance_tests": [
       {
         "covers": [
           0,
-          3
+          1,
+          5
         ],
-        "module": "tests/oracle-implementation-spec.test.mjs",
-        "purpose": "Preserve existing proposal materialization, specification integrity and refusal behavior. Exercise all three actual constructor-used copy helpers in isolated children, preserving complete relative paths, bytes and modes, the exact 42-input constructor projection, existing negative assertions and committed helper-input bindings."
+        "module": "tests/app-discovery.test.mjs",
+        "purpose": "Verify independently selected application contacts, exact identifiers and legacy compatibility."
       },
       {
         "covers": [
           0,
-          3
+          2,
+          5
         ],
-        "module": "tests/oracle-lifecycle.test.mjs",
-        "purpose": "Preserve process custody, uncertain outcomes and reconciliation behavior."
+        "module": "tests/journey-discovery.test.mjs",
+        "purpose": "Verify coherent application discovery, refresh and existing operation contracts."
+      },
+      {
+        "covers": [
+          0,
+          1,
+          3,
+          5
+        ],
+        "module": "tests/journey-registration-discovery.test.mjs",
+        "purpose": "Verify complete registration schemas, exact scoped contacts and admission declarations with refusal cases."
+      },
+      {
+        "covers": [
+          1,
+          3,
+          4,
+          5
+        ],
+        "module": "tests/journey-runtime-client.test.mjs",
+        "purpose": "Verify descriptor and request custody, exact public errors, literal safe messages and absence of inferred recovery or replay."
       },
       {
         "covers": [
           0,
           2
         ],
-        "module": "tests/vault-index-runtime.test.mjs",
-        "purpose": "Preserve existing project runtime ownership and refusal boundaries."
+        "module": "tests/contract-facts.test.mjs",
+        "purpose": "Verify selected application provenance and faithful immutable contract projection."
       },
       {
         "covers": [
           0,
-          3
-        ],
-        "module": "tests/validation-contract.test.mjs",
-        "purpose": "Preserve specification binding, feature-plan validation and complete selected execution."
-      },
-      {
-        "covers": [
-          0,
-          1,
-          3
-        ],
-        "module": "tests/oracle-public-core.test.mjs",
-        "purpose": "Verify core composition, adapter compatibility and trusted-policy separation; require explicit distinct upstream provenance, exact own-root Git precedence, parent-root refusal, pre-model denial and upstream-bound recovery with no fallback."
-      },
-      {
-        "covers": [
-          1,
-          3
-        ],
-        "module": "tests/oracle-public-runner.test.mjs",
-        "purpose": "Verify runner capabilities, bounded execution, preserved outcomes and exact-bound recovery without automatic replay."
-      },
-      {
-        "covers": [
-          1,
           2,
           5
         ],
-        "module": "tests/oracle-public-chroma.test.mjs",
-        "purpose": "Execute real embeddings and retrieval against public fixtures with complete evidence and stale-state checks."
+        "module": "tests/callback-source-readiness.test.mjs",
+        "purpose": "Verify selected application readiness without changing callback or service authority."
+      },
+      {
+        "covers": [
+          1,
+          5
+        ],
+        "module": "tests/external-dependency-adapter.test.mjs",
+        "purpose": "Preserve trusted transport, scope continuity and existing native execution admission."
       },
       {
         "covers": [
           4,
-          5
+          6
         ],
-        "module": "tests/oracle-public-export.test.mjs",
-        "purpose": "Verify immutable complete mapping, public workflow and fresh-copy independence; admit only the declared sealed generation input, export only its validated ancestor origin, retain exact member counts and reject missing, tampered, malformed, nonregular, missing-object and nonancestor provenance."
+        "module": "tests/journey-package-parity.test.mjs",
+        "purpose": "Verify corrected canonical guidance, neutral example wording and equivalent generated lifecycle consumers."
+      },
+      {
+        "covers": [
+          6
+        ],
+        "module": "tests/versioned-skills.test.mjs",
+        "purpose": "Verify required skill versions and exact dependency metadata."
+      },
+      {
+        "covers": [
+          5,
+          6,
+          7
+        ],
+        "module": "tests/package-model.test.mjs",
+        "purpose": "Preserve product composition, connection ownership and scoped workflow exceptions."
       },
       {
         "covers": [
           5,
           6
         ],
-        "module": "tests/deterministic-oracle.test.mjs",
-        "purpose": "Verify native custody and exact candidate-manifest-provenance-stamp upstream equality, including a distinct tool-source commit and negative mismatches; retain full component proof, separate current-origin observation, permanent artifact-only publication refusal, existing whole-range guards, provider-free CI and pinned setup integrity."
+        "module": "tests/muse-package.test.mjs",
+        "purpose": "Verify generated package compatibility and unchanged host connection boundaries."
       },
       {
         "covers": [
-          6
-        ],
-        "module": "tests/deterministic-lanes.test.mjs",
-        "purpose": "Preserve existing deterministic profile scope and dispatcher behavior while admitting only the separate profile and refusing artifact-only receipts at source publication entrypoints."
-      },
-      {
-        "covers": [
-          3,
           7
         ],
-        "module": "tests/oracle-public-live-proposal.test.mjs",
-        "purpose": "Record one bounded actual conceptual proposal execution with exact upstream and tool-source provenance, and verify exact-bound materialization recovery without repeating the model call."
-      },
-      {
-        "covers": [
-          8
-        ],
-        "module": "tests/oracle-public-benchmark.test.mjs",
-        "purpose": "Verify benchmark label independence, measurement provenance and truthful mode reporting."
+        "module": "tests/lead-graph-regression.test.mjs",
+        "purpose": "Verify graph handoff closure, compact complete routes, truthful partial graphs, plain labels and generated native-renderer selection."
       }
     ],
     "categories": [
@@ -129,124 +134,97 @@
       },
       {
         "fixtures": [
-          "tests/oracle_spec_test.py",
-          "tests/oracle_lifecycle_test.py",
-          "tests/vault_index_runtime_test.py",
-          "tests/validation_contract_test.py",
-          "tests/oracle_fixture.py",
-          "tests/oracle-fixture.mjs",
-          "tests/helpers/isolated-test-cohort.mjs",
-          "tests/fixtures/oracle-public/policy.md",
-          "tests/fixtures/oracle-public/catalog.json",
-          "tests/fixtures/oracle-public/proposal.txt",
-          "tests/published_fixture.py",
-          "tests/oracle_review_series.py",
-          "tests/privacy_coverage_test.py"
+          "tests/helpers/synthetic-bos-discovery-service.mjs",
+          "tests/fixtures/journey-registration-contract.json",
+          "tests/fixtures/current-app-registration.json"
         ],
-        "name": "interactions",
+        "name": "focused",
         "tests": [
-          "tests/oracle-implementation-spec.test.mjs",
-          "tests/oracle-lifecycle.test.mjs",
-          "tests/vault-index-runtime.test.mjs",
-          "tests/validation-contract.test.mjs",
-          "tests/oracle-public-core.test.mjs",
-          "tests/oracle-public-runner.test.mjs",
-          "tests/deterministic-lanes.test.mjs"
+          "tests/app-discovery.test.mjs",
+          "tests/journey-discovery.test.mjs",
+          "tests/journey-registration-discovery.test.mjs",
+          "tests/journey-runtime-client.test.mjs"
         ]
       },
       {
         "fixtures": [
-          "tests/fixtures/oracle-public/policy.md",
-          "tests/fixtures/oracle-public/catalog.json",
-          "tests/fixtures/oracle-public/proposal.txt",
-          "tests/fixtures/oracle-public/corpus/architecture.md",
-          "tests/fixtures/oracle-public/relevance.json",
-          "tests/fixtures/oracle-public/export-map.json"
+          "tests/helpers/synthetic-bos-discovery-service.mjs",
+          "tests/helpers/synthetic-notifications.mjs",
+          "tests/helpers/lead-graph-acceptance.mjs",
+          "tests/fixtures/journey-registration-contract.json",
+          "tests/fixtures/current-app-registration.json"
         ],
-        "name": "acceptance",
+        "name": "interactions",
         "tests": [
-          "tests/oracle-public-chroma.test.mjs",
-          "tests/oracle-public-export.test.mjs",
-          "tests/deterministic-oracle.test.mjs",
-          "tests/oracle-public-live-proposal.test.mjs",
-          "tests/oracle-public-benchmark.test.mjs"
+          "tests/contract-facts.test.mjs",
+          "tests/callback-source-readiness.test.mjs",
+          "tests/external-dependency-adapter.test.mjs",
+          "tests/journey-package-parity.test.mjs",
+          "tests/versioned-skills.test.mjs",
+          "tests/package-model.test.mjs",
+          "tests/muse-package.test.mjs",
+          "tests/lead-graph-regression.test.mjs"
         ]
       }
     ],
-    "change_class": "feature",
-    "design": "Vault/docs/design/portable-oracle-publication.md",
-    "reason": "Revise the existing feature contract solely for complete fixture-constructor compatibility. Retain all nine criteria, twelve selected modules and existing category commands; add three supporting Python fixtures and four exact editable paths, yielding 65 owned paths while preserving 44 runtime/assets and 31 public members. Existing selected cases must exercise actual constructor-used helpers with complete paths, bytes and modes, retain the 26-module and 52-to-2 assertions, verify the exact 42-input projection with all custody negatives, and bind newly consumed helper bytes. Adopt the exact prospective catalog inventory without weakening existing profiles, guards or proof purposes. Complete full native verification and independent provider-free public CI; completed-source verification remains deterministic with no model fallback. Preserve historical outcomes, original request clocks, the 300-second end-to-end obligation and existing 120/60/90/30-second component budgets. This revision establishes no timing success or renewed clock.",
-    "revision_of": "c13e496506a2b2e639265809faad275391d7433380032483d3bc1e60968f39b3",
+    "change_class": "deep_bug_fix",
+    "design": null,
+    "reason": "Discovery binding and admission-response handling cross validation, request construction, readiness, projection and generated guidance. Retain the prior client suites and all refusal cases. Correct only the service-policy interpretation and neutral example wording while preserving runtime boundaries. Establish native fail-before continuity using the revised consumed fixture and unchanged acceptance tests against the original implementation baseline; retain historical results under their original identities. Preserve intervening immutable contracts and source receipts through native successor adoption. Complete every selected category and general source/publication gate, retain the original request clock and 300-second delivery obligation, and report source validation separately from live acceptance.",
+    "revision_of": "516a039ad3c2a1a847f3916577a4f2e3c627c9938840fea8e4c34d443d53a99e",
     "scope_paths": [
-      "tools/oracle_core/__init__.py",
-      "tools/oracle_core/cli.py",
-      "tools/oracle_core/config.py",
-      "tools/oracle_core/proposal.py",
-      "tools/oracle_core/runner.py",
-      "tools/oracle_core/context.py",
-      "tools/oracle_core/index.py",
-      "tools/oracle_core/spec.py",
-      "tools/oracle_core/seal.py",
-      "tools/oracle_core/custody.py",
-      "tools/oracle_core/lifecycle.py",
-      "tools/oracle_oc_adapter.py",
-      "tools/export_oracle.py",
-      "tools/oracle-public-export.json",
-      "tools/oracle_approval.py",
-      "tools/vault_index.py",
-      "tools/validation_contract.py",
-      "tools/oracle_spec_seal.py",
-      "tools/oracle_lifecycle.py",
-      "tools/codex_child_model.py",
-      "tools/deterministic_oracle.py",
-      "tools/deterministic-oracle.md",
-      "tools/deterministic_package.py",
-      "tools/validation-catalog.json",
+      "source/platform/bos-app-discovery/scripts/validate-discovery.mjs",
+      "source/platform/bos-app-discovery/scripts/project-contract-facts.mjs",
+      "source/platform/bos-workflow-orchestrator/scripts/journey-runtime-client.mjs",
+      "source/platform/bos-workflow-orchestrator/scripts/callback-source-readiness.mjs",
+      "source/platform/bos-app-discovery/SKILL.md",
+      "source/platform/bos-app-discovery/references/discovery-contract.md",
+      "source/platform/bos-workflow-orchestrator/SKILL.md",
+      "source/platform/bos-workflow-orchestrator/references/journey-lifecycle.md",
+      "source/platform/*/SKILL.md",
+      "source/capabilities/*/SKILL.md",
+      "source/verticals/*/*/SKILL.md",
+      "tests/app-discovery.test.mjs",
+      "tests/journey-discovery.test.mjs",
+      "tests/journey-registration-discovery.test.mjs",
+      "tests/journey-runtime-client.test.mjs",
+      "tests/contract-facts.test.mjs",
+      "tests/callback-source-readiness.test.mjs",
+      "tests/external-dependency-adapter.test.mjs",
+      "tests/journey-package-parity.test.mjs",
+      "tests/helpers/synthetic-bos-discovery-service.mjs",
+      "tests/fixtures/current-app-registration.json",
       "tools/validation-selection.json",
-      ".github/workflows/publication-safety.yml",
+      "README.md",
       "package.json",
-      "tools/oracle_public/.gitignore",
-      "LICENSE",
-      "NOTICE",
-      "tools/oracle_public/README.md",
-      "tools/oracle_public/pyproject.toml",
-      "tools/oracle_public/requirements.lock",
-      "tools/oracle_public/oracle.project.json",
-      "tools/oracle_public/schemas/proposal-output.schema.json",
-      "tools/oracle_public/policy/example-policy.md",
-      "tools/oracle_public/corpus/example-architecture.md",
-      "tools/oracle_public/examples/proposal.txt",
-      "tools/oracle_public/validation-catalog.json",
-      "tools/oracle_public/tests/test_proposal_to_spec.py",
-      "tools/oracle_public/tests/test_public_chroma.py",
-      "tools/oracle_public/tests/test_runner_contract.py",
-      "tools/oracle_public/tests/test_export_boundary.py",
-      "tools/oracle_public/benchmarks/run.py",
-      "tools/oracle_public/benchmarks/public_cases.json",
-      "tests/oracle-public-core.test.mjs",
-      "tests/oracle-public-runner.test.mjs",
-      "tests/oracle-public-chroma.test.mjs",
-      "tests/oracle-public-export.test.mjs",
-      "tests/oracle-public-live-proposal.test.mjs",
-      "tests/oracle-public-benchmark.test.mjs",
-      "tests/deterministic-oracle.test.mjs",
-      "tests/deterministic-lanes.test.mjs",
-      "tests/fixtures/oracle-public/policy.md",
-      "tests/fixtures/oracle-public/catalog.json",
-      "tests/fixtures/oracle-public/proposal.txt",
-      "tests/fixtures/oracle-public/corpus/architecture.md",
-      "tests/fixtures/oracle-public/relevance.json",
-      "tests/fixtures/oracle-public/export-map.json",
-      "tests/oracle_spec_test.py",
-      "tools/oracle_public/.github/workflows/ci.yml",
-      "tests/published_fixture.py",
-      "tests/oracle_review_series.py",
-      "tests/privacy_coverage_test.py",
-      "tests/oracle-implementation-spec.test.mjs"
+      "package-lock.json",
+      "package-manifest.json",
+      "skill-release-manifest.json",
+      "products/bos/product.json",
+      "products/education-center/product.json",
+      "products/bos/openai/bos-skills.zip",
+      "products/education-center/openai/education-center-skills.zip",
+      "clients/*/*/*/skills/*/SKILL.md",
+      "clients/copilot/skills/*/SKILL.md",
+      "clients/*/*/*/skills/bos-app-discovery/scripts/validate-discovery.mjs",
+      "clients/*/*/*/skills/bos-app-discovery/scripts/project-contract-facts.mjs",
+      "clients/*/*/*/skills/bos-app-discovery/references/discovery-contract.md",
+      "clients/*/*/*/skills/bos-workflow-orchestrator/scripts/journey-runtime-client.mjs",
+      "clients/*/*/*/skills/bos-workflow-orchestrator/scripts/callback-source-readiness.mjs",
+      "clients/*/*/*/skills/bos-workflow-orchestrator/references/journey-lifecycle.md",
+      "clients/claude/plugins/*/.bos-product.json",
+      "clients/claude/plugins/*/.claude-plugin/plugin.json",
+      "clients/codex/plugins/*/.bos-product.json",
+      "clients/codex/plugins/*/.codex-plugin/plugin.json",
+      "clients/muse/plugins/*/.bos-product.json",
+      "clients/muse/plugins/*/.muse-plugin/plugin.json",
+      "clients/copilot/products/*/.bos-product.json",
+      "clients/gemini/extensions/*/.bos-product.json",
+      "clients/gemini/extensions/*/gemini-extension.json",
+      "clients/gemini/extensions/*/plugin.json"
     ]
   },
-  "base_commit": "8811136e97f2b11f9d19c23e6c64b5ee434c3c74",
-  "base_tree": "9ebbf63accfd429d78aac9a22e0b4c4468a8536e",
+  "base_commit": "b41e3c102bd4b6eb0fd428db6d4608e32b6a09e9",
+  "base_tree": "94a85a69a66cbba71b54d226aa7c06599473a266",
   "catalog_sha256": "51ee7ae8c1533604f7b2c68b9efba9d1b9d6f340d724d7c208dba434325859b3",
   "runtime": {
     "node": "v22.11.0",
@@ -256,8 +234,8 @@
     "architecture": "arm64",
     "options_sha256": "ebc442c160f8629073a82976daadaba1d95a60a38d768c81c8eb06598aedcac5"
   },
-  "proposal_sha256": "581d8fa901926d928e28d2d72d24a6bb325b12bd124cda0b02381584f4c2aeb1",
-  "review_sha256": "a301f89ae17efe3c34f2bc95b6d9c7bb40cf4db80b38ca7c9da9249c1f90f3d9",
+  "proposal_sha256": "07fbc0932182f42beb25e6be6f61ce2d941c42df0584fc245cd089a0afaf7f9a",
+  "review_sha256": "233e61a49c577dfcfe65de5c84e72565b405546e5a09387e46f751ea95cf0da1",
   "commands": [
     {
       "category": "sanity",
@@ -270,72 +248,61 @@
       "fixtures": []
     },
     {
+      "category": "focused",
+      "argv": [
+        "node",
+        "--test",
+        "--test-reporter=tap",
+        "--test-concurrency=1",
+        "tests/app-discovery.test.mjs",
+        "tests/journey-discovery.test.mjs",
+        "tests/journey-registration-discovery.test.mjs",
+        "tests/journey-runtime-client.test.mjs"
+      ],
+      "tests": [
+        "tests/app-discovery.test.mjs",
+        "tests/journey-discovery.test.mjs",
+        "tests/journey-registration-discovery.test.mjs",
+        "tests/journey-runtime-client.test.mjs"
+      ],
+      "fixtures": [
+        "tests/helpers/synthetic-bos-discovery-service.mjs",
+        "tests/fixtures/journey-registration-contract.json",
+        "tests/fixtures/current-app-registration.json"
+      ]
+    },
+    {
       "category": "interactions",
       "argv": [
         "node",
         "--test",
         "--test-reporter=tap",
         "--test-concurrency=1",
-        "tests/oracle-implementation-spec.test.mjs",
-        "tests/oracle-lifecycle.test.mjs",
-        "tests/vault-index-runtime.test.mjs",
-        "tests/validation-contract.test.mjs",
-        "tests/oracle-public-core.test.mjs",
-        "tests/oracle-public-runner.test.mjs",
-        "tests/deterministic-lanes.test.mjs"
+        "tests/contract-facts.test.mjs",
+        "tests/callback-source-readiness.test.mjs",
+        "tests/external-dependency-adapter.test.mjs",
+        "tests/journey-package-parity.test.mjs",
+        "tests/versioned-skills.test.mjs",
+        "tests/package-model.test.mjs",
+        "tests/muse-package.test.mjs",
+        "tests/lead-graph-regression.test.mjs"
       ],
       "tests": [
-        "tests/oracle-implementation-spec.test.mjs",
-        "tests/oracle-lifecycle.test.mjs",
-        "tests/vault-index-runtime.test.mjs",
-        "tests/validation-contract.test.mjs",
-        "tests/oracle-public-core.test.mjs",
-        "tests/oracle-public-runner.test.mjs",
-        "tests/deterministic-lanes.test.mjs"
+        "tests/contract-facts.test.mjs",
+        "tests/callback-source-readiness.test.mjs",
+        "tests/external-dependency-adapter.test.mjs",
+        "tests/journey-package-parity.test.mjs",
+        "tests/versioned-skills.test.mjs",
+        "tests/package-model.test.mjs",
+        "tests/muse-package.test.mjs",
+        "tests/lead-graph-regression.test.mjs"
       ],
       "fixtures": [
-        "tests/oracle_spec_test.py",
-        "tests/oracle_lifecycle_test.py",
-        "tests/vault_index_runtime_test.py",
-        "tests/validation_contract_test.py",
-        "tests/oracle_fixture.py",
-        "tests/oracle-fixture.mjs",
-        "tests/helpers/isolated-test-cohort.mjs",
-        "tests/fixtures/oracle-public/policy.md",
-        "tests/fixtures/oracle-public/catalog.json",
-        "tests/fixtures/oracle-public/proposal.txt",
-        "tests/published_fixture.py",
-        "tests/oracle_review_series.py",
-        "tests/privacy_coverage_test.py"
-      ]
-    },
-    {
-      "category": "acceptance",
-      "argv": [
-        "node",
-        "--test",
-        "--test-reporter=tap",
-        "--test-concurrency=1",
-        "tests/oracle-public-chroma.test.mjs",
-        "tests/oracle-public-export.test.mjs",
-        "tests/deterministic-oracle.test.mjs",
-        "tests/oracle-public-live-proposal.test.mjs",
-        "tests/oracle-public-benchmark.test.mjs"
-      ],
-      "tests": [
-        "tests/oracle-public-chroma.test.mjs",
-        "tests/oracle-public-export.test.mjs",
-        "tests/deterministic-oracle.test.mjs",
-        "tests/oracle-public-live-proposal.test.mjs",
-        "tests/oracle-public-benchmark.test.mjs"
-      ],
-      "fixtures": [
-        "tests/fixtures/oracle-public/policy.md",
-        "tests/fixtures/oracle-public/catalog.json",
-        "tests/fixtures/oracle-public/proposal.txt",
-        "tests/fixtures/oracle-public/corpus/architecture.md",
-        "tests/fixtures/oracle-public/relevance.json",
-        "tests/fixtures/oracle-public/export-map.json"
+        "tests/helpers/synthetic-bos-discovery-service.mjs",
+        "tests/helpers/synthetic-notifications.mjs",
+        "tests/helpers/lead-graph-acceptance.mjs",
+        "tests/fixtures/journey-registration-contract.json",
+        "tests/fixtures/current-app-registration.json"
       ]
     }
   ],
@@ -348,17 +315,6 @@
     "reasoning_effort": "medium",
     "maximum_reasoning_effort": "medium"
   },
-  "design_binding": {
-    "design": "Vault/docs/design/portable-oracle-publication.md",
-    "design_sha256": "268222dec10de4f274bf5e543488432abb2c8abf14ce46310599028f01c2174b",
-    "plan": "Vault/docs/design/portable-oracle-publication.test-plan.json",
-    "plan_sha256": "de97c4f4ffca1dd84e0f75c2fd148e0bb93feaae71f61ba8e489fa05baea8b5d",
-    "tests": [
-      "tests/deterministic-oracle.test.mjs",
-      "tests/oracle-public-core.test.mjs",
-      "tests/oracle-public-export.test.mjs"
-    ]
-  },
-  "contract_sha256": "516a039ad3c2a1a847f3916577a4f2e3c627c9938840fea8e4c34d443d53a99e",
-  "seal": "c6f4b3ad1cd60340b2ec2981676ac7e0fe7db71edaafc5ff657c3aaade82497d"
+  "contract_sha256": "4cb059bfafa9fde163fbf10ef2e0fccb5ebadf079def1b55791a600f7d57630c",
+  "seal": "696865fa9e80e583850b8476c09c99561aeb8315d6f76f5a1cb33a9648a3ef59"
 }
