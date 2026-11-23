@@ -79,7 +79,34 @@ DELTA_KIND = 'boc.proposal-delta/1'
 _CURRENT_ORIGIN = object()
 _CURRENT_PRIOR_PROOF = object()
 
-def delta_context(root, source, tree, *, origin_main=_CURRENT_ORIGIN, prior_proposal_sha256=_CURRENT_PRIOR_PROOF):
+def _publication_projection(root, tree, scope):
+    """Verify the immutable membership resolved by the native publication owner."""
+    keys=('baseline_commit','candidate_tree','remote_url','target_ref','range_paths','range_sha256')
+    if not isinstance(scope,dict) or any(key not in scope for key in keys):raise ValueError('Native publication scope is incomplete')
+    value={key:copy.deepcopy(scope[key]) for key in keys}
+    base=value['baseline_commit']
+    if not re.fullmatch('[a-f0-9]{40}',base or '') or value['candidate_tree']!=tree:raise ValueError('Native publication source changed')
+    paths=sorted(p for p in git(root,'diff','--name-only','--diff-filter=ACMRTD','-z',base,tree).split('\0') if p)
+    raw=subprocess.check_output(['git','diff','--binary','--full-index',base,tree],cwd=root)
+    if value['range_paths']!=paths or value['range_sha256']!=sha256(raw):raise ValueError('Native publication inventory changed')
+    if value['target_ref'] not in (None,'refs/heads/main') or (value['target_ref'] is not None and not text(value['remote_url'])):
+        raise ValueError('Native publication destination changed')
+    return value
+
+def _resolved_publication_scope(root, tree):
+    # Reuse the owning adapter's authority and history resolver; no CLI or model
+    # supplies a second baseline policy. Import lazily to avoid module startup cycles.
+    try:from . import oracle_approval as native
+    except ImportError:import oracle_approval as native
+    return _publication_projection(root,tree,native._publication_scope(root,tree))
+
+def delta_context(root, source, tree, *, origin_main=_CURRENT_ORIGIN, prior_proposal_sha256=_CURRENT_PRIOR_PROOF, publication_scope=None):
+    scope=_resolved_publication_scope(root,tree)
+    if publication_scope is not None and _publication_projection(root,tree,publication_scope)!=scope:
+        raise ValueError('Native publication scope changed')
+    return _delta_context(root,source,tree,origin_main=origin_main,prior_proposal_sha256=prior_proposal_sha256,publication_scope=scope)
+
+def _delta_context(root, source, tree, *, origin_main=_CURRENT_ORIGIN, prior_proposal_sha256=_CURRENT_PRIOR_PROOF, publication_scope=None):
     """Capture producer-owned exact membership; neither a model nor a caller supplies scope."""
     if not all(re.fullmatch('[a-f0-9]{40}', x or '') for x in (source, tree)):
         raise ValueError('Delta requires immutable source/tree identities')
@@ -110,15 +137,33 @@ def delta_context(root, source, tree, *, origin_main=_CURRENT_ORIGIN, prior_prop
     if origin_main is not None:
         if not re.fullmatch('[a-f0-9]{40}',origin_main):raise ValueError('Exact delta origin required')
         git(root,'merge-base','--is-ancestor',origin_main,source)
-    paths = git(root, 'diff', '--name-only', '-z', prior['base_commit'], tree).split('\0')
-    paths = sorted(set(p for p in paths if p) | set(prior['selection']['scope_paths']))
+    tracked = git(root, 'ls-tree', '-r', '--name-only', '-z', tree).split('\0')
+    if publication_scope is None:
+        # Historical producers used this exact local-base inventory and hash.
+        paths = git(root, 'diff', '--name-only', '-z', prior['base_commit'], tree).split('\0')
+        paths = sorted(set(p for p in paths if p) | set(prior['selection']['scope_paths']))
+        inventory=digest(paths)
+    else:
+        publication_scope=_publication_projection(root,tree,publication_scope)
+        if publication_scope['target_ref'] is not None and publication_scope['baseline_commit']!=origin_main:
+            raise ValueError('Native publication origin changed')
+        git(root,'merge-base','--is-ancestor',publication_scope['baseline_commit'],source)
+        members=set(p for p in tracked if p)
+        members.update(p for p in git(root,'ls-tree','-r','--name-only','-z',publication_scope['baseline_commit']).split('\0') if p)
+        retained=set()
+        for pattern in prior['selection']['scope_paths']:
+            if any(c in pattern for c in '*?[]'):
+                retained.update(p for p in members if fnmatch.fnmatchcase(p,pattern))
+            else:retained.add(pattern)
+        paths=sorted(set(publication_scope['range_paths'])|retained)
+        inventory=digest({'paths':paths,'publication_scope':publication_scope})
     if len(paths)>4096 or any(not safe_path(p) or any(c in p for c in '*?[]\r\n') for p in paths):
         raise ValueError('Delta requires finite exact paths')
-    tracked = git(root, 'ls-tree', '-r', '--name-only', '-z', tree).split('\0')
     tests = sorted(p for p in tracked if p.startswith('tests/') and safe_path(p) and not any(c in p for c in '*?[]\r\n'))
     binding = {'prior_contract_sha256':prior['contract_sha256'], 'prior_proposal_sha256':prior_proposal_sha256, 'source_commit':source,
-               'source_tree':tree, 'origin_main':origin_main, 'inventory_sha256':digest(paths), 'test_inventory_sha256':digest(tests)}
-    return {'binding':binding, 'prior':prior, 'paths':paths, 'test_paths':tests}
+               'source_tree':tree, 'origin_main':origin_main, 'inventory_sha256':inventory, 'test_inventory_sha256':digest(tests)}
+    return {'binding':binding, 'prior':prior, 'paths':paths, 'test_paths':tests,
+            **({'publication_scope':publication_scope} if publication_scope is not None else {})}
 
 def delta_schema(context):
     row = {'type':'object','additionalProperties':False,'required':['name','tests','fixtures'],
@@ -140,11 +185,16 @@ def delta_schema(context):
                           'coverage_additions':{'type':'array','items':coverage,'maxItems':128}}}
 
 def materialize_delta(root, context, delta):
+    return _materialize_delta(root,context,delta)
+
+def _materialize_delta(root, context, delta, *, historical=False):
     """Normalize a genuine approval's closed delta before the unchanged seal procedure."""
     keys={'kind','binding','reason','design','acceptance_additions','category_additions','coverage_additions'}
     if not isinstance(delta,dict) or set(delta)!=keys or delta['kind']!=DELTA_KIND or delta['binding']!=context['binding']:
         raise ValueError('Delta binding or fields changed')
-    fresh=delta_context(root,context['binding']['source_commit'],context['binding']['source_tree'],origin_main=context['binding']['origin_main'],prior_proposal_sha256=context['binding']['prior_proposal_sha256'])
+    capture=_delta_context if historical else delta_context
+    options={'publication_scope':context['publication_scope']} if historical and 'publication_scope' in context else {}
+    fresh=capture(root,context['binding']['source_commit'],context['binding']['source_tree'],origin_main=context['binding']['origin_main'],prior_proposal_sha256=context['binding']['prior_proposal_sha256'],**options)
     if fresh!=context: raise ValueError('Delta source/prior/inventory changed')
     prior=context['prior']['selection']; value=copy.deepcopy(prior)
     value.update(revision_of=context['prior']['contract_sha256'], reason=delta['reason'], design=delta['design'])
@@ -187,6 +237,7 @@ def materialize_delta(root, context, delta):
     audit={'kind':DELTA_KIND,'binding':context['binding'],'raw_delta_sha256':digest(delta),
            'selection_sha256':digest(value),'scope_sha256':digest(value['scope_paths']),
            'retained_acceptance_sha256':digest(prior['acceptance']), 'retained_coverage_sha256':digest(projected)}
+    if 'publication_scope' in context:audit['publication_scope']=copy.deepcopy(context['publication_scope'])
     return value,audit
 
 def reconstruct_delta_record(root,audit,delta):
@@ -196,7 +247,8 @@ def reconstruct_delta_record(root,audit,delta):
     if not legacy and set(binding)!=base_keys|{'prior_proposal_sha256'}:raise ValueError('Unknown delta binding shape')
     options={'origin_main':binding['origin_main']}
     if not legacy:options['prior_proposal_sha256']=binding['prior_proposal_sha256']
-    context=delta_context(root,binding['source_commit'],binding['source_tree'],**options)
+    if 'publication_scope' in audit:options['publication_scope']=audit['publication_scope']
+    context=_delta_context(root,binding['source_commit'],binding['source_tree'],**options)
     if context['binding']['prior_proposal_sha256'] is None:raise ValueError('Verified native prior required for delta consumption')
     if legacy:
         # The earlier producer bound the exact prior contract. Establish its
@@ -205,10 +257,10 @@ def reconstruct_delta_record(root,audit,delta):
         reduced={k:v for k,v in context['binding'].items() if k!='prior_proposal_sha256'}
         if reduced!=binding or delta.get('binding')!=binding:raise ValueError('Legacy delta binding changed')
         normalized=dict(delta,binding=context['binding'])
-        selection,expected=materialize_delta(root,context,normalized)
+        selection,expected=_materialize_delta(root,context,normalized,historical=True)
         expected.update(binding=binding,raw_delta_sha256=digest(delta))
     else:
-        selection,expected=materialize_delta(root,context,delta)
+        selection,expected=_materialize_delta(root,context,delta,historical=True)
     if expected!=audit:raise ValueError('Delta normalization audit changed')
     return selection,context
 

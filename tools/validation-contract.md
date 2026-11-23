@@ -91,6 +91,19 @@ Unknown paths, missing/wrong hashes, replay, source movement, removal and change
 old mapping purposes reject. No glob or supplied whitelist expands that scope.
 Added tests and fixtures must exist in the captured source tree. Initial designs
 with future planned files retain the full proposal mode.
+
+Current capture uses the same native publication-scope resolver as full-range
+review and admission. Its inventory includes every pending published-base-to-tree
+path, including older foreign changes and deletions. Retained reviewed patterns
+materialize only finite tracked membership from the bound publication baseline
+and candidate trees. The existing inventory hash commits to that exact membership
+and the resolved baseline, destination and binary range projection; the parent
+stores the projection in its normalized audit. No caller or model selects another
+baseline. Current enrollment recaptures native scope before materialization.
+Historical audits without this projection retain their original local-base path
+hash semantics. Both original raw binding shapes remain reconstructible after
+the remote advances; replay verifies their original immutable observations and
+never grants them a widened inventory or fresh approval.
 The parent also binds a matching canonical APPROVED/COMPLETE native prior
 proposal archive. A sanity seal alone cannot start this mode. For an earlier
 closed response that bound only the exact prior contract, consumption establishes

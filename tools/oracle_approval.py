@@ -3255,7 +3255,8 @@ def review_proposal(root: Path, request: str, evidence_paths: Sequence[str], own
                 raise OracleApprovalError("Original request changed while its evidence was bound")
         binding = _input_binding(root, evidence, owner)
         guards = _proposal_guards(root, evidence, owner)
-        delta_context = validation_contract.delta_context(root, binding['base_commit'], binding['candidate_tree']) if delta else None
+        delta_context = validation_contract.delta_context(root, binding['base_commit'], binding['candidate_tree'],
+                                                         publication_scope=binding['publication_scope']) if delta else None
         if delta_context and delta_context['binding']['prior_proposal_sha256'] is None:
             raise OracleApprovalError('Delta requires a verified native prior proposal archive; use the normal proposal lane first')
         if request_path is not None and guards["evidence"].get(_custody_name(root, request_path)) != _sha(request_bytes):
