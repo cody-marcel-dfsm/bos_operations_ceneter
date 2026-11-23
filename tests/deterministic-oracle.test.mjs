@@ -162,7 +162,7 @@ class Profile(unittest.TestCase):
   with self.assertRaisesRegex(ValueError,'Closed'):d.validate(self.root,self.base,'unknown',artifact_only='yes')
  def test_wrong_destination_and_moved_base_have_zero_effects(self):
   value={'source':self.head,'base':self.base,'store':str(self.root),'verification_scope':d.SOURCE_SCOPE,'source_publication':True}
-  for destination,remote in [('https://example.invalid/wrong.git',self.base),('git@github.com:'+d.native.REPOSITORY+'.git','f'*40)]:
+  for destination,remote in [('https://example.invalid/wrong.git',self.base),('https://github.com/'+d.native.REPOSITORY+'.git','f'*40)]:
    def observed(root,*args):
     if args[0]=='remote':return destination
     if args[0]=='ls-remote':return remote+'\trefs/heads/main'
