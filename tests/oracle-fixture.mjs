@@ -13,7 +13,8 @@ export function copyOracleModules(workspace) {
   const modules = JSON.parse(execFileSync("python3", ["-c",
     "import json; from tools.oracle_approval import REVIEW_POLICY_MODULES; print(json.dumps(REVIEW_POLICY_MODULES))"],
   { cwd: new URL("../", import.meta.url), encoding: "utf8", stdio: "pipe" }));
-  for (const relative of modules) {
+  // The review imports the generated-output proof module outside the policy inventory.
+  for (const relative of [...modules, "tools/oracle_generated_proof.py"]) {
     const target = join(workspace, relative);
     mkdirSync(dirname(target), { recursive: true });
     copyFileSync(new URL(`../${relative}`, import.meta.url), target);

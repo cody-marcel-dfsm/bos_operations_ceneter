@@ -1392,8 +1392,7 @@ REVIEW_POLICY_MODULES = ("tools/oracle_approval.py", "tools/codex_child_model.py
                          "tools/publication_admission.py", "tools/shipment_state.py", "tools/publication_status.py",
                          "tools/oracle_parallel.py", "tools/oracle_source_frontier.py", "tools/oracle_lifecycle.py",
                          "tools/command_coverage.py", "tools/validation_contract.py", "tools/oracle_spec_seal.py",
-                         "tools/deterministic_source.py", "tools/deterministic_package.py",
-                         "tools/oracle_generated_proof.py")
+                         "tools/deterministic_source.py", "tools/deterministic_package.py")
 
 
 def _review_policy_tree_sources(root: Path, tree: str) -> dict[str, tuple[str, bytes]]:
