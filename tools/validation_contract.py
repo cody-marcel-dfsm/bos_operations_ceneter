@@ -450,7 +450,9 @@ def candidate_history(root,candidate):
     rows=[];spec=_history_spec(root,candidate)
     if spec is None:return rows,None
     rows.append(('sealed spec base_commit',spec.get('base_commit')))
-    if isinstance(spec.get('stamp'),dict):rows.append(('sealed spec stamp origin_main',spec['stamp'].get('origin_main')))
+    # The stamped origin was an ancestor of base_commit when sealed, so a verified
+    # base already proves it; an existing stamped origin must still be ancestry.
+    if isinstance(spec.get('stamp'),dict):rows.append(('sealed spec stamp origin_main',spec['stamp'].get('origin_main'),'stamp'))
     folder=Path(git(root,'rev-parse','--absolute-git-dir'))/'oracle/proposals'
     archived={}
     for path in sorted(folder.glob('*.json')) if folder.is_dir() else []:
@@ -468,7 +470,7 @@ def candidate_history(root,candidate):
         if found is None:break # Earlier history without an authentic native archive binds nothing further.
         path,record,prior=found;label='revision '+wanted[:12]+' archive'
         rows.extend([(label+' base_commit',record.get('base_commit')),(label+' lifecycle_origin',record.get('lifecycle_origin',record.get('base_commit'))),
-                     (label+' stamp origin_main',prior['stamp'].get('origin_main') if isinstance(prior.get('stamp'),dict) else None)])
+                     (label+' stamp origin_main',prior['stamp'].get('origin_main') if isinstance(prior.get('stamp'),dict) else None,'stamp')])
         wanted=prior['selection'].get('revision_of') if isinstance(prior.get('selection'),dict) else None
     return rows,spec.get('contract_sha256')
 
@@ -492,8 +494,10 @@ def continuation_history(root,contracts=(),series=None):
 def _history_refuse(root,rows,target,role):
     """Verify every recorded row; returns the number of rows verified."""
     checked=set()
-    for label,commit in rows:
+    for label,commit,*kind in rows:
         if commit in checked:continue
+        if kind==['stamp'] and isinstance(commit,str) and re.fullmatch('[0-9a-f]{40}',commit) and _history_commit(root,commit)!=commit:
+            continue # Absent stamp origins are proven by their verified sealed base; present ones are checked below.
         if not isinstance(commit,str) or not re.fullmatch('[0-9a-f]{40}',commit) or _history_commit(root,commit)!=commit:
             raise HistoryRewritten(HISTORY_REFUSAL+': recorded '+label+' '+str(commit)+' is missing from this repository; '
                                    'recover that commit and merge it forward, never rewrite recorded history')

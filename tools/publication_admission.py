@@ -170,13 +170,9 @@ def _seal_prepared_authority(root: Path, selected: dict, paths: list[str], reque
 def prepare(root: Path, candidate: str, release_ref: str, operation: str, *,
             authorization=None, refresh: bool = True, execute=subprocess.run, read=None) -> dict:
     """Finish validation/preflight and persist the exact Git publication inputs."""
-    # Rewritten history is refused before planning, then again on the freshly
-    # fetched baseline before any attestation, ref push or record write.
-    o.validation_contract.require_history(root, candidate)
     selected = plan(root, candidate, release_ref, operation, refresh=refresh)
     if selected.get("state") == "NO_CHANGES":
         return selected
-    o.validation_contract.require_history(root, selected["candidate_commit"])
     if __package__:
         from . import command_coverage
     else:
@@ -342,10 +338,15 @@ def plan(root: Path, candidate: str, release_ref: str, operation: str, *, refres
     # Owner direction (Cody): one version-named release branch, never IDE specific.
     if not re.fullmatch(r"release/[0-9]+\.[0-9]+\.[0-9]+", release_ref):
         raise o.OracleApprovalError("Publication requires the resolved release review ref")
+    # Rewritten history is refused before any transport, then again on the
+    # freshly fetched baseline, before every planned attestation, push or record.
+    o.validation_contract.require_history(root, candidate)
     public_status.fetch_url(root)
     if refresh:
         o._git(root, "fetch", "origin")
     commit = o._git(root, "rev-parse", candidate + "^{commit}").strip()
+    if refresh:
+        o.validation_contract.require_history(root, commit)
     if (o._git(root, "branch", "--show-current").strip() != "main"
             or o._git(root, "rev-parse", "HEAD").strip() != commit
             or o._git(root, "status", "--porcelain=v1", "--untracked-files=all").strip()):
@@ -999,11 +1000,9 @@ def authorize(root: Path, candidate: str, release_ref: str, owner_path: str, *, 
 def publish(root: Path, candidate: str, release_ref: str, operation: str, *,
             authorization=None, execute=subprocess.run, read=None, refresh: bool = True) -> dict:
     """Direct SSH Git publication: review push or exact-baseline main fast-forward."""
-    o.validation_contract.require_history(root, candidate)
     selected = plan(root, candidate, release_ref, operation, refresh=refresh)
     if selected.get("state") == "NO_CHANGES":
         return selected
-    o.validation_contract.require_history(root, selected["candidate_commit"])
     _check_authorization(root, selected, authorization)
     url = public_status.push_url(root)
     if operation == "review-push":
