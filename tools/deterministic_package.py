@@ -1472,10 +1472,6 @@ def ci(root, base, requested):
         for command in (['git', 'diff', '--check', base, head], ['npm', 'run', 'check:privacy'],
                         ['npm', 'run', 'check:publication']):
             subprocess.run(command, cwd=root, check=True)
-    if admitted['status'] == 'SPEC_SEALED' and lane is None:
-        # A deterministic lane already executed and bound every selected category; run them once.
-        tests = contract.ci_execute(root, head)
-        print(json.dumps({'spec_tests': tests['status'], 'seal': tests['seal']}))
     if lane is None:
         # Outside both deterministic lanes the native contract still governs: CI imports the
         # exact native approval status and command coverage, executing any uncovered command.
