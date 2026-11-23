@@ -124,5 +124,8 @@
   ],
   "generated": [
     "oracle-export-manifest.json"
+  ],
+  "generation_inputs": [
+    "tools/validation-selection.json"
   ]
 }

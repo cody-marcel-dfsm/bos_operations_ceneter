@@ -41,3 +41,12 @@ Copyright and modification attribution remain in LICENSE and NOTICE. The generat
 ## Independent repository CI
 
 The included read-only workflow explicitly provisions Python 3.13.5, hash-locked binary dependencies and the hash-verified public embedding cache. It runs all four standalone test modules with zero skipped/expected-failure cases and the actual synthetic-corpus retrieval benchmark. It uses no model calls, secrets or private maintainer profiles. Its result verifies the exported artifact and public fixtures; native model-adapter acceptance and upstream source promotion remain separately evidenced outcomes.
+
+The generated manifest records the exact export `source_commit` and `source_tree`
+separately from `origin_main`, the reachable baseline frozen in the source's
+sealed generation input. The raw generation spec stays private. A proposal for
+an owning Git project binds that project's HEAD/tree and fetched reachable
+`origin/main`; an admitted extracted artifact uses its frozen manifest triple.
+The installed tool's source commit remains separate from the reviewed project's
+source identity. These records establish provenance without claiming upstream
+promotion or a model evaluation.

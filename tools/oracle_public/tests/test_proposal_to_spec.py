@@ -24,8 +24,14 @@ class ProposalMaterialization(unittest.TestCase):
         catalog = json.loads((ROOT / 'validation-catalog.json').read_text())
         provenance = {'engine': 'codex', 'model': 'synthetic-no-model-call',
                       'mode': 'synthetic-materialization-unit', 'core_sha256': 'a' * 64,
-                      'host_sha256': 'b' * 64, 'source_commit': 'c' * 40, 'source_tree': 'd' * 40}
+                      'host_sha256': 'b' * 64, 'source_commit': 'c' * 40, 'source_tree': 'd' * 40, 'origin_main': 'e' * 40}
         result = spec.materialize(synthetic_review(), 'Synthetic proposal', catalog, provenance)
+        self.assertEqual(result['stamp']['origin_main'], 'e' * 40)
+        self.assertNotEqual(result['stamp']['origin_main'], result['base_commit'])
+        missing = dict(provenance)
+        del missing['origin_main']
+        with self.assertRaises(ValueError):
+            spec.materialize(synthetic_review(), 'Synthetic proposal', catalog, missing)
         self.assertEqual(result['kind'], 'oracle-spec/1')
         self.assertEqual(result['schema'], 'boc.validation-contract/v2')
         self.assertTrue(seal.seal_matches(result))

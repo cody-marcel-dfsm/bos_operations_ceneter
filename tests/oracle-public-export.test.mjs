@@ -24,7 +24,12 @@ function fixture(t){
  }
  mkdirSync(join(dir,'tools'),{recursive:true});writeFileSync(join(dir,'tools/export_oracle.py'),control);writeFileSync(join(dir,'tools/oracle-public-export.json'),actualMap);
  const commit=()=>{git(dir,'add','--all');git(dir,'commit','-qm','Synthetic export input');return git(dir,'rev-parse','HEAD');};
- const sha=commit();return {dir,sha,commit};
+ const origin=commit();
+ const selectionPath=join(dir,'tools/validation-selection.json');
+ const selection={kind:'oracle-spec/1',stamp:{origin_main:origin}};
+ const seal=v=>{const canonical=v=>v!==null&&typeof v==='object'?(Array.isArray(v)?v.map(canonical):Object.fromEntries(Object.keys(v).sort().map(k=>[k,canonical(v[k])]))):v;const body={...v};delete body.seal;return hash(Buffer.concat([Buffer.from('oracle-spec/1\0'),Buffer.from(JSON.stringify(canonical(body)))]));};
+ const writeSelection=v=>{v.seal=seal(v);writeFileSync(selectionPath,JSON.stringify(v));};
+ writeSelection(selection);const sha=commit();return {dir,sha,origin,commit,selection,selectionPath,writeSelection};
 }
 function run(f,sha=f.sha,name='export'){
  return spawnSync('python3',['-B',join(f.dir,'tools/export_oracle.py'),'--commit',sha,'--output',join(f.dir,name)],{encoding:'utf8',timeout:30000,maxBuffer:2*1024*1024});
@@ -85,8 +90,10 @@ with tarfile.open(sys.argv[1]) as a:
  assert a.extractfile('README.md').read()==b'Synthetic public fixture\n'
  assert all(not n.startswith(('.git/','Vault/','source/','products/')) for n in a.getnames())
  assert len(manifest['members'])==30
+ assert manifest['origin_main']==sys.argv[2] and manifest['origin_main']!=manifest['source_commit']
+ assert 'stamp' not in manifest and 'seal' not in manifest
  print(json.dumps(a.getnames()))
-`,join(f.dir,'one/oracle-public.tar.gz')],{encoding:'utf8'});
+`,join(f.dir,'one/oracle-public.tar.gz'),f.origin],{encoding:'utf8'});
  assert.equal(JSON.parse(inspect).length,31);
  assert.notEqual(run(f,sha,'one').status,0,'prior output must never be overwritten');
 });
@@ -101,6 +108,7 @@ test('closed immutable map rejects omissions, duplicates, unlisted paths and tra
   m=>m.members[0].destination='/absolute.txt',
   m=>m.members[0].destination='a\\b',
   m=>m.generated.push('extra.json'),
+  m=>m.generation_inputs.push('private.json'),
  ];
  for(const [i,change] of variants.entries()){
   const f=fixture(t);const m=JSON.parse(actualMap);change(m);writeFileSync(join(f.dir,'tools/oracle-public-export.json'),JSON.stringify(m));const sha=f.commit();
@@ -120,6 +128,17 @@ test('export rejects symlinks, missing blobs, private text, credentials and non-
  for(const [i,change] of variants.entries()){
   const f=fixture(t);change(f);const sha=f.commit();const r=run(f,sha);assert.notEqual(r.status,0,`mutation ${i}`);assert.ok(!existsSync(join(f.dir,'export')));
  }
+ for(const mode of ['missing','seal','origin-missing','origin-short','origin-absent','origin-unrelated']){
+  const f=fixture(t);const value=structuredClone(f.selection);
+  if(mode==='missing')rmSync(f.selectionPath);
+  else if(mode==='seal'){value.seal='0'.repeat(64);writeFileSync(f.selectionPath,JSON.stringify(value));}
+  else {if(mode==='origin-missing')delete value.stamp.origin_main;
+   if(mode==='origin-short')value.stamp.origin_main='123';
+   if(mode==='origin-absent')value.stamp.origin_main='0'.repeat(40);
+   if(mode==='origin-unrelated')value.stamp.origin_main=git(f.dir,'commit-tree',git(f.dir,'rev-parse','HEAD^{tree}'),'-m','Synthetic unrelated root');
+   f.writeSelection(value);}
+  const sha=f.commit();assert.notEqual(run(f,sha).status,0,mode);assert.ok(!existsSync(join(f.dir,'export')));
+ }
  const f=fixture(t);writeFileSync(join(f.dir,'tools/export_oracle.py'),Buffer.concat([control,Buffer.from('\n# uncommitted control\n')]));assert.notEqual(run(f).status,0);
  assert.notEqual(run(f,'HEAD').status,0);assert.notEqual(run(f,f.sha.slice(0,12)).status,0);
 });
@@ -129,6 +148,16 @@ test('independent archive validation rejects tamper, unlisted/link/duplicate/tra
  const actions=[
   "receipt['source_tree']='0'*40\n",
   "receipt['members'][0]['sha256']='0'*64\n",
+  String.raw`
+raw=(out/m.ARCHIVE).read_bytes()
+with m.tarfile.open(fileobj=m.io.BytesIO(raw),mode='r:gz') as archive:
+ members=[(item.name,archive.extractfile(item).read(),item.mode) for item in archive]
+manifest=m.strict_json(next(body for name,body,_ in members if name==m.GENERATED));manifest['origin_main']='invalid'
+members=[(name,m.canonical(manifest) if name==m.GENERATED else body,mode) for name,body,mode in members]
+changed=m.archive_bytes(members);(out/m.ARCHIVE).write_bytes(changed)
+receipt['archive']={'file':m.ARCHIVE,'sha256':m.digest(changed),'size':len(changed)}
+receipt['members']=[{'path':name,'size':len(body),'mode':mode,'sha256':m.digest(body)} for name,body,mode in members]
+`,
   String.raw`
 raw=(out/m.ARCHIVE).read_bytes();(out/m.ARCHIVE).write_bytes(raw+b'private trailing data')
 receipt['archive']['sha256']=m.digest((out/m.ARCHIVE).read_bytes());receipt['archive']['size']=(out/m.ARCHIVE).stat().st_size

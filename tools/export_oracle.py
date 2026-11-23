@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import gzip
 import hashlib
+import hmac
 import io
 import json
 import os
@@ -17,6 +18,7 @@ ROOT = Path(__file__).resolve().parents[1]
 MAP = 'tools/oracle-public-export.json'
 CONTROL = 'tools/export_oracle.py'
 GENERATED = 'oracle-export-manifest.json'
+GENERATION_INPUT = 'tools/validation-selection.json'
 ARCHIVE = 'oracle-public.tar.gz'
 RECEIPT = 'oracle-export-receipt.json'
 REPOSITORY = 'https://github.com/cody-marcel-dfsm/bos_operations_ceneter'
@@ -111,9 +113,9 @@ def git(root, *args, input_data=None):
 
 def mapped_members(raw):
     value = strict_json(raw)
-    if not isinstance(value, dict) or set(value) != {'kind', 'members', 'generated'}:
+    if not isinstance(value, dict) or set(value) != {'kind', 'members', 'generated', 'generation_inputs'}:
         raise ExportError('Closed export map required')
-    if value['kind'] != 'oracle-public-export-map' or value['generated'] != [GENERATED]:
+    if value['kind'] != 'oracle-public-export-map' or value['generated'] != [GENERATED] or value['generation_inputs'] != [GENERATION_INPUT]:
         raise ExportError('Unsupported export map')
     if not isinstance(value['members'], list):
         raise ExportError('Complete member mapping required')
@@ -182,6 +184,24 @@ def archive_bytes(members):
     return result.getvalue()
 
 
+def origin_main(root, commit, raw):
+    value = strict_json(raw)
+    if not isinstance(value, dict) or value.get('kind') != 'oracle-spec/1' or not isinstance(value.get('stamp'), dict) or not isinstance(value.get('seal'), str):
+        raise ExportError('Sealed generation input required')
+    body = {key: item for key, item in value.items() if key != 'seal'}
+    encoded = json.dumps(body, sort_keys=True, separators=(',', ':'), ensure_ascii=False, allow_nan=False).encode()
+    expected = digest(b'oracle-spec/1\0' + encoded)
+    if not hmac.compare_digest(expected, value['seal']):
+        raise ExportError('Generation input seal differs')
+    origin = value['stamp'].get('origin_main')
+    if not isinstance(origin, str) or HEX40.fullmatch(origin) is None:
+        raise ExportError('Full origin baseline required')
+    if git(root, 'rev-parse', '--verify', origin + '^{commit}').decode().strip() != origin:
+        raise ExportError('Exact origin baseline object required')
+    git(root, 'merge-base', '--is-ancestor', origin, commit)
+    return origin
+
+
 def export(root, commit, output):
     root, output = Path(root).resolve(strict=True), Path(output)
     if not isinstance(commit, str) or HEX40.fullmatch(commit) is None:
@@ -189,9 +209,10 @@ def export(root, commit, output):
     if git(root, 'rev-parse', '--verify', commit + '^{commit}').decode().strip() != commit:
         raise ExportError('Exact commit object required')
     tree = git(root, 'rev-parse', commit + '^{tree}').decode().strip()
-    inputs = blobs(root, commit, [MAP, CONTROL])
+    inputs = blobs(root, commit, [MAP, CONTROL, GENERATION_INPUT])
     raw_map = inputs[MAP][0]
     mapping = mapped_members(raw_map)
+    origin = origin_main(root, commit, inputs[GENERATION_INPUT][0])
     control = inputs[CONTROL][0]
     if control != Path(__file__).read_bytes():
         raise ExportError('Loaded exporter differs from committed exporter')
@@ -207,7 +228,7 @@ def export(root, commit, output):
     if sum(len(body) for _, body, _ in members) > MAX_TOTAL:
         raise ExportError('Public export exceeds bounded size')
     manifest = {'kind': 'oracle-public-export', 'source_repository': REPOSITORY,
-                'source_commit': commit, 'source_tree': tree, 'export_map_sha256': digest(raw_map),
+                'source_commit': commit, 'source_tree': tree, 'origin_main': origin, 'export_map_sha256': digest(raw_map),
                 'exporter_sha256': digest(control), 'members': records}
     generated = canonical(manifest)
     public_text(generated, GENERATED)
@@ -284,10 +305,12 @@ def verify_archive_bytes(raw, receipt):
     if archive_bytes([(r['path'], bodies[r['path']], r['mode']) for r in rows]) != raw:
         raise ExportError('Noncanonical archive bytes')
     manifest = strict_json(bodies[GENERATED])
-    if canonical(manifest) != bodies[GENERATED] or not isinstance(manifest, dict) or set(manifest) != {'kind', 'source_repository', 'source_commit', 'source_tree', 'export_map_sha256', 'exporter_sha256', 'members'}:
+    if canonical(manifest) != bodies[GENERATED] or not isinstance(manifest, dict) or set(manifest) != {'kind', 'source_repository', 'source_commit', 'source_tree', 'origin_main', 'export_map_sha256', 'exporter_sha256', 'members'}:
         raise ExportError('Noncanonical generated manifest')
     if manifest['kind'] != 'oracle-public-export' or manifest['source_repository'] != REPOSITORY or any(manifest.get(k) != receipt[k] for k in ('source_commit', 'source_tree', 'export_map_sha256', 'exporter_sha256')):
         raise ExportError('Generated provenance differs')
+    if not isinstance(manifest['origin_main'], str) or HEX40.fullmatch(manifest['origin_main']) is None:
+        raise ExportError('Invalid generated origin baseline')
     if not isinstance(manifest['members'], list) or len(manifest['members']) != len(EXPECTED):
         raise ExportError('Generated member list incomplete')
     for record, name in zip(manifest['members'], sorted(EXPECTED)):

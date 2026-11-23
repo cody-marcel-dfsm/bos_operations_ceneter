@@ -5,6 +5,8 @@ import importlib
 import json
 from pathlib import Path, PurePosixPath
 import unittest
+from oracle_core import spec
+from test_proposal_to_spec import synthetic_review
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -14,6 +16,13 @@ class ArtifactBoundary(unittest.TestCase):
         manifest = json.loads((ROOT / 'oracle-export-manifest.json').read_text())
         self.assertRegex(manifest['source_commit'], r'^[0-9a-f]{40}$')
         self.assertRegex(manifest['source_tree'], r'^[0-9a-f]{40}$')
+        self.assertRegex(manifest['origin_main'], r'^[0-9a-f]{40}$')
+        provenance = {'engine': 'codex', 'model': 'synthetic-no-model-call',
+                      'core_sha256': 'a' * 64, 'host_sha256': 'b' * 64,
+                      **{key: manifest[key] for key in ('source_commit', 'source_tree', 'origin_main')}}
+        catalog = json.loads((ROOT / 'validation-catalog.json').read_text())
+        result = spec.materialize(synthetic_review(), 'Synthetic artifact boundary check', catalog, provenance)
+        self.assertEqual(result['stamp']['origin_main'], manifest['origin_main'])
         self.assertEqual(len(manifest['members']), 30)
         seen = set()
         for member in manifest['members']:
