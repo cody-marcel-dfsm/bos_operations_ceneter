@@ -92,6 +92,13 @@ old mapping purposes reject. No glob or supplied whitelist expands that scope.
 Added tests and fixtures must exist in the captured source tree. Initial designs
 with future planned files retain the full proposal mode.
 
+The response schema fixes each binding property with a scalar constant, requires
+every key and permits no additional properties. Complete binding equality is
+checked independently at intake. This preserves the exact closed binding while
+supporting the provider's scalar-constant schema subset. Non-feature deltas carry
+null design; feature design and test-plan validation remain required. Incompatible
+model responses are retained as intake failures and receive no normalized approval.
+
 Current capture uses the same native publication-scope resolver as full-range
 review and admission. Its inventory includes every pending published-base-to-tree
 path, including older foreign changes and deletions. Retained reviewed patterns
