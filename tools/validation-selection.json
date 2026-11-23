@@ -4,12 +4,12 @@
   "stamp": {
     "engine": "codex",
     "model": "gpt-6.1-sol",
-    "oracle_sha256": "eebeae46078371bfb1a82ef28474aba8e2162bb0c1398dfd1f0974ddfa4a0539",
+    "oracle_sha256": "a63d021e2e029392fa5321ccd2c9be2ff8a361af8606a5e491e32d0562283057",
     "host": "aio",
-    "time": "2026-11-19T16:16:04Z",
-    "origin_main": "95bbc0f5a2bc3cec2399a3f8880139d2b4ce0065",
+    "time": "2026-11-23T03:18:54Z",
+    "origin_main": "7dc8a3bbfe9c925fbbe10812f4c0bb8397f18888",
     "request_sha256": "e70f107ea7a8cb9d81c468722cef8667bc37edecf3258920ca5c77f87bc018e3",
-    "proposal_sha256": "680d5ac53c4901d23bbfb238460a00b303a24af06b9ecef2da1c77ad57d6b8f9"
+    "proposal_sha256": "7a5a27b5b0ea17d6d58ef13e2d4ccfe882fba9154f2de2f05fb97fc0c26c827a"
   },
   "selection": {
     "acceptance": [
@@ -224,8 +224,8 @@
     ],
     "change_class": "deep_bug_fix",
     "design": null,
-    "reason": "Retain every existing acceptance criterion, selected module and fixture. Add the two directly affected publication-consumer runners and their supporting fixtures for release-ref test-data changes. Cross-area publication and review-evidence custody require adversarial focused cases and actual completeness, pending-path, controller, lifecycle and publication interactions. No unrelated recurrence suite is selected. Preserve unchanged-test fail-before/pass-after evidence, historical outcomes, original request clocks, existing reviewer deadlines and the 300-second delivery budget. Native validation reuse requires matching consumed inputs, dependency closure, environment and retained outputs; synthetic checks establish no published-client acceptance.",
-    "revision_of": "31532772f0b404294cc2e08b54ce79805f6d05aaafe5540956dbfbaf4fa25b3a",
+    "reason": "Retain every existing acceptance criterion, module, fixture and mapping. The proposed revision preserves the existing contract while accommodating integrated history and generated release-version files within its scope. Cross-area publication and review-evidence custody require adversarial focused cases and actual completeness, pending-path, controller, lifecycle and publication interactions. No unrelated recurrence suite is selected. Preserve unchanged-test fail-before/pass-after evidence, historical outcomes, original request clocks, existing reviewer deadlines and the 300-second delivery budget. Reuse native validation only with matching consumed inputs, dependency closure, environment and retained outputs. Synthetic checks establish no published-client acceptance.",
+    "revision_of": "9b2dfa9e931e6915a59ab3df931955b5a0c32eecf1f3266cf7c4facd01637025",
     "scope_paths": [
       "AGENTS.md",
       "README.md",
@@ -293,8 +293,8 @@
       "tests/shipment-workflow.test.mjs"
     ]
   },
-  "base_commit": "41b91fe03bc9a190d13551e5e36894d9b179ea66",
-  "base_tree": "79d114c61fb9cb6c217745dc68d587e18fb2a6bd",
+  "base_commit": "95ab27b761aeb0b85d32c3ab9c9b75017a77bc33",
+  "base_tree": "c0f8f01072e104867079bd855398c07f042a70bf",
   "catalog_sha256": "9a96f1cd2a973457f9da681dddcc5161aa8ffda188b092d849e5bc83999391c8",
   "runtime": {
     "node": "v26.12.0",
@@ -304,8 +304,8 @@
     "architecture": "x86_64",
     "options_sha256": "ebc442c160f8629073a82976daadaba1d95a60a38d768c81c8eb06598aedcac5"
   },
-  "proposal_sha256": "680d5ac53c4901d23bbfb238460a00b303a24af06b9ecef2da1c77ad57d6b8f9",
-  "review_sha256": "13ead8399b8588e8004f8ffedfeb2bb1f2c6f60f81154a85e1b7550c88456320",
+  "proposal_sha256": "7a5a27b5b0ea17d6d58ef13e2d4ccfe882fba9154f2de2f05fb97fc0c26c827a",
+  "review_sha256": "e92e2c4484c5eb024c0b9ffcc22d4d720b459d40c5b9505905b6142b6a67383b",
   "commands": [
     {
       "category": "sanity",
@@ -397,6 +397,6 @@
     "reasoning_effort": "medium",
     "maximum_reasoning_effort": "medium"
   },
-  "contract_sha256": "9b2dfa9e931e6915a59ab3df931955b5a0c32eecf1f3266cf7c4facd01637025",
-  "seal": "d87d6b72219bca6a743dc1638483bcc03508f03e3cbdd144a8f4cb549551bd77"
+  "contract_sha256": "3f3b9b9233022d4527f2963a900fbf5eca22771b6a2f86dba42c1a00f16ccd30",
+  "seal": "9ee506769d3581e1241aba85459406ba064b8dfff17683c6e49d49915bbc49eb"
 }

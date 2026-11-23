@@ -1087,6 +1087,8 @@ def review(o, root, tree, paths, evidence, owner):
             raise o.OracleReviewIncomplete(str(exc)) from exc
         child_context["governance_bundle"] = governance_manifest
         child_context["checkpoint_journal"] = {"path": str(child / JOURNAL_NAME), "plan_sha256": plan["plan_sha256"]}
+        # The governance and journal bindings join the sealed packet identity.
+        child_context["packet_sha256"] = digest({key: value for key, value in child_context.items() if key != "packet_sha256"})
         original_packets[cohort['id']] = o._pretty(child_context)
         o._atomic_write(child / "cohort-context.json", original_packets[cohort['id']])
         o._atomic_write(child / "output.schema.json", o._pretty(output_schema(schema, plan, cohort, child_context)))
