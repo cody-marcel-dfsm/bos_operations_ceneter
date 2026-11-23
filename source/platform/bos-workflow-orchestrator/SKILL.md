@@ -21,11 +21,13 @@ unchanged. Use the actual host-authenticated HTTPS capability when required.
 Preserve the returned request object for
 `interpretJourneyResponse(response, {registrationRequest: request})` and carry it
 into `runJourneyRecovery` when that helper is used. A descriptor-advertised
-commercial admission error is handled before lifecycle state parsing. A paid-plan
-HTTP 403 prerequisite requests no login or automatic payment; an unavailable
+commercial admission error is handled before lifecycle state parsing. An actual
+service-declared HTTP 403 access denial requests no login or automatic payment; an unavailable
 entitlement HTTP 503 supplies only declared retryability and actual returned
 Retry-After timing. Neither permits uncertain registration replay or fabricated
-billing actions. Read [journey lifecycle](references/journey-lifecycle.md) for the
+billing actions. BOS organization paid, qualifying-trial and prepared/lifecycle admission remain service-owned.
+The client reports the returned denial and infers no eligibility or acquisition action.
+Read [journey lifecycle](references/journey-lifecycle.md) for the
 exact helper and recovery behavior.
 
 Turn the user's authorized operational objective into a deterministic workflow
