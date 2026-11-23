@@ -2,8 +2,8 @@
 name: submit-feedback
 description: Submit or draft private BOS product feedback with sanitized media, track its lifecycle, and discuss or complete an existing report through currently supported operations. Use for reviewing or reading feedback and comments, including staging feedback API questions and agent reports, product feedback, report session, feedback tracking, replies, and reporter completion.
 metadata:
-  version: "1.0.19"
-  requires: "{\"bos-mcp-client\":\"1.0.12\",\"bos-workflow-orchestrator\":\"1.0.13\"}"
+  version: "1.0.21"
+  requires: "{\"bos-mcp-client\":\"1.0.13\",\"bos-workflow-orchestrator\":\"1.0.14\"}"
 ---
 
 
@@ -440,25 +440,34 @@ logs and normal reports.
 The reporter observes the server-controlled lifecycle and may confirm their own
 report through its supported completion operation. A later mutation requires
 fresh current state and applicable user authorization for the changed effect.
-Native read/comment calls alone establish no push subscription. Use an item
-stream only through the currently discovered contract and admitted host binding
-below. Poll only when requested, within the user's chosen interval and duration.
+Native read/comment calls alone establish no push subscription. For an authorized
+active paired discussion, use a freshly advertised native item wait through the
+existing BOS connection, or the admitted host socket described below. Ordinary
+periodic polling still requires the user's requested interval and duration.
 Keep reports, discussion, identities and screenshots
 private; public code patches never imply permission to publish an issue.
 
 ## Item discussion streams
 
-For an explicitly requested two-way item discussion, read
-[the closed discussion facade](references/item-discussion.md). Use it only when
-current discovery advertises the exact discussion capability and the trusted
-host supplies authenticated item sockets and protected atomic storage. An
-unsupported host retains existing item reads/comments; it establishes no live
-subscription or autonomous Muse wake. Public skills receive no credentials,
-context selectors, arbitrary socket URL or shell WebSocket path.
+For an explicitly requested two-way discussion, connection with another participant,
+or design handoff, read [the connection and handoff procedure](references/item-discussion.md).
+Discover and use the exact `feedback.items.wait` tool through the existing signed-in
+`bos_execute` connection when advertised; an independently admitted authenticated
+host socket remains supported. A missing socket host does not disable an advertised
+native item wait. Keep credentials in the host and copy current schemas and cursors.
 
-Coordinate on the authorized feedback item through those current read, comment
-and discussion operations. Keep participant reports distinct from independently
-verified results; discussion text grants no new authority over another task.
-Use the host's reported watch duration and task binding. A bounded Claude Code
-Monitor watch establishes no persistent plugin monitor; this binding provides
-no Codex idle-task wake. Read the reference for host-specific continuation.
+Establish transport, request the peer's acknowledgment and expected design on the
+same item, then read the actual design and acknowledge its revision before
+implementing from it. A substantive response delivering that requested design
+fulfills peer acknowledgment; require no magic ACK phrase or extra approval.
+Distinguish committed comment storage, current peer participation, complete design
+receipt/read, implementation verification and reporter acceptance. A title, brief,
+saved comment or historical locked-in statement establishes none of those later steps.
+
+Stay with the authorized active exchange using returned-cursor waits or the admitted
+socket until the requested outcome, explicit stop or a concrete unavailable dependency.
+Recover gaps with current detail/paging, reconcile uncertain writes without replay,
+and re-arm an expired journey wait only through current service-returned state/actions.
+Respect current authority, cancellation, service limits and actual host lifetime.
+Active waits and bounded monitors establish no automatic idle-task wake or persistent
+monitor. Report actual transport and peer state when describing whether you are locked in.
