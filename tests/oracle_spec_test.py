@@ -710,11 +710,15 @@ class NativeDelta(Fixture):
 
     def test_native_dispatch_uses_closed_delta_schema_and_full_mode_pins_the_exact_revision(self):
         prior,context,delta=self.prepared_delta()
-        schema=self.root/'.agents/skills/oracle/review-output.schema.json';schema.parent.mkdir(parents=True)
+        from tools import oracle_parallel
+        for name in oracle_parallel.GOVERNANCE_PATHS:
+            (self.root/name).parent.mkdir(parents=True,exist_ok=True);(self.root/name).write_text('Synthetic governance\n')
+        schema=self.root/'.agents/skills/oracle/review-output.schema.json'
         schema.write_bytes((REPOSITORY/'.agents/skills/oracle/review-output.schema.json').read_bytes())
         run=self.root/'.git/oracle/runs/schema-test';run.mkdir(parents=True)
         captured=[]
-        def dispatch(root,prompt,prefix,*,schema_path):
+        def dispatch(root,prompt,prefix,*,schema_path,stdin_payload):
+            self.assertIn(b'=== GOVERNANCE AGENTS.md sha256=',stdin_payload)
             captured.append((prompt,json.loads(schema_path.read_text())))
             return dict(APPROVED,review_status='COMPLETE',validation_selection=delta)
         metadata=oracle._METADATA_ROOT.set(self.root);active=oracle._RUN.set(run)
@@ -749,6 +753,16 @@ class NativeDelta(Fixture):
         binding=schema['properties']['binding'];self.assertFalse(binding['additionalProperties']);self.assertEqual(binding['required'],list(context['binding']))
         self.assertEqual({k:r.get('const') for k,r in binding['properties'].items()},context['binding'])
         self.assertFalse(schema['additionalProperties'])
+
+    def test_a_null_delta_design_keeps_the_prior_feature_design(self):
+        _,context,delta=self.prepared_delta()
+        feature=copy.deepcopy(context);feature['prior']['selection'].update(change_class='feature',design='design/synthetic.md')
+        for design,expected in ((None,'design/synthetic.md'),('design/revised.md','design/revised.md')):
+            seen=[]
+            with patch.object(v,'delta_context',return_value=feature),\
+                    patch.object(v,'validate_selection',side_effect=lambda value,catalog:seen.append(value)):
+                value,_=v.materialize_delta(self.root,feature,dict(delta,design=design))
+            self.assertEqual((seen[0]['design'],value['design']),(expected,expected))
 
     def test_older_closed_binding_reconstructs_only_with_the_actual_verified_native_prior(self):
         _,context,delta=self.prepared_delta();selected,audit=v.materialize_delta(self.root,context,delta)

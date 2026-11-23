@@ -99,12 +99,19 @@ class Contracts(unittest.TestCase):
   if fixtures:s['categories'][1]['fixtures']=fixtures
   c=self.seal(s,'synthetic proposal',{'verdict':'APPROVED'});v.write_selection(self.root,c);return c
  def test_native_proposal_dispatch_seals_the_selection_schema_without_mutating_base(self):
-  schema_path=self.root/'.agents/skills/oracle/review-output.schema.json';schema_path.parent.mkdir(parents=True)
+  from tools import oracle_parallel
+  for name in oracle_parallel.GOVERNANCE_PATHS:
+   (self.root/name).parent.mkdir(parents=True,exist_ok=True);(self.root/name).write_text('Synthetic governance '+name+'\n')
+  schema_path=self.root/'.agents/skills/oracle/review-output.schema.json'
   original=json.dumps({'type':'object','properties':{},'required':[]});schema_path.write_text(original)
   token=oracle._RUN.set(self.root)
   try:
    with patch.object(oracle,'_atomic_write',side_effect=lambda p,b:p.write_bytes(b)),patch.object(oracle,'_review_process',return_value={'synthetic':'independent response'}) as dispatch:
     self.assertEqual(oracle._proposal_oracle(self.root,'Synthetic requirement',{},None),{'synthetic':'independent response'})
+   # The reviewer gets the complete hash-headed governing bytes on stdin, as cohorts do.
+   governance=dispatch.call_args.kwargs['stdin_payload'].decode()
+   for name in oracle_parallel.GOVERNANCE_PATHS:self.assertIn('=== GOVERNANCE '+name+' sha256='+hashlib.sha256((self.root/name).read_bytes()).hexdigest(),governance)
+   self.assertIn('Do not re-fetch these documents with tools',dispatch.call_args.args[1])
    selected=json.loads(dispatch.call_args.kwargs['schema_path'].read_text())
    expected=v.selection_schema();expected['properties']['revision_of']={'type':'null','const':None}
    self.assertIn('validation_selection',selected['required']);self.assertEqual(selected['properties']['validation_selection'],expected)

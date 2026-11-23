@@ -165,7 +165,9 @@ def materialize_delta(root, context, delta):
     fresh=delta_context(root,context['binding']['source_commit'],context['binding']['source_tree'],origin_main=context['binding']['origin_main'],prior_proposal_sha256=context['binding']['prior_proposal_sha256'])
     if fresh!=context: raise ValueError('Delta source/prior/inventory changed')
     prior=context['prior']['selection']; value=copy.deepcopy(prior)
-    value.update(revision_of=context['prior']['contract_sha256'], reason=delta['reason'], design=delta['design'])
+    # A delta keeps the prior class; a null design keeps the prior feature design.
+    design=delta['design'] if delta['design'] is not None else prior.get('design')
+    value.update(revision_of=context['prior']['contract_sha256'], reason=delta['reason'], design=design)
     added=delta['acceptance_additions']
     if not isinstance(added,list) or not 1<=len(added)<=32 or not all(text(x) for x in added):
         raise ValueError('Delta needs bounded new criteria')

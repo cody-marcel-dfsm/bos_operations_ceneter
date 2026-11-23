@@ -111,9 +111,11 @@ schema constant, avoiding model transcription of immutable references.
 
 Native reviewer processes continuously drain both private streams with a combined
 eight-MiB bound. A private progress record reports elapsed time and byte counts,
-without source or output bodies. The 180-second reviewer limit yields an
-INCOMPLETE checkpoint with original bounded output and cleans up only the
-registered process group. Timeouts and output bounds never create approval.
+without source or output bodies. The 180-second reviewer SLA is recorded in
+that progress record: a reviewer that crosses it is marked `sla_status`
+`BREACHED` and finishes its assessment. Only the 600-second hard limit for a
+hung reviewer yields an INCOMPLETE checkpoint with original bounded output and
+cleans up only the registered process group. Timeouts and output bounds never create approval.
 Original clocks, failures and complete-source verification remain required.
 
 A feature design includes a test plan. A `feature` selection names its design

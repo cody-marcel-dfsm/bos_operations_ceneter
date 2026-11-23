@@ -854,12 +854,28 @@ class BoundedReviewer(unittest.TestCase):
         self.assertEqual((self.run/'stdout.log').read_bytes(),b'first\n')
         self.assertEqual(len(list((self.controller.directory/'children').glob('*.outcome.json'))),1)
 
-    def test_timeout_retains_original_output_and_incomplete_checkpoint_with_no_live_group(self):
+    def test_crossing_the_sla_is_recorded_breached_and_the_reviewer_finishes(self):
         with patch.object(lifecycle,'REVIEWER_SECONDS',.15):
+            result=self.execute('import time;time.sleep(.6);print("verdict",flush=True)')
+        self.assertEqual((result.returncode,result.stdout),(0,'verdict\n'))
+        progress=json.loads((self.run/'reviewer-progress.json').read_text())
+        self.assertTrue(progress['complete'])
+        self.assertEqual((progress['sla_seconds'],progress['sla_status']),(.15,'BREACHED'))
+        self.assertEqual(progress['deadline_seconds'],lifecycle.REVIEWER_HARD_SECONDS)
+        self.assertFalse(list((self.controller.directory/'children').glob('*.failure.json')))
+
+    def test_a_reviewer_within_the_sla_is_recorded_within(self):
+        self.execute('print("verdict")')
+        progress=json.loads((self.run/'reviewer-progress.json').read_text())
+        self.assertEqual((progress['sla_seconds'],progress['sla_status']),(180,'WITHIN'))
+
+    def test_timeout_retains_original_output_and_incomplete_checkpoint_with_no_live_group(self):
+        with patch.object(lifecycle,'REVIEWER_SECONDS',.05),patch.object(lifecycle,'REVIEWER_HARD_SECONDS',.15):
             with self.assertRaisesRegex(o.OracleReviewIncomplete,'deadline'):
                 self.execute('import time;print("checkpoint",flush=True);time.sleep(5)')
         self.assertEqual((self.run/'stdout.log').read_bytes(),b'checkpoint\n')
-        self.assertFalse(json.loads((self.run/'reviewer-progress.json').read_text())['complete'])
+        progress=json.loads((self.run/'reviewer-progress.json').read_text())
+        self.assertFalse(progress['complete']);self.assertEqual(progress['sla_status'],'BREACHED')
         registrations=[path for path in (self.controller.directory/'children').iterdir()
                        if o.re.fullmatch(r'reviewer-[0-9a-f]{32}\.json',path.name)]
         self.assertEqual(len(registrations),1,'Exactly one actual reviewer registration must bind this timeout')

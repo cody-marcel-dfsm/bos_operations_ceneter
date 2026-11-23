@@ -3257,8 +3257,16 @@ def _proposal_oracle(root: Path, request: str, evidence: dict[str,str], owner: d
         "evidence": evidence,
         "owner_approval_evidence": owner,
     }
+    if __package__:
+        from . import oracle_parallel
+    else:
+        import oracle_parallel
+    # The same complete hash-headed governing bytes the cohorts receive, so the reviewer spends
+    # its turns on the proposal instead of re-reading these documents with tools.
+    governance, _manifest = oracle_parallel.governance_bundle(
+        sys.modules[__name__], root, {"guards": {"authority_digests": _live_authorities(root)}})
     prompt = f"""You are the independent BOS Operations Center Oracle proposal-review process.
-Read .agents/skills/oracle/SKILL.md completely and wear that approver skill. Read AGENTS.md and all required private Vault authority. Review the proposed solution before implementation using current filesystem evidence. Operate read-only: do not edit, stage, commit, deploy, write an approval receipt, or treat this proposal verdict as completed-tree approval.
+Governing instructions first: the <stdin> block carries the complete current bytes of {", ".join(oracle_parallel.GOVERNANCE_PATHS)}, each between exact path/sha256 headers, in precedence order. They are the complete authoritative texts, not a summary; .agents/skills/oracle/SKILL.md defines your isolated trusted approver role, so wear that approver skill. Do not re-fetch these documents with tools; read other required private Vault authority and referenced material in bounded slices. Review the proposed solution before implementation using current filesystem evidence. Operate read-only: do not edit, stage, commit, deploy, write an approval receipt, or treat this proposal verdict as completed-tree approval.
 Approve only the immutable conceptual proposal, exact supplied evidence and governing criteria. Source-dependent observations describe the source actually examined; ordinary concurrent implementation can continue and its changed implementation/effect claims remain unadopted until complete-current-source review. Do not require a source freeze or grant completed-implementation authority through this proposal verdict.
 
 Creating, bumping, replacing, or splitting a public API version requires the human user's explicit request for that exact version change. Owner approval, general fix/release authorization, inferred compatibility, pre-existing implementation, and Oracle guidance never substitute. Correct behavior and preserve authorized improvements in the current API version; package/build patches and identity-envelope protocols are distinct. Independently classify api_version_assessment: NONE requires NOT_REQUIRED and all request fields null; CHANGE requires EXPLICIT_REQUEST for APPROVED, exact requested_change, verbatim direct-user request_quote, and an absolute request_evidence path supplied through --evidence containing that quote. Independently inspect human provenance, context, exact scope and refusals; an agent assertion or approval-only statement is insufficient. Reject unrequested API version changes. An exact explicit request authorizes continuation through ordinary independent review without repeated owner approval. Authentication classification does not grant publication authority.
@@ -3287,8 +3295,8 @@ Return JSON matching the supplied schema. Verify the stated problem and cause, c
             prompt += "\nCLOSED NATIVE DELTA MODE. Return validation_selection matching its delta schema. The parent, not the model, retains every prior criterion/category/module/fixture/mapping, binds revision_of and expands exact scope from its immutable inventory. Emit only new acceptance criteria, new selected test modules/fixtures and new criterion coverage. New covers indices are relative to acceptance_additions. For coverage of an existing module use purpose:null to preserve its original purpose. No existing tests or criteria may be restated, removed or replaced. Read prior checkpoint evidence for completed observations; do not recopy its full selection. Binding is exact and any missing/wrong field rejects. This is conceptual proposal approval only; deterministic completed-source verification remains required.\n" + json.dumps({'binding':delta['binding'],'prior_acceptance_count':len(delta['prior']['selection']['acceptance']),'retained_modules':[r['module'] for r in delta['prior']['selection']['acceptance_tests']], 'categories':delta['prior']['selection']['categories']},sort_keys=True)
         else:
             prompt += "\nCurrent contract: " + (previous.read_text() if previous.exists() else "none; revision_of must be null")
-        return _review_process(root, prompt, "proposal_reviewer", schema_path=schema_path)
-    return _review_process(root, prompt, "proposal_reviewer")
+        return _review_process(root, prompt, "proposal_reviewer", schema_path=schema_path, stdin_payload=governance)
+    return _review_process(root, prompt, "proposal_reviewer", stdin_payload=governance)
 
 def _proposal_guards(root: Path, evidence: dict, owner: dict | None) -> dict:
     authorities = _controlling_authorities(_live_authorities(root))
