@@ -33,7 +33,7 @@ jobs:
             refs/heads/codex/release-v*|refs/heads/codex/source-*) validation_base_sha="$(git rev-parse origin/main)" ;;
           esac
           python3 tools/validation_contract.py gate --base "$validation_base_sha"
-      - name: Identify the closed Oracle CI profile
+      - name: Identify the Oracle component and CI route
         id: oracle_profile
         run: |
           python3 - <<'PY'
@@ -47,15 +47,18 @@ jobs:
           source=profile.native.git(root,'rev-parse','HEAD')
           selected=profile.applies(root,base,source)
           if selected:profile.scope(root,base,source)
-          with open(os.environ['GITHUB_OUTPUT'],'a') as output:output.write('selected='+str(selected).lower()+'\n')
+          component=profile.component_present(root,base,source)
+          with open(os.environ['GITHUB_OUTPUT'],'a') as output:
+              output.write('selected='+str(selected).lower()+'\n')
+              output.write('component_present='+str(component).lower()+'\n')
           PY
       - name: Select the declared Oracle CI Python
-        if: steps.oracle_profile.outputs.selected == 'true'
+        if: steps.oracle_profile.outputs.component_present == 'true'
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
           python-version: '3.13.5'
       - name: Provision only locked public Oracle CI inputs
-        if: steps.oracle_profile.outputs.selected == 'true'
+        if: steps.oracle_profile.outputs.component_present == 'true'
         env:
           PIP_CONFIG_FILE: /dev/null
           PIP_INDEX_URL: https://pypi.org/simple
