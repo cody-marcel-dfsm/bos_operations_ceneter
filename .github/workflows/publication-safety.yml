@@ -13,7 +13,7 @@ permissions:
 
 jobs:
   verify-public-repository:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       VALIDATION_SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
       VALIDATION_BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}

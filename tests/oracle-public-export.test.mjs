@@ -51,6 +51,17 @@ test('immutable complete export preserves source bytes, modes, Apache attributio
 import ast,hashlib,json,sys,yaml
 from pathlib import Path
 root=Path(sys.argv[1]);path=root/'tools/oracle_public/.github/workflows/ci.yml'
+publication=yaml.safe_load((root/'.github/workflows/publication-safety.yml').read_text())
+publication_job=publication['jobs']['verify-public-repository'];assert publication_job['runs-on']=='ubuntu-24.04'
+publication_steps=publication_job['steps']
+python_step=next(s for s in publication_steps if s.get('name')=='Select the declared Oracle CI Python')
+assert python_step['uses']=='actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065'
+assert python_step['with']['python-version']=='3.13.5'
+assert python_step['if']=="steps.oracle_profile.outputs.component_present == 'true'"
+public_setup=next(s for s in publication_steps if s.get('name')=='Provision only locked public Oracle CI inputs')
+assert public_setup['if']==python_step['if']
+assert '--require-hashes --only-binary=:all: --no-deps -r tools/oracle_public/requirements.lock' in public_setup['run']
+assert '913d7300ceae3b2dbc2c50d1de4baacab4be7b9380491c27fab7418616a16ec3' in public_setup['run']
 workflow=yaml.safe_load(path.read_text());assert workflow['permissions']=={'contents':'read'}
 job=workflow['jobs']['public-oracle'];assert job['runs-on']=='ubuntu-22.04' and job['timeout-minutes']==10
 steps=job['steps'];assert len(steps)==5
