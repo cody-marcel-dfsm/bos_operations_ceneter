@@ -94,24 +94,6 @@ class Journal(unittest.TestCase):
         self.assertEqual(self.replay(self.row('integration', concern=SIX[0], status='REVIEWED',
                                               inputs=self.inputs('source/a.md'), reason='Not mine.'))['integration'], [])
 
-    def test_conflicting_integration_dispositions_never_keep_an_earlier_completion(self):
-        cross = {'id': 'crosscutting-integration', 'required_paths': [], 'integration_checks': SIX[:1],
-                 'new_finding_prefix': 'F1000'}
-        done = dict(concern=SIX[0], status='REVIEWED', inputs=self.inputs('source/a.md'), reason='Done.')
-        for later in (dict(done, status='UNREVIEWED', reason='Unfinished.'), dict(done, reason='Different reason.'),
-                      dict(done, inputs=self.inputs('source/a.md', 'source/b.md'))):
-            with self.subTest(later=later):
-                result = self.replay(self.row('integration', **done), self.row('integration', **later), cohort=cross)
-                self.assertEqual([row['status'] for row in result['integration']], ['UNREVIEWED'])
-                self.assertEqual(len(result['rejected']), 1)
-                self.assertFalse(parallel.integration_complete(result['integration'],
-                    [{'concern': name, 'status': 'REVIEWED'} for name in SIX[1:]]))
-        repeated = self.replay(self.row('integration', **done), self.row('integration', **done), cohort=cross)
-        self.assertEqual(([row['status'] for row in repeated['integration']], repeated['rejected']), (['REVIEWED'], []))
-        single = self.replay(self.row('integration', **done), cohort=cross)
-        self.assertTrue(parallel.integration_complete(single['integration'],
-            [{'concern': name, 'status': 'REVIEWED'} for name in SIX[1:]]))
-
     def test_partial_round_stays_unfinished_when_journal_is_merged(self):
         result = {'review_status': 'ERROR', 'verdict': 'ERROR', 'coverage': [], 'findings': [],
                   'limitations': ['implementation-consumers: deadline']}

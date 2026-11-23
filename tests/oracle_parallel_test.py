@@ -1341,5 +1341,44 @@ class RawObservationCriterion(unittest.TestCase):
                 self.assertEqual(self.candidates(), [])
 
 
+class JournalIntegrationConflict(unittest.TestCase):
+    """Interrupted-cohort recovery never keeps an earlier completion after a conflicting disposition."""
+    def setUp(self):
+        self.six = list(parallel.INTEGRATION_CHECKS)
+        self.context = {'input_hashes': {'source/a.md': 'git-sha1:100644:blob:' + '0' * 40,
+                                         'source/b.md': 'git-sha1:100644:blob:' + '1' * 40}, 'prior_findings': {}}
+        self.plan = {'plan_sha256': 'p' * 64, 'retained_criteria': []}
+        self.cohort = {'id': 'crosscutting-integration', 'required_paths': [], 'integration_checks': self.six[:1],
+                       'new_finding_prefix': 'F1000'}
+        self.done = {'concern': self.six[0], 'status': 'REVIEWED', 'inputs': self.inputs('source/a.md'), 'reason': 'Done.'}
+
+    def inputs(self, *paths):
+        return [{'path': p, 'digest': self.context['input_hashes'][p]} for p in paths]
+
+    def replay(self, *rows):
+        lines = [json.dumps({'type': 'integration', 'plan_sha256': self.plan['plan_sha256'], 'packet_sha256': 'k' * 64, **row})
+                 for row in rows]
+        return parallel.replay_journal(o, '\n'.join(lines) + '\n', self.plan, self.cohort, self.context, 'k' * 64)
+
+    def complete(self, integration):
+        return parallel.integration_complete(integration, [{'concern': name, 'status': 'REVIEWED'} for name in self.six[1:]])
+
+    def test_conflicting_dispositions_reopen_the_concern(self):
+        for later in (dict(self.done, status='UNREVIEWED', reason='Unfinished.'), dict(self.done, reason='Different reason.'),
+                      dict(self.done, inputs=self.inputs('source/a.md', 'source/b.md'))):
+            with self.subTest(later=later):
+                result = self.replay(self.done, later)
+                self.assertEqual([row['status'] for row in result['integration']], ['UNREVIEWED'])
+                self.assertEqual(len(result['rejected']), 1)
+                self.assertFalse(self.complete(result['integration']))
+
+    def test_identical_duplicates_and_a_single_completion_remain_complete(self):
+        for rows in ((self.done, self.done), (self.done,)):
+            with self.subTest(rows=len(rows)):
+                result = self.replay(*rows)
+                self.assertEqual(([row['status'] for row in result['integration']], result['rejected']), (['REVIEWED'], []))
+                self.assertTrue(self.complete(result['integration']))
+
+
 if __name__ == '__main__':
     unittest.main()

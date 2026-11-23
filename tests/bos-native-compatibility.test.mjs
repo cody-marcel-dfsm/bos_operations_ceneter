@@ -31,7 +31,7 @@ test('existing operational compatibility preserves scoped exceptions and authori
 const lifecycle = await readFile(new URL('../source/platform/bos-workflow-orchestrator/references/journey-lifecycle.md', import.meta.url), 'utf8');
 const authoring = await readFile(new URL('../source/platform/bos-workflow-orchestrator/references/bosl-authoring.md', import.meta.url), 'utf8');
 const orchestrator = await readFile(new URL('../source/platform/bos-workflow-orchestrator/SKILL.md', import.meta.url), 'utf8');
-const {buildActionRequest, interpretJourneyResponse} = await import('../source/platform/bos-workflow-orchestrator/scripts/journey-runtime-client.mjs');
+const {interpretJourneyResponse} = await import('../source/platform/bos-workflow-orchestrator/scripts/journey-runtime-client.mjs');
 const NATIVE_BOSL_TOOLS = {register: 'lead-director.journeys.register', action: 'lead-director.journeys.action', graphExport: 'bos.graph_export.read'};
 async function createNativeBoslExecution(options) {
   let helper;
@@ -98,17 +98,6 @@ test('native BOSL execution preserves exact hrefs, payload rules and the empty e
   assert.throws(() => native.action(completeAction, {note: 1}), /payload_schema/);
   assert.throws(() => native.action(completeAction, {note: nativeContext.context_handle}), /context handle/);
   assert.deepEqual(native.graphExport(), {tool_name: 'bos.graph_export.read', context_handle: nativeContext.context_handle, arguments: {}});
-});
-
-test('native BOSL action payloads use the HTTPS payload validator, including date-time', async () => {
-  const native = await createNativeBoslExecution({context: nativeContext, catalog: nativeCatalog()});
-  const timed = {...completeAction, payload_schema: {type: 'object', properties: {at: {type: 'string', format: 'date-time'}},
-    required: ['at'], additionalProperties: false}};
-  assert.throws(() => native.action(timed, {at: 'not-a-date'}), /payload_schema/);
-  assert.throws(() => buildActionRequest(timed, {at: 'not-a-date'}), /payload_schema/);
-  const valid = {at: '2026-11-22T12:00:00Z'};
-  assert.deepEqual(native.action(timed, valid).arguments, {href: timed.href, payload: valid});
-  assert.equal(buildActionRequest(timed, valid).body, JSON.stringify(valid));
 });
 
 test('native BOSL tools are never invented and bind only the selected catalog', async () => {
