@@ -6,10 +6,10 @@
     "model": "claude-opus-5-5",
     "oracle_sha256": "de76ce6e2550bf626c7f4be33a3d9d741023142850b3c635fe2d6845012173b6",
     "host": "Codys-MacBook-Pro.local",
-    "time": "2026-11-23T23:04:56Z",
+    "time": "2026-11-23T23:44:18Z",
     "origin_main": "b994663ddc5e6e804f39f050ff1ec0e84c3845be",
     "request_sha256": "fc7562b6053f376e51682f5b2c5654862ae9297b1581c2b29bb956a5093207a3",
-    "proposal_sha256": "457a6c496b3ddc06e9072674c4b320e6e03559de196f69d75222c65a7b2a8c43"
+    "proposal_sha256": "451d510301963df99909b05d08a04b77da292947d560f9cd8eb232b91cf40d1b"
   },
   "selection": {
     "acceptance": [
@@ -55,7 +55,8 @@
       "Contact data and blocked identifiers placed next to a byte-count slot, whether well-formed or malformed, are still detected. All existing typed-slot and privacy worker cases keep their current results.",
       "Portable feature test-plan binding enforces the same rules as the canonical binding: a 65536-byte raw plan limit, closed plan and row key sets, exact kind, design path and design digest, a nonempty feature, a nonempty list of safe runtime paths each inside the selected scope under the same fnmatch semantics, planned modules that are selected, unique and carry nonempty purposes and covers, and coverage that exactly equals the listed runtime paths. A finite synthetic parity matrix shows that valid portable output equals the canonical binding and that every malformed, out-of-scope or mismatched case is refused. The portable code stays standard-library only and keeps its existing contract versions.",
       "Before any hashing or sealing, portable spec materialization refuses every sealed value that matches the canonical secret-like or local-absolute-path patterns, including reason, acceptance criteria, test-mapping purposes and nested provenance fields. Diagnostics name the offending field and never echo its value. Valid synthetic output and the existing seal formula and identity stay unchanged, and the tests use assembled synthetic values only.",
-      "The publication-safety CI job selects the explicit standard ubuntu-24.04 x64 runner instead of a moving label. It keeps the pinned Python 3.13.5 runtime, pinned action SHAs, locked dependency and model hashes, component-present setup, closed versus general dispatch and exact-source checks unchanged. A focused assertion against the actual workflow fails on the moving-label source and passes after the correction. The existing portable export/CI consumer also checks the publication job runner and Python pin. Actual exact-source required CI must pass, with no skip, attestation, runtime fallback or gate waiver."
+      "The publication-safety CI job selects the explicit standard ubuntu-24.04 x64 runner instead of a moving label. It keeps the pinned Python 3.13.5 runtime, pinned action SHAs, locked dependency and model hashes, component-present setup, closed versus general dispatch and exact-source checks unchanged. A focused assertion against the actual workflow fails on the moving-label source and passes after the correction. The existing portable export/CI consumer also checks the publication job runner and Python pin. Actual exact-source required CI must pass, with no skip, attestation, runtime fallback or gate waiver.",
+      "A genuine approved native revision that changes only selector provenance, revision or evidence bookkeeping may reuse an original complete positive focused or interactions category result without invoking its command again. This requires identical selected criteria, mappings, scopes, commands, fixtures, catalog and runtime, an exact source ancestry, and unchanged non-selector source bytes and modes, declared dependencies, configuration, authority, environment and closed runtime-artifact inputs. Original record, output, stream and capture custody must also still verify. The reused result keeps its original commit, tree, contract, output and time with a distinct current applicability proof and nothing copied, resealed or relabeled. Sanity always executes fresh. Any changed source, test, fixture, dependency, configuration, catalog, criterion, mapping, command, runtime, environment, authority or origin; any missing, deleted, symlinked, untracked or staged drift; any orphaned, fake or unapproved revision; any changed record, output, stream or index; any partial, failing, skipped or cancelled result; or any unknown legacy closure refuses reuse. Current exact-tree admission behavior is unchanged."
     ],
     "acceptance_tests": [
       {
@@ -84,7 +85,8 @@
           4,
           5,
           19,
-          26
+          26,
+          43
         ],
         "module": "tests/validation-contract.test.mjs",
         "purpose": "Verify exact inventory and selection rules, historical reconstruction, full-range admission and unchanged validation requirements."
@@ -282,7 +284,8 @@
       },
       {
         "covers": [
-          16
+          16,
+          43
         ],
         "module": "tests/command-coverage.test.mjs",
         "purpose": "Verifies command-coverage applicability, no rerun of covered commands, rejection of stale or foreign coverage, and failure propagation."
@@ -382,7 +385,8 @@
       {
         "covers": [
           23,
-          24
+          24,
+          43
         ],
         "module": "tests/oracle-review-series.test.mjs",
         "purpose": "Controller-to-series retention of observations and complete governing-text delivery without approval leakage."
@@ -419,7 +423,8 @@
         "covers": [
           25,
           29,
-          31
+          31,
+          43
         ],
         "module": "tests/publication-admission.test.mjs",
         "purpose": "Release ref format enforcement across preparation, validation and publication admission, executing every declared case."
@@ -552,8 +557,8 @@
     ],
     "change_class": "deep_bug_fix",
     "design": null,
-    "reason": "The publication CI job used a moving runner label whose current image has no build of the pinned Python runtime. Pinning an explicit supported runner is a small fix to existing CI configuration. It is proven by a focused workflow assertion that fails before the fix and passes after it, plus the existing export/CI interaction consumer. All earlier criteria, modules and fixtures are retained.",
-    "revision_of": "6a16f3a08ce8184962ceb2e539e34eeb7e8e707aa66302ef30d6a5b4a342a90c",
+    "reason": "Additive deep-fix revision for the native validation consumers. It adds one criterion that lets a genuine evidence-only selector supersession reuse an original complete positive category result only under independently proven identical selected semantics and unchanged inputs and custody. Sanity always runs fresh, and every adversarial change refuses reuse. Existing focused and interaction modules that own contract, review-series, command-coverage and publication-admission behavior prove it.",
+    "revision_of": "990d28a1dd3dd19dea3cb7a935dcbe5f649bd73a142e45682b1437bb3a226887",
     "scope_paths": [
       ".github/workflows/publication-safety.yml",
       "README.md",
@@ -1079,8 +1084,8 @@
       "tools/vault_index.py"
     ]
   },
-  "base_commit": "d489fae15cfac82779d6ec18b8fc942e93761faa",
-  "base_tree": "5cfe55780ac5ef210b5d4cfe5b978d3fbeeae340",
+  "base_commit": "f97f983fc13f71f5fc444010793c8c3407481839",
+  "base_tree": "9f745d17bf6cb0a5623616933c5814515c0d9e33",
   "catalog_sha256": "51ee7ae8c1533604f7b2c68b9efba9d1b9d6f340d724d7c208dba434325859b3",
   "runtime": {
     "node": "v22.11.0",
@@ -1090,8 +1095,8 @@
     "architecture": "arm64",
     "options_sha256": "ebc442c160f8629073a82976daadaba1d95a60a38d768c81c8eb06598aedcac5"
   },
-  "proposal_sha256": "457a6c496b3ddc06e9072674c4b320e6e03559de196f69d75222c65a7b2a8c43",
-  "review_sha256": "ca79192fa8a5ccc8c4159fd712c7843907d1d960c6713f6b37251f4ee5102e6f",
+  "proposal_sha256": "451d510301963df99909b05d08a04b77da292947d560f9cd8eb232b91cf40d1b",
+  "review_sha256": "442549e41c3b954f4ed9d3e2782170ffda217954ae14a54ce61e4c1f5f790a27",
   "commands": [
     {
       "category": "sanity",
@@ -1266,6 +1271,6 @@
     "reasoning_effort": "medium",
     "maximum_reasoning_effort": "medium"
   },
-  "contract_sha256": "990d28a1dd3dd19dea3cb7a935dcbe5f649bd73a142e45682b1437bb3a226887",
-  "seal": "2de016fd06b8eafb1ffc269e4ef9f49fbc0f0c754898f97190222a672053ff64"
+  "contract_sha256": "715549a76ca53dd29f213afc5e83fdf8a44e8ae2808839a25eb4bba5ccbff088",
+  "seal": "f5df936a2442282fbc503f34b3f915b93fab36bbd54b70e365e4ab3b969c3b6f"
 }

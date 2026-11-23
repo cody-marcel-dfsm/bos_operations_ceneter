@@ -1330,5 +1330,102 @@ class SupportedPublicationRunner(unittest.TestCase):
         self.assertIn('913d7300ceae3b2dbc2c50d1de4baacab4be7b9380491c27fab7418616a16ec3', text)
         self.assertIn("if: steps.oracle_profile.outputs.component_present == 'true'", text)
 
+
+class CategoryContentReuse(Fixture):
+    genuine_spec = LaneExecution.genuine_spec
+
+    def prepare_reuse(self):
+        import oracle_review_series as suite
+        suite.copy_review_policy_inputs(self.root)
+        (self.root / '.gitignore').write_text('__pycache__/\nVault/\n')
+        (self.root / 'Vault/tmp').mkdir(parents=True, exist_ok=True)
+        (self.root / 'Vault/docs').mkdir(parents=True, exist_ok=True)
+        (self.root / 'Vault/docs/architecture.md').write_text('Synthetic declared dependency')
+        (self.root / 'source.mjs').write_text('export default false;\n')
+        (self.root / 'tests/spec.test.mjs').write_text(
+            "import test from 'node:test';import assert from 'node:assert/strict';import value from '../source.mjs';"
+            "import {readFileSync,writeFileSync} from 'node:fs';"
+            "let n=0;try{n=Number(readFileSync('Vault/counter','utf8'))}catch{};"
+            "writeFileSync('Vault/counter',String(n+1));test('synthetic behavior',()=>assert.equal(value,true));\n")
+        self.base = self.commit('synthetic complete capture source')
+        self.genuine_spec(self.selection())
+        self.commit('synthetic original plan')
+        run = subprocess.run(['python3','tools/validation_contract.py','run','--category','focused','--phase','before'],
+                             cwd=self.root, capture_output=True, text=True)
+        self.assertEqual(run.returncode, 0, run.stdout + run.stderr)
+        (self.root / 'source.mjs').write_text('export default true;\n')
+        self.original_commit = self.commit('synthetic actual behavior repair')
+        self.original_tree = self.git('rev-parse','HEAD^{tree}')
+        self.original_contract = json.loads((self.root/v.SELECTION).read_text())
+        self.capture_path = self.root/'Vault/tmp/focused-capture.json'
+        self.capture = oracle.record_validation(self.root,
+            ['python3','tools/validation_contract.py','run','--category','focused'], [], self.capture_path)
+        self.assertEqual(self.capture['exit_code'], 0)
+        summary = json.loads(self.capture_path.with_suffix('.stdout.log').read_text().splitlines()[-1])
+        self.original_record_path = Path(summary['record'])
+        self.original_record = json.loads(self.original_record_path.read_text())
+        self.original_bytes = {p:p.read_bytes() for p in
+            [self.capture_path,self.original_record_path,Path(self.original_record['output_file'])]}
+        self.genuine_spec(self.selection(revision_of=self.original_contract['contract_sha256']))
+        self.commit('synthetic evidence-only provenance revision')
+        fresh = oracle.record_validation(self.root,
+            ['python3','tools/validation_contract.py','run','--category','sanity'], [],
+            self.root/'Vault/tmp/fresh-sanity-capture.json')
+        self.assertEqual(fresh['exit_code'], 0)
+        self.current_proposal = json.loads(oracle.proposal_path(self.root).read_text())
+
+    def admit_current(self):
+        return v.admit(self.root, self.git('rev-parse','HEAD^{tree}'), self.current_proposal)
+
+    def test_evidence_only_revision_reuses_original_execution_and_current_capture_applicability(self):
+        self.prepare_reuse()
+        count=(self.root/'Vault/counter').read_text()
+        try:
+            admitted=self.admit_current()
+        except ValueError as error:
+            self.fail('Native intake refused identical category inputs after selector-only bookkeeping: '+str(error))
+        row=next(r for r in admitted['results'] if r['category']=='focused')
+        self.assertEqual(row['commit'],self.original_commit)
+        self.assertEqual(row['tree'],self.original_tree)
+        self.assertEqual(row['contract_sha256'],self.original_contract['contract_sha256'])
+        self.assertEqual(row['_record_path'],str(self.original_record_path))
+        self.assertEqual(row['applicability']['current_tree'],self.git('rev-parse','HEAD^{tree}'))
+        current,_=oracle._validation_capture_inputs(self.root,[r['path'] for r in self.capture['inputs']])
+        inputs=[{'path':r['path'],'digest':current[r['path']]} for r in self.capture['inputs']]
+        verified=oracle._validation_record(self.root,str(self.capture_path),inputs,oracle._environment_digest())
+        self.assertEqual(verified['candidate_tree'],self.original_tree)
+        self.assertEqual(verified['record_sha256'],self.capture['record_sha256'])
+        self.assertEqual((self.root/'Vault/counter').read_text(),count)
+        for path,raw in self.original_bytes.items():self.assertEqual(path.read_bytes(),raw)
+
+    def test_changed_or_unproved_inputs_refuse_category_reuse(self):
+        for mutation in ['source','fixture','mode','catalog','dependency','environment','output','index','lineage']:
+            with self.subTest(mutation=mutation):
+                case=CategoryContentReuse('runTest')
+                try:
+                    case.setUp();case.prepare_reuse()
+                    if mutation in ['source','fixture']:
+                        path=case.root/('source.mjs' if mutation=='source' else 'tests/spec.test.mjs')
+                        path.write_text(path.read_text()+'\n// changed input\n');case.commit()
+                    elif mutation=='mode':
+                        path=case.root/'source.mjs';path.chmod((path.stat().st_mode&0o777)^0o111);case.commit()
+                    elif mutation=='catalog':
+                        path=case.root/v.CATALOG;value=json.loads(path.read_text());value['extra']='changed';path.write_text(json.dumps(value));case.commit()
+                    elif mutation=='dependency':
+                        (case.root/'Vault/docs/architecture.md').write_text('Changed declared private dependency')
+                    elif mutation=='output':
+                        path=Path(case.original_record['output_file']);path.write_text(path.read_text()+'changed')
+                    elif mutation=='index':
+                        path=case.root/'.git/oracle/category-captures'/str(case.original_record['record_sha256']+'.json')
+                        path.parent.mkdir(parents=True,exist_ok=True);path.write_text('{"tampered":true}\n')
+                    elif mutation=='lineage':
+                        tree=case.git('rev-parse','HEAD^{tree}');orphan=case.git('commit-tree',tree,'-m','synthetic orphan');case.git('update-ref','HEAD',orphan)
+                    if mutation=='environment':
+                        with patch.dict(os.environ,{'NODE_OPTIONS':'--trace-warnings'}):
+                            with self.assertRaises((ValueError,oracle.OracleApprovalError)):case.admit_current()
+                    else:
+                        with self.assertRaises((ValueError,oracle.OracleApprovalError)):case.admit_current()
+                finally:case.doCleanups()
+
 if __name__ == '__main__':
     unittest.main()
