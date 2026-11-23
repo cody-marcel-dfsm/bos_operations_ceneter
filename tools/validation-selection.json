@@ -4,12 +4,12 @@
   "stamp": {
     "engine": "claude",
     "model": "claude-opus-5-5",
-    "oracle_sha256": "8da6394367631d7c1122a127cd6d49490e590f42c3cfd8f57df71348c65f4230",
+    "oracle_sha256": "debda826f86e7b241d8711409e09894dcb13f89a6342bb1b07238f9da14aa68f",
     "host": "Codys-MacBook-Pro.local",
-    "time": "2026-11-23T18:15:35Z",
+    "time": "2026-11-23T18:29:56Z",
     "origin_main": "5336a54c97a73ded92b9918560cc1fcc6c564c8a",
     "request_sha256": "fc7562b6053f376e51682f5b2c5654862ae9297b1581c2b29bb956a5093207a3",
-    "proposal_sha256": "a28eb6c5145063c79ee6f5af2ceeaa48cde417ccb0f5584d07948cbd355b858c"
+    "proposal_sha256": "c5de3dc43dc7a242bbb9e33845dd8ee5800ed70e7413d036375f43410b325f6d"
   },
   "selection": {
     "acceptance": [
@@ -40,7 +40,8 @@
       "Each review cohort receives complete authoritative governing texts with path and digest provenance, through bounded stdin forwarded by reviewer stubs. Non-crosscutting cohorts hold at most six primary paths, with at most three concurrent reviewers. Review-series, governance, performance and source-frontier runners execute all declared cases without skips or weakened assertions.",
       "Release preparation, validation, publication and readback consistently use release/<major>.<minor>.<patch>. Legacy and malformed release refs are refused for new operations. Publication safety admits release push events against the main base, and publication admission executes all of its declared cases. Existing main/tag handling, exact-source CI, leased promotion, remote readback and existing remote legacy refs are preserved.",
       "The scalar-binding helper and the production closed-delta response schema agree exactly. Every binding field is required. String fields are constrained to their exact scalar constants, null fields are constrained to null, and additional fields are rejected. Full-binding equality, null design for deep fixes, feature design semantics and historical audit replay are preserved. Tampered, missing, extra, baseline-moved, origin-moved and inventory-changed bindings are refused under both independently authored assertion sets.",
-      "The normal package patch bump propagates through every product and generated client, with exact skill dependency pins and byte parity between canonical and generated output. Both sets of authored guidance are preserved, including the CRM record-journey graph completion and presentation contract. No public API version, credential, authority, billing or installed-cache change is introduced."
+      "The normal package patch bump propagates through every product and generated client, with exact skill dependency pins and byte parity between canonical and generated output. Both sets of authored guidance are preserved, including the CRM record-journey graph completion and presentation contract. No public API version, credential, authority, billing or installed-cache change is introduced.",
+      "The exact native selection admits every path in the complete current publication range, including the canonical native registration execution helper and each of its generated client mirrors. These paths come from the native publication-scope resolver without manual sealing, glob expansion or a caller-chosen baseline, and the canonical helper and every mirror keep identical, passing native registration behavior."
     ],
     "acceptance_tests": [
       {
@@ -183,7 +184,8 @@
         "module": "tests/journey-registration-discovery.test.mjs",
         "covers": [
           11,
-          20
+          20,
+          28
         ],
         "purpose": "Verifies registration construction preserves the returned same-app opaque organization URI and unchanged current schemas."
       },
@@ -237,7 +239,8 @@
         "covers": [
           11,
           13,
-          27
+          27,
+          28
         ],
         "purpose": "Verifies generated journey package parity for the registration and dependency changes."
       },
@@ -309,7 +312,8 @@
       {
         "module": "tests/bos-native-compatibility.test.mjs",
         "covers": [
-          20
+          20,
+          28
         ],
         "purpose": "Native execution selection, payload validation, exact action href preservation and fail-closed error envelopes in canonical and generated clients."
       },
@@ -496,8 +500,8 @@
     ],
     "change_class": "deep_bug_fix",
     "design": null,
-    "reason": "This compatible integration of the published baseline into the local branch is a deep bug fix. It crosses the native execution transport, the review-controller custody and the release workflow, so every published interaction module and its Python fixture is enrolled under interactions. Existing focused and interaction modules cover the review-policy closure, the scalar-binding schema agreement and package parity. All prior criteria, categories and purposes are retained unchanged.",
-    "revision_of": "33a887849cc7d12f6db93540bc69aae6677485f2bced8ff4f6d6964f7b496571",
+    "reason": "Scope-only revision of an existing deep fix. The native registration execution helper and its generated client mirrors are in the current publication range but were missing from the prior finite selection inventory. The native publication-scope resolver captures them automatically. Existing retained modules already exercise the canonical helper and verify that every generated mirror matches it and behaves the same. One admission criterion is added and mapped to those modules with their original purposes preserved. No test, fixture, source or public API version change is introduced.",
+    "revision_of": "65aa4a3132b9148367406ba0f995a789994ef8c191c9b2ee185fdf36376508c1",
     "scope_paths": [
       ".github/workflows/publication-safety.yml",
       "README.md",
@@ -522,6 +526,7 @@
       "clients/claude/plugins/bos/skills/bos-workflow-orchestrator/references/journey-lifecycle.md",
       "clients/claude/plugins/bos/skills/bos-workflow-orchestrator/scripts/callback-source-readiness.mjs",
       "clients/claude/plugins/bos/skills/bos-workflow-orchestrator/scripts/journey-runtime-client.mjs",
+      "clients/claude/plugins/bos/skills/bos-workflow-orchestrator/scripts/native-bosl-execution.mjs",
       "clients/claude/plugins/bos/skills/campaign-offer-marketing-sales/SKILL.md",
       "clients/claude/plugins/bos/skills/collision-call-audit-email/SKILL.md",
       "clients/claude/plugins/bos/skills/collision-repair-proposal-builder/SKILL.md",
@@ -585,6 +590,7 @@
       "clients/codex/plugins/bos/skills/bos-workflow-orchestrator/references/journey-lifecycle.md",
       "clients/codex/plugins/bos/skills/bos-workflow-orchestrator/scripts/callback-source-readiness.mjs",
       "clients/codex/plugins/bos/skills/bos-workflow-orchestrator/scripts/journey-runtime-client.mjs",
+      "clients/codex/plugins/bos/skills/bos-workflow-orchestrator/scripts/native-bosl-execution.mjs",
       "clients/codex/plugins/bos/skills/campaign-offer-marketing-sales/SKILL.md",
       "clients/codex/plugins/bos/skills/collision-call-audit-email/SKILL.md",
       "clients/codex/plugins/bos/skills/collision-repair-proposal-builder/SKILL.md",
@@ -647,6 +653,7 @@
       "clients/copilot/products/bos/skills/bos-workflow-orchestrator/references/journey-lifecycle.md",
       "clients/copilot/products/bos/skills/bos-workflow-orchestrator/scripts/callback-source-readiness.mjs",
       "clients/copilot/products/bos/skills/bos-workflow-orchestrator/scripts/journey-runtime-client.mjs",
+      "clients/copilot/products/bos/skills/bos-workflow-orchestrator/scripts/native-bosl-execution.mjs",
       "clients/copilot/products/bos/skills/campaign-offer-marketing-sales/SKILL.md",
       "clients/copilot/products/bos/skills/collision-call-audit-email/SKILL.md",
       "clients/copilot/products/bos/skills/collision-repair-proposal-builder/SKILL.md",
@@ -732,6 +739,7 @@
       "clients/gemini/extensions/bos/skills/bos-workflow-orchestrator/references/journey-lifecycle.md",
       "clients/gemini/extensions/bos/skills/bos-workflow-orchestrator/scripts/callback-source-readiness.mjs",
       "clients/gemini/extensions/bos/skills/bos-workflow-orchestrator/scripts/journey-runtime-client.mjs",
+      "clients/gemini/extensions/bos/skills/bos-workflow-orchestrator/scripts/native-bosl-execution.mjs",
       "clients/gemini/extensions/bos/skills/campaign-offer-marketing-sales/SKILL.md",
       "clients/gemini/extensions/bos/skills/collision-call-audit-email/SKILL.md",
       "clients/gemini/extensions/bos/skills/collision-repair-proposal-builder/SKILL.md",
@@ -796,6 +804,7 @@
       "clients/muse/plugins/bos/skills/bos-workflow-orchestrator/references/journey-lifecycle.md",
       "clients/muse/plugins/bos/skills/bos-workflow-orchestrator/scripts/callback-source-readiness.mjs",
       "clients/muse/plugins/bos/skills/bos-workflow-orchestrator/scripts/journey-runtime-client.mjs",
+      "clients/muse/plugins/bos/skills/bos-workflow-orchestrator/scripts/native-bosl-execution.mjs",
       "clients/muse/plugins/bos/skills/campaign-offer-marketing-sales/SKILL.md",
       "clients/muse/plugins/bos/skills/collision-call-audit-email/SKILL.md",
       "clients/muse/plugins/bos/skills/collision-repair-proposal-builder/SKILL.md",
@@ -881,6 +890,7 @@
       "source/platform/bos-workflow-orchestrator/references/journey-lifecycle.md",
       "source/platform/bos-workflow-orchestrator/scripts/callback-source-readiness.mjs",
       "source/platform/bos-workflow-orchestrator/scripts/journey-runtime-client.mjs",
+      "source/platform/bos-workflow-orchestrator/scripts/native-bosl-execution.mjs",
       "source/platform/implementation/SKILL.md",
       "source/platform/manage-customer-extension/SKILL.md",
       "source/platform/openai-plugin-publishing/SKILL.md",
@@ -1014,8 +1024,8 @@
       "tools/vault_index.py"
     ]
   },
-  "base_commit": "916a3a90ea6ec6084441cd0d81c9032e3c734a56",
-  "base_tree": "e43a436ab16775d6ccf1955867003bf041fb7f18",
+  "base_commit": "4f3efbefa83792edb5d3dc79939e771251024e9c",
+  "base_tree": "9dca6deebf6386aeb1b9595cfd9af69ea7a58024",
   "catalog_sha256": "51ee7ae8c1533604f7b2c68b9efba9d1b9d6f340d724d7c208dba434325859b3",
   "runtime": {
     "node": "v22.11.0",
@@ -1025,8 +1035,8 @@
     "architecture": "arm64",
     "options_sha256": "ebc442c160f8629073a82976daadaba1d95a60a38d768c81c8eb06598aedcac5"
   },
-  "proposal_sha256": "a28eb6c5145063c79ee6f5af2ceeaa48cde417ccb0f5584d07948cbd355b858c",
-  "review_sha256": "57bc903dfce6ed08200e3fbbaea9a93d63c86f4e331b91eb02774f6a39aa45e1",
+  "proposal_sha256": "c5de3dc43dc7a242bbb9e33845dd8ee5800ed70e7413d036375f43410b325f6d",
+  "review_sha256": "1f0be28285c1fc22782861d3595e18eb6db29366dfaab2e2ea16923bb0c2f793",
   "commands": [
     {
       "category": "sanity",
@@ -1196,6 +1206,6 @@
     "reasoning_effort": "medium",
     "maximum_reasoning_effort": "medium"
   },
-  "contract_sha256": "65aa4a3132b9148367406ba0f995a789994ef8c191c9b2ee185fdf36376508c1",
-  "seal": "a7a262203ef8c43ed26f3d880244bd12fc0c42c2919efc374132198c84a1c397"
+  "contract_sha256": "c4bfd2353e4dff22b3f776845d9e7b547aa37043613a0d35a36cb68cd581b242",
+  "seal": "47b40711b88318704921b0a895aa98c0efc8d11dff155ab64a92ea62c4b8e7f8"
 }
