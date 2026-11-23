@@ -116,6 +116,10 @@
     {
       "source": "tools/oracle_public/benchmarks/public_cases.json",
       "destination": "benchmarks/public_cases.json"
+    },
+    {
+      "source": "tools/oracle_public/.github/workflows/ci.yml",
+      "destination": ".github/workflows/ci.yml"
     }
   ],
   "generated": [

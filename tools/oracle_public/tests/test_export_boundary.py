@@ -14,7 +14,7 @@ class ArtifactBoundary(unittest.TestCase):
         manifest = json.loads((ROOT / 'oracle-export-manifest.json').read_text())
         self.assertRegex(manifest['source_commit'], r'^[0-9a-f]{40}$')
         self.assertRegex(manifest['source_tree'], r'^[0-9a-f]{40}$')
-        self.assertEqual(len(manifest['members']), 29)
+        self.assertEqual(len(manifest['members']), 30)
         seen = set()
         for member in manifest['members']:
             name = member['path']

@@ -41,9 +41,35 @@ m.verify_archive(out/m.ARCHIVE,receipt)
 }
 
 test('immutable complete export preserves source bytes, modes, Apache attribution and deterministic archive',t=>{
+ const runtime=process.env.ORACLE_PUBLIC_PYTHON||join(root,'Vault/index/venv/bin/python');
+ const contract=execFileSync(runtime,['-B','-c',String.raw`
+import ast,hashlib,json,sys,yaml
+from pathlib import Path
+root=Path(sys.argv[1]);path=root/'tools/oracle_public/.github/workflows/ci.yml'
+workflow=yaml.safe_load(path.read_text());assert workflow['permissions']=={'contents':'read'}
+job=workflow['jobs']['public-oracle'];assert job['runs-on']=='ubuntu-22.04' and job['timeout-minutes']==10
+steps=job['steps'];assert len(steps)==5
+assert steps[0]['uses']=='actions/checkout@11d5960a326750d5838078e36cf38b85af677262'
+assert steps[0]['with']['persist-credentials'] is False
+assert steps[1]['uses']=='actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065'
+assert steps[1]['with']['python-version']=='3.13.5'
+setup=steps[2]['run'];lock=(root/'tools/oracle_public/requirements.lock').read_bytes()
+assert hashlib.sha256(lock).hexdigest() in setup
+assert '--require-hashes --only-binary=:all: --no-deps -r requirements.lock' in setup
+assert '913d7300ceae3b2dbc2c50d1de4baacab4be7b9380491c27fab7418616a16ec3' in setup
+assert '256*1024*1024' in setup and '512*1024*1024' in setup
+assert 'is_symlink' in setup and "archive.open('xb')" in setup and 'Existing public cache differs' in setup
+suite=steps[3]['run'];assert all(name in suite for name in ('test_export_boundary','test_proposal_to_spec','test_public_chroma','test_runner_contract'))
+assert 'result.skipped' in suite and 'result.expectedFailures' in suite and 'result.unexpectedSuccesses' in suite
+assert steps[4]['run'].strip()=='.oracle/ci-runtime/bin/python -B benchmarks/run.py --config oracle.project.json --labels benchmarks/public_cases.json --output .oracle/ci-benchmark.json'
+for step in steps:
+ for chunk in step.get('run','').split("<<'PY'\n")[1:]:ast.parse(chunk.split('\nPY',1)[0])
+text=path.read_text();assert all(value not in text for value in ('secrets.','oracle_core.cli proposal','oracle_core.proposal','deterministic_oracle','git push','upload-artifact'))
+print(json.dumps({'mode':'independent-artifact-CI-contract','members':31,'model_calls':0}))
+`,root],{encoding:'utf8',timeout:15000});assert.equal(JSON.parse(contract).model_calls,0);
  const f=fixture(t);chmodSync(join(f.dir,'tools/oracle_core/cli.py'),0o755);const sha=f.commit();
  const first=run(f,sha,'one');assert.equal(first.status,0,first.stderr);
- const receipt=JSON.parse(first.stdout);assert.equal(receipt.source_commit,sha);assert.equal(receipt.source_tree,git(f.dir,'rev-parse',sha+'^{tree}'));assert.equal(receipt.export_map_sha256,hash(actualMap));assert.equal(receipt.members.length,30);
+ const receipt=JSON.parse(first.stdout);assert.equal(receipt.source_commit,sha);assert.equal(receipt.source_tree,git(f.dir,'rev-parse',sha+'^{tree}'));assert.equal(receipt.export_map_sha256,hash(actualMap));assert.equal(receipt.members.length,31);
  assert.equal(receipt.members.find(r=>r.path==='oracle_core/cli.py').mode,0o755);
  assert.equal(receipt.members.find(r=>r.path==='LICENSE').sha256,hash(readFileSync(join(root,'LICENSE'))));
  assert.equal(receipt.members.find(r=>r.path==='NOTICE').sha256,hash(readFileSync(join(root,'NOTICE'))));
@@ -58,10 +84,10 @@ with tarfile.open(sys.argv[1]) as a:
  assert a.extractfile('oracle_core/cli.py').read().startswith(b'raise RuntimeError')
  assert a.extractfile('README.md').read()==b'Synthetic public fixture\n'
  assert all(not n.startswith(('.git/','Vault/','source/','products/')) for n in a.getnames())
- assert len(manifest['members'])==29
+ assert len(manifest['members'])==30
  print(json.dumps(a.getnames()))
 `,join(f.dir,'one/oracle-public.tar.gz')],{encoding:'utf8'});
- assert.equal(JSON.parse(inspect).length,30);
+ assert.equal(JSON.parse(inspect).length,31);
  assert.notEqual(run(f,sha,'one').status,0,'prior output must never be overwritten');
 });
 

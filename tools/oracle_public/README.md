@@ -2,7 +2,7 @@
 
 Oracle turns a conceptual implementation proposal into a bounded, sealed implementation specification. It selects context from an explicitly configured public corpus, keeps retrieved text separate from trusted project policy, and invokes an explicitly selected read-only model CLI. Deterministic validation checks the returned structure and the existing `oracle-spec/1` seal.
 
-The source is maintained in the public Operations Center repository. This distribution contains an exact committed allowlist with its Apache-2.0 license, original NOTICE and source/member hashes in `oracle-export-manifest.json`. It contains no product packages, private project knowledge, operational history or credential configuration.
+The source is maintained in the public Operations Center repository. This export is prepared from its canonical committed input before upstream source promotion; the source pin records bytes and makes no upstream-promotion claim. This distribution contains an exact committed allowlist with its Apache-2.0 license, original NOTICE and source/member hashes in `oracle-export-manifest.json`. It contains no product packages, private project knowledge, operational history or credential configuration.
 
 ## Requirements
 
@@ -37,3 +37,7 @@ This command runs actual local Chroma retrieval over the declared synthetic corp
 Keep private policy, source, feedback, prompts, execution records and credentials outside any public export. The example policy is trusted configuration; retrieved corpus text is untrusted evidence. Corpus content cannot select executable commands, filesystem scope, model capabilities or publication authority. Generated state and model output live under the ignored `.oracle` directory. Publish only a separately verified, curated public corpus.
 
 Copyright and modification attribution remain in LICENSE and NOTICE. The generated manifest identifies the exact originating public source commit, source tree, export map and member bytes.
+
+## Independent repository CI
+
+The included read-only workflow explicitly provisions Python 3.13.5, hash-locked binary dependencies and the hash-verified public embedding cache. It runs all four standalone test modules with zero skipped/expected-failure cases and the actual synthetic-corpus retrieval benchmark. It uses no model calls, secrets or private maintainer profiles. Its result verifies the exported artifact and public fixtures; native model-adapter acceptance and upstream source promotion remain separately evidenced outcomes.

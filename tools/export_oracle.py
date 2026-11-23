@@ -22,7 +22,7 @@ RECEIPT = 'oracle-export-receipt.json'
 REPOSITORY = 'https://github.com/cody-marcel-dfsm/bos_operations_ceneter'
 CORE = ('__init__.py', 'cli.py', 'config.py', 'proposal.py', 'runner.py', 'context.py',
         'index.py', 'spec.py', 'seal.py', 'custody.py', 'lifecycle.py')
-ASSETS = ('.gitignore', 'README.md', 'pyproject.toml', 'requirements.lock',
+ASSETS = ('.github/workflows/ci.yml', '.gitignore', 'README.md', 'pyproject.toml', 'requirements.lock',
           'oracle.project.json', 'schemas/proposal-output.schema.json',
           'policy/example-policy.md', 'corpus/example-architecture.md',
           'examples/proposal.txt', 'validation-catalog.json',
