@@ -1240,5 +1240,83 @@ class NativeValidationFixtureInputs(unittest.TestCase):
             self.assertEqual(list((root/'Vault/tmp').iterdir()),[])
 
 
+class PortableContractBoundaryParity(unittest.TestCase):
+    def test_feature_plan_matches_canonical_scope_shape_and_coverage(self):
+        from tools.oracle_core import proposal as portable
+        with tempfile.TemporaryDirectory(prefix='portable-plan-parity-') as folder:
+            root=Path(folder);(root/'docs').mkdir();design='docs/design.md'
+            (root/design).write_text('Synthetic local feature design\n')
+            selection={'change_class':'feature','scope_paths':['src/*.py'],'design':design,
+                       'categories':[{'name':'interactions','tests':['tests/a.py'],'fixtures':[]},
+                                     {'name':'acceptance','tests':['tests/b.py'],'fixtures':[]}]}
+            plan={'kind':v.PLAN_KIND,'feature':'Synthetic feature','design':design,
+                  'design_sha256':hashlib.sha256((root/design).read_bytes()).hexdigest(),
+                  'runtime_paths':['src/a.py'],
+                  'tests':[{'module':'tests/a.py','covers':['src/a.py'],'purpose':'Check declared runtime'}]}
+            target=root/'docs/design.test-plan.json';target.write_text(json.dumps(plan))
+            self.assertEqual(portable.feature_binding(root,{'validation_selection':selection}),v.design_binding(root,selection))
+            cases=[]
+            def add(name,mutate):
+                value=copy.deepcopy(plan);mutate(value);cases.append((name,value))
+            add('outside_scope',lambda p:p.update(runtime_paths=['other/b.py'],tests=[{'module':'tests/a.py','covers':['other/b.py'],'purpose':'Check scope'}]))
+            add('extra_plan_key',lambda p:p.update(extra=True))
+            add('missing_feature',lambda p:p.pop('feature'))
+            add('empty_feature',lambda p:p.update(feature=' '))
+            add('wrong_kind',lambda p:p.update(kind='unrelated'))
+            add('wrong_design',lambda p:p.update(design='docs/other.md'))
+            add('wrong_digest',lambda p:p.update(design_sha256='0'*64))
+            add('empty_inventory',lambda p:p.update(runtime_paths=[]))
+            add('unsafe_inventory',lambda p:p.update(runtime_paths=['../other.py']))
+            add('missing_purpose',lambda p:p['tests'][0].pop('purpose'))
+            add('empty_purpose',lambda p:p['tests'][0].update(purpose=' '))
+            add('extra_test_key',lambda p:p['tests'][0].update(extra=True))
+            add('empty_covers',lambda p:p['tests'][0].update(covers=[]))
+            add('unknown_cover',lambda p:p['tests'][0].update(covers=['src/b.py']))
+            add('unselected_module',lambda p:p['tests'][0].update(module='tests/unselected.py'))
+            add('duplicate_module',lambda p:p['tests'].append(copy.deepcopy(p['tests'][0])))
+            add('oversize',lambda p:p.update(feature='x'*v.PLAN_LIMIT))
+            cases.append(('not_an_object',[]))
+            for name,value in cases:
+                with self.subTest(case=name):
+                    target.write_text(json.dumps(value))
+                    with self.assertRaises(ValueError):v.design_binding(root,selection)
+                    with self.assertRaises(ValueError):portable.feature_binding(root,{'validation_selection':selection})
+
+    def test_private_values_are_refused_before_any_spec_hash_or_seal(self):
+        from tools.oracle_core import spec as portable
+        module='tests/unit.py'
+        catalog={'schema':'boc.validation-catalog/v1','classes':portable.CLASSES,
+                 'modules':{module:['python3','-B','-c','pass']},'sanity':['python3','-B','-c','pass'],'regression':[]}
+        review={'review_status':'COMPLETE','verdict':'APPROVED','summary':'Synthetic local fixture','findings':[],
+                'validation_selection':{'change_class':'bug_fix','scope_paths':['src/a.py'],
+                  'categories':[{'name':'sanity','tests':[],'fixtures':[]},{'name':'focused','tests':[module],'fixtures':[]}],
+                  'reason':'Synthetic fixture','revision_of':None,'design':None,'acceptance':['A bounded synthetic check'],
+                  'acceptance_tests':[{'module':module,'covers':[0],'purpose':'Verify declared boundary'}]}}
+        provenance={'engine':'codex','model':'synthetic-no-model','core_sha256':'a'*64,'host_sha256':'b'*64,
+                    'source_commit':'c'*40,'source_tree':'d'*40,'origin_main':'e'*40}
+        valid=portable.materialize(review,'Synthetic proposal',catalog,provenance)
+        self.assertEqual(portable.verify(valid),valid)
+        values=['/'+'Users'+'/example/local-notes','/'+'home'+'/example/local-notes',
+                'C:'+chr(92)+'example'+chr(92)+'local-notes',
+                'Authorization'+': '+'Bearer '+'synthetic_material_value',
+                'Bearer '+'synthetic_material_value','cookie'+': '+'synthetic_material_value',
+                '-----BEGIN '+'PRIVATE KEY-----','sk'+'_'+'test'+'_'+'x'*12,
+                'ghp'+'x'*12,'api'+'_'+'key'+'='+'synthetic_material_value']
+        for value in values:
+            self.assertTrue(v.private_matches(value))
+            for field in ['reason','acceptance','purpose','model','nested_provenance']:
+                with self.subTest(value_kind=values.index(value),field=field):
+                    current=copy.deepcopy(review);meta=copy.deepcopy(provenance)
+                    if field=='reason':current['validation_selection']['reason']=value
+                    elif field=='acceptance':current['validation_selection']['acceptance'][0]=value
+                    elif field=='purpose':current['validation_selection']['acceptance_tests'][0]['purpose']=value
+                    elif field=='model':meta['model']=value
+                    else:meta['additional']={'nested':['safe',value]}
+                    with patch.object(portable,'identity',wraps=portable.identity) as hashing,patch.object(portable,'compute_seal',wraps=portable.compute_seal) as sealing:
+                        with self.assertRaises(ValueError) as error:portable.materialize(current,'Synthetic proposal',catalog,meta)
+                        hashing.assert_not_called();sealing.assert_not_called()
+                        self.assertNotIn(value,str(error.exception))
+
+
 if __name__ == '__main__':
     unittest.main()

@@ -6,10 +6,10 @@
     "model": "claude-opus-5-5",
     "oracle_sha256": "892ad8c0d8413e07c6956c24cf2f634aeadbeaa2f73e4532b19386f6d9c7f326",
     "host": "Codys-MacBook-Pro.local",
-    "time": "2026-11-23T21:30:06Z",
+    "time": "2026-11-23T22:09:34Z",
     "origin_main": "b994663ddc5e6e804f39f050ff1ec0e84c3845be",
     "request_sha256": "fc7562b6053f376e51682f5b2c5654862ae9297b1581c2b29bb956a5093207a3",
-    "proposal_sha256": "8170cbac22d487c8b1e807c309d37eeda6abba26c3f0b166daa335048512df9b"
+    "proposal_sha256": "a01e2699f035634ba98a36dd242377fa3dbe095d232e9a2b802598fd62c52d81"
   },
   "selection": {
     "acceptance": [
@@ -52,7 +52,9 @@
       "Malformed input that repeats CRLF-plus-comment TAP continuations after a typed byte-count key, with the colon missing, completes in a separate child process within the existing one-second regression budget. The input is returned unchanged.",
       "The ordinary-whitespace and exact TAP-continuation spacing alternatives in the typed byte-count slot are mutually exclusive. They accept exactly the whitespace and continuation syntax the earlier correction accepted, with no blanket normalization, partial scanning or timeout increase.",
       "Valid repeated LF and CRLF continuations around a typed byte-count key still remove only the integer value from the phone view. Non-integer or malformed values stay unchanged, and every other privacy view still reads the original text.",
-      "Contact data and blocked identifiers placed next to a byte-count slot, whether well-formed or malformed, are still detected. All existing typed-slot and privacy worker cases keep their current results."
+      "Contact data and blocked identifiers placed next to a byte-count slot, whether well-formed or malformed, are still detected. All existing typed-slot and privacy worker cases keep their current results.",
+      "Portable feature test-plan binding enforces the same rules as the canonical binding: a 65536-byte raw plan limit, closed plan and row key sets, exact kind, design path and design digest, a nonempty feature, a nonempty list of safe runtime paths each inside the selected scope under the same fnmatch semantics, planned modules that are selected, unique and carry nonempty purposes and covers, and coverage that exactly equals the listed runtime paths. A finite synthetic parity matrix shows that valid portable output equals the canonical binding and that every malformed, out-of-scope or mismatched case is refused. The portable code stays standard-library only and keeps its existing contract versions.",
+      "Before any hashing or sealing, portable spec materialization refuses every sealed value that matches the canonical secret-like or local-absolute-path patterns, including reason, acceptance criteria, test-mapping purposes and nested provenance fields. Diagnostics name the offending field and never echo its value. Valid synthetic output and the existing seal formula and identity stay unchanged, and the tests use assembled synthetic values only."
     ],
     "acceptance_tests": [
       {
@@ -65,7 +67,9 @@
           5,
           19,
           21,
-          26
+          26,
+          40,
+          41
         ],
         "module": "tests/oracle-implementation-spec.test.mjs",
         "purpose": "Exercise genuine synthetic native capture, materialization, archive reconstruction, historical compatibility and source-movement refusal."
@@ -291,7 +295,9 @@
       },
       {
         "covers": [
-          17
+          17,
+          40,
+          41
         ],
         "module": "tests/oracle-public-core.test.mjs",
         "purpose": "Verifies Oracle public structural core obligations."
@@ -543,8 +549,8 @@
     ],
     "change_class": "deep_bug_fix",
     "design": null,
-    "reason": "The settings-failure reporting criterion kept an outdated exception that required a separate reporting request. Current feedback guidance and the settings caller already treat necessary in-scope discovered-bug reports as covered by the existing task authority. Only that criterion and the matching settings-test purpose are replaced, the existing settings test is strengthened to assert the caller rule, and every other criterion, module, fixture, scope path and privacy, context and permission boundary stays unchanged.",
-    "revision_of": "1db91ed48959bfd1426efd7daf8a483066ab90473a120ffbf26db8a220721b66",
+    "reason": "Additive bug-fix delta. The portable proposal-to-spec component must match the canonical feature test-plan binding and the canonical refusal of unpublishable sealed text. The focused reproduction uses existing focused fixtures and production functions, compared against the canonical implementation, captured before the fix with test bytes unchanged afterward. The existing portable-core interaction module executes the portable consumer cases. No new module, category, fixture, contract version or authority is added.",
+    "revision_of": "418f883c1bc746e08445e00569c68b5a18d8486676dcd7e25eeb929e8c339e07",
     "scope_paths": [
       ".github/workflows/publication-safety.yml",
       "README.md",
@@ -1070,8 +1076,8 @@
       "tools/vault_index.py"
     ]
   },
-  "base_commit": "0f44138fc956e442464ff7edd96cde4b765b1b74",
-  "base_tree": "a952ddb19388430611ee692ce7906e7b41ec9b5c",
+  "base_commit": "0f1f9d880ffd4901c254fb67ebe28b96b06b5897",
+  "base_tree": "2032ad29ab4c10fde75485f8826fa64a5c378947",
   "catalog_sha256": "51ee7ae8c1533604f7b2c68b9efba9d1b9d6f340d724d7c208dba434325859b3",
   "runtime": {
     "node": "v22.11.0",
@@ -1081,8 +1087,8 @@
     "architecture": "arm64",
     "options_sha256": "ebc442c160f8629073a82976daadaba1d95a60a38d768c81c8eb06598aedcac5"
   },
-  "proposal_sha256": "8170cbac22d487c8b1e807c309d37eeda6abba26c3f0b166daa335048512df9b",
-  "review_sha256": "9ecdc585bea8e050367acf63f0c8d281ac07a1698410978b83f7d4e124162184",
+  "proposal_sha256": "a01e2699f035634ba98a36dd242377fa3dbe095d232e9a2b802598fd62c52d81",
+  "review_sha256": "6fa8fd35c291bd83543407d103cd815bb4065db7e4edf0f4ad00176f03919942",
   "commands": [
     {
       "category": "sanity",
@@ -1257,6 +1263,6 @@
     "reasoning_effort": "medium",
     "maximum_reasoning_effort": "medium"
   },
-  "contract_sha256": "418f883c1bc746e08445e00569c68b5a18d8486676dcd7e25eeb929e8c339e07",
-  "seal": "7265e2dd191b2f23499e575770f993b01a65ed9ad8a2b76391f8ddf2c38003d0"
+  "contract_sha256": "6a16f3a08ce8184962ceb2e539e34eeb7e8e707aa66302ef30d6a5b4a342a90c",
+  "seal": "076a4643876e36bff1b2134c13555261ea8d3837ffa833faf2f0257a7e411738"
 }
