@@ -10,7 +10,7 @@ from oracle_core import runner
 ROOT=Path.cwd()
 class Transport(unittest.TestCase):
  def setUp(self):
-  self.root=Path(tempfile.mkdtemp(prefix='oracle-runner-',dir=ROOT/'Vault/tmp'));self.bin=self.root/'bin';self.bin.mkdir();self.old=os.environ['PATH'];os.environ['PATH']=str(self.bin)+os.pathsep+self.old
+  self.temp=tempfile.TemporaryDirectory(prefix='oracle-runner-',dir=ROOT/'Vault/tmp');self.addCleanup(self.temp.cleanup);self.root=Path(self.temp.name);self.bin=self.root/'bin';self.bin.mkdir();self.old=os.environ['PATH'];os.environ['PATH']=str(self.bin)+os.pathsep+self.old
   self.config={'engine':'codex','executable':'codex','model':'synthetic-transport-fixture','reasoning_effort':'medium','timeout_seconds':1,'sandbox':'read-only','max_output_bytes':4096}
  def tearDown(self):os.environ['PATH']=self.old
  def executable(self,body):

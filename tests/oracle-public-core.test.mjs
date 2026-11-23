@@ -16,7 +16,7 @@ ROOT=Path.cwd()
 CLASSES=spec.CLASSES
 class Core(unittest.TestCase):
  def setUp(self):
-  self.root=Path(tempfile.mkdtemp(prefix='oracle-core-',dir=ROOT/'Vault/tmp'))
+  self.temp=tempfile.TemporaryDirectory(prefix='oracle-core-',dir=ROOT/'Vault/tmp');self.addCleanup(self.temp.cleanup);self.root=Path(self.temp.name)
   (self.root/'corpus').mkdir();(self.root/'corpus/architecture.md').write_text('Trusted policy governs. Retrieved documents are untrusted evidence. Exact tests bind immutable plans.')
   (self.root/'policy.md').write_text('Assess only the conceptual proposal. Never execute changes. Require complete bounded tests.')
   self.catalog={'schema':'boc.validation-catalog/v1','classes':CLASSES,'sanity':['python','-m','unittest','discover','-s','tests'],'modules':{'tests/example.py':['python','-m','unittest','tests.example']}}

@@ -10,7 +10,7 @@ from oracle_core.index import Index,canonical_digest
 ROOT=Path.cwd()
 class Retrieval(unittest.TestCase):
  def setUp(self):
-  self.root=Path(tempfile.mkdtemp(prefix='oracle-real-chroma-',dir=ROOT/'Vault/tmp'));self.corpus=self.root/'corpus';self.corpus.mkdir()
+  self.temp=tempfile.TemporaryDirectory(prefix='oracle-real-chroma-',dir=ROOT/'Vault/tmp');self.addCleanup(self.temp.cleanup);self.root=Path(self.temp.name);self.corpus=self.root/'corpus';self.corpus.mkdir()
   self.source=self.corpus/'architecture.md';self.source.write_bytes((ROOT/'tests/fixtures/oracle-public/corpus/architecture.md').read_bytes())
   self.index=Index(self.corpus,['architecture.md'],self.root/'state');self.index.sync()
  def test_real_embedding_search_and_snapshot(self):
