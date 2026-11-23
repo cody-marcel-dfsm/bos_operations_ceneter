@@ -66,6 +66,10 @@ class Fixture(unittest.TestCase):
         self.git('config', 'user.name', 'Synthetic')
         self.git('config', 'user.email', 'synthetic@example.invalid')
         self.base = self.commit()
+        # A genuine stamp names the fetched origin/main, a real ancestor of the
+        # sealed base; history integrity refuses absent stamped origins.
+        global ORIGIN
+        ORIGIN = self.base
 
     def git(self, *args):
         return subprocess.check_output(['git', *args], cwd=self.root, stderr=subprocess.DEVNULL).decode().strip()
