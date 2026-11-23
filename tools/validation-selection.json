@@ -4,12 +4,12 @@
   "stamp": {
     "engine": "codex",
     "model": "gpt-6.1-sol",
-    "oracle_sha256": "96a60d0fc5995506d4579625137910c3b6bfcbe644a9003bb227c9fe68a769e0",
+    "oracle_sha256": "12eaf593a010dfbc632f367eaa4e7cb2b73bdab741d8e70bf147b865fc00215b",
     "host": "Codys-MacBook-Pro.local",
-    "time": "2026-11-23T06:31:56Z",
+    "time": "2026-11-23T07:02:11Z",
     "origin_main": "d6f6dac91af5e962ddc7acaf39efaa302708408b",
     "request_sha256": null,
-    "proposal_sha256": "79db3279d14bf1cd858e6d6e147c624328579934fae39b44a0ceb8b7162f5148"
+    "proposal_sha256": "581d8fa901926d928e28d2d72d24a6bb325b12bd124cda0b02381584f4c2aeb1"
   },
   "selection": {
     "acceptance": [
@@ -30,7 +30,7 @@
           3
         ],
         "module": "tests/oracle-implementation-spec.test.mjs",
-        "purpose": "Preserve existing proposal materialization, specification integrity and refusal behavior."
+        "purpose": "Preserve existing proposal materialization, specification integrity and refusal behavior. Exercise all three actual constructor-used copy helpers in isolated children, preserving complete relative paths, bytes and modes, the exact 42-input constructor projection, existing negative assertions and committed helper-input bindings."
       },
       {
         "covers": [
@@ -138,7 +138,10 @@
           "tests/helpers/isolated-test-cohort.mjs",
           "tests/fixtures/oracle-public/policy.md",
           "tests/fixtures/oracle-public/catalog.json",
-          "tests/fixtures/oracle-public/proposal.txt"
+          "tests/fixtures/oracle-public/proposal.txt",
+          "tests/published_fixture.py",
+          "tests/oracle_review_series.py",
+          "tests/privacy_coverage_test.py"
         ],
         "name": "interactions",
         "tests": [
@@ -172,8 +175,8 @@
     ],
     "change_class": "feature",
     "design": "Vault/docs/design/portable-oracle-publication.md",
-    "reason": "Revise the existing feature contract solely for explicit upstream provenance and custody. Retain all nine criteria, twelve selected modules, existing categories and fixtures, 61 scope paths, 44 runtime/assets and 31 public members. Extend existing controlled cases to distinguish upstream from tool source, verify immutable sealed generation input, refuse invalid provenance before model execution, bind recovery and native witnesses, and preserve every publication guard. No new configuration, provider, network operation or public API version is selected. Complete the existing native contract and independent provider-free public CI; completed-source verification remains deterministic. Preserve original request clocks, historical outcomes and the 300-second end-to-end obligation with existing 120/60/90/30-second component budgets; revisions establish no renewed clock or timing success.",
-    "revision_of": "b3730f3aec66210dcaf77b9c4f1ec4bb643a4ba41c05901c0cb527a4971f948b",
+    "reason": "Revise the existing feature contract solely for complete fixture-constructor compatibility. Retain all nine criteria, twelve selected modules and existing category commands; add three supporting Python fixtures and four exact editable paths, yielding 65 owned paths while preserving 44 runtime/assets and 31 public members. Existing selected cases must exercise actual constructor-used helpers with complete paths, bytes and modes, retain the 26-module and 52-to-2 assertions, verify the exact 42-input projection with all custody negatives, and bind newly consumed helper bytes. Adopt the exact prospective catalog inventory without weakening existing profiles, guards or proof purposes. Complete full native verification and independent provider-free public CI; completed-source verification remains deterministic with no model fallback. Preserve historical outcomes, original request clocks, the 300-second end-to-end obligation and existing 120/60/90/30-second component budgets. This revision establishes no timing success or renewed clock.",
+    "revision_of": "c13e496506a2b2e639265809faad275391d7433380032483d3bc1e60968f39b3",
     "scope_paths": [
       "tools/oracle_core/__init__.py",
       "tools/oracle_core/cli.py",
@@ -235,12 +238,16 @@
       "tests/fixtures/oracle-public/relevance.json",
       "tests/fixtures/oracle-public/export-map.json",
       "tests/oracle_spec_test.py",
-      "tools/oracle_public/.github/workflows/ci.yml"
+      "tools/oracle_public/.github/workflows/ci.yml",
+      "tests/published_fixture.py",
+      "tests/oracle_review_series.py",
+      "tests/privacy_coverage_test.py",
+      "tests/oracle-implementation-spec.test.mjs"
     ]
   },
-  "base_commit": "c0ce6759301564d540a2b943582d261fa8b4934d",
-  "base_tree": "eee48fd60a17cd0c29b76872b8ad4471683efbcd",
-  "catalog_sha256": "9b999fb8fb53625b380232919ccbae149a4ac4e3b099e4c6087b902841e198eb",
+  "base_commit": "8811136e97f2b11f9d19c23e6c64b5ee434c3c74",
+  "base_tree": "9ebbf63accfd429d78aac9a22e0b4c4468a8536e",
+  "catalog_sha256": "51ee7ae8c1533604f7b2c68b9efba9d1b9d6f340d724d7c208dba434325859b3",
   "runtime": {
     "node": "v22.11.0",
     "node_sha256": "b3766cc0774a690436a2bc9e3cbfd9d80c29a3f64499ae2f98ca203853b1cd85",
@@ -249,8 +256,8 @@
     "architecture": "arm64",
     "options_sha256": "ebc442c160f8629073a82976daadaba1d95a60a38d768c81c8eb06598aedcac5"
   },
-  "proposal_sha256": "79db3279d14bf1cd858e6d6e147c624328579934fae39b44a0ceb8b7162f5148",
-  "review_sha256": "ec502a32222f6ba068fa7ab6ffe1333db9165a53bad757a641d6f54eb94180f4",
+  "proposal_sha256": "581d8fa901926d928e28d2d72d24a6bb325b12bd124cda0b02381584f4c2aeb1",
+  "review_sha256": "a301f89ae17efe3c34f2bc95b6d9c7bb40cf4db80b38ca7c9da9249c1f90f3d9",
   "commands": [
     {
       "category": "sanity",
@@ -296,7 +303,10 @@
         "tests/helpers/isolated-test-cohort.mjs",
         "tests/fixtures/oracle-public/policy.md",
         "tests/fixtures/oracle-public/catalog.json",
-        "tests/fixtures/oracle-public/proposal.txt"
+        "tests/fixtures/oracle-public/proposal.txt",
+        "tests/published_fixture.py",
+        "tests/oracle_review_series.py",
+        "tests/privacy_coverage_test.py"
       ]
     },
     {
@@ -340,15 +350,15 @@
   },
   "design_binding": {
     "design": "Vault/docs/design/portable-oracle-publication.md",
-    "design_sha256": "3d099f46e02c8699b9161bd763fb6af40d70aa6bb29307042cfbf9018201aa8a",
+    "design_sha256": "268222dec10de4f274bf5e543488432abb2c8abf14ce46310599028f01c2174b",
     "plan": "Vault/docs/design/portable-oracle-publication.test-plan.json",
-    "plan_sha256": "f96aff49799e59d0ef57fba6758932e3f92c72414b101e45973b529c58545aec",
+    "plan_sha256": "de97c4f4ffca1dd84e0f75c2fd148e0bb93feaae71f61ba8e489fa05baea8b5d",
     "tests": [
       "tests/deterministic-oracle.test.mjs",
       "tests/oracle-public-core.test.mjs",
       "tests/oracle-public-export.test.mjs"
     ]
   },
-  "contract_sha256": "c13e496506a2b2e639265809faad275391d7433380032483d3bc1e60968f39b3",
-  "seal": "897249fa312132f45ada9eb045db5d5934b474d4c56709b49901a4588da4099c"
+  "contract_sha256": "516a039ad3c2a1a847f3916577a4f2e3c627c9938840fea8e4c34d443d53a99e",
+  "seal": "c6f4b3ad1cd60340b2ec2981676ac7e0fe7db71edaafc5ff657c3aaade82497d"
 }

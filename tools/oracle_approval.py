@@ -1450,7 +1450,7 @@ def _review_policy_sources(root: Path, tree: str | None = None) -> dict:
         if originals is not None:
             mode,source = originals[name]
         else:
-            path = Path(__file__).parent / Path(name).name
+            path = Path(__file__).parent.parent / name
             if path.is_symlink() or not path.is_file():
                 raise ValueError("Unavailable live reviewer module")
             fact, source = _custody_read(root, str(path))

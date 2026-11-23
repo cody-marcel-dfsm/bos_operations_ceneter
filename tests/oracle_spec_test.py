@@ -875,6 +875,37 @@ class NativePolicyBatch(unittest.TestCase):
             self.assertEqual(oracle._review_policy_sources(self.root,self.revision),expected)
             self.assertEqual(calls.call_count,2)
         self.assertEqual(expected[oracle.REVIEW_POLICY_MODULES[0]]['mode'],'100755')
+        # Exercise the same copy functions called by all three real constructors.
+        child = r"""
+import importlib, json, stat, sys
+from pathlib import Path
+source = Path(sys.argv[1])
+sys.path.insert(0, str(source / 'tests'))
+module = importlib.import_module(sys.argv[2])
+target = Path(sys.argv[3])
+module.copy_review_policy_inputs(target)
+from tools import oracle_approval
+rows = []
+for name in oracle_approval.REVIEW_POLICY_MODULES:
+    actual, original = target / name, source / name
+    assert actual.read_bytes() == original.read_bytes(), name
+    assert stat.S_IMODE(actual.stat().st_mode) == stat.S_IMODE(original.stat().st_mode), name
+    rows.append(name)
+assert len(rows) == 26
+from unittest.mock import patch
+with patch.object(oracle_approval, '__file__', str(target / 'tools/oracle_approval.py')):
+    actual_policy = oracle_approval._review_policy_sources(target)
+assert set(actual_policy) == set(rows)
+for name in rows:
+    assert actual_policy[name]['ast'] == oracle_approval._policy_ast((source / name).read_bytes())
+print(json.dumps(rows))
+"""
+        for module in ('published_fixture', 'oracle_review_series', 'privacy_coverage_test'):
+            with self.subTest(constructor=module):
+                output = subprocess.check_output(
+                    [sys.executable, '-B', '-c', child, str(REPOSITORY), module,
+                     str(Path(self.temp.name) / module)], cwd=REPOSITORY, text=True)
+                self.assertEqual(json.loads(output), list(oracle.REVIEW_POLICY_MODULES))
 
     def test_raw_binary_and_newline_bodies_preserve_original_git_bytes(self):
         path=self.root/oracle.REVIEW_POLICY_MODULES[0];path.write_bytes(b'first\n\0middle\r\nlast\xff')
@@ -952,7 +983,7 @@ class NativeValidationFixtureInputs(unittest.TestCase):
         case = suite.ReviewSeries('runTest')
         try:
             case.setUp()
-            self.assertEqual(len(case.fixture_inputs), 30)
+            self.assertEqual(len(case.fixture_inputs), 42)
             for name in ('source.py', 'peer.py'):
                 (case.root/name).write_bytes(subprocess.check_output(['git','show','HEAD:'+name],cwd=case.root))
             self.assertEqual(suite.fixture_projection(case.root), case.fixture_inputs)

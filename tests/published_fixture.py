@@ -39,15 +39,21 @@ def git(root, *args):
     return subprocess.check_output(['git', *args], cwd=root, text=True, stderr=subprocess.DEVNULL).strip()
 
 
+def copy_review_policy_inputs(root):
+    """Preserve the maintained policy closure in a controlled fixture root."""
+    for name in [*oracle.REVIEW_POLICY_MODULES, 'tools/validation-catalog.json']:
+        target = Path(root) / name
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(REPOSITORY / name, target)
+
+
 def build(root, revision):
     root = Path(root).resolve()
     git(root, 'init', '-q', '-b', 'main')
     git(root, 'config', 'user.name', 'Synthetic'); git(root, 'config', 'user.email', 'synthetic@example.invalid')
     (root / 'tools').mkdir(); (root / 'tests').mkdir(); (root / 'node_modules').mkdir()
     (root / 'node_modules/dependency').write_text('locked')
-    for name in [*oracle.REVIEW_POLICY_MODULES,
-                 'tools/validation-catalog.json']:
-        shutil.copy2(REPOSITORY / name, root / name)
+    copy_review_policy_inputs(root)
     (root / '.gitignore').write_text('__pycache__/\nnode_modules/\n')
     (root / 'AGENTS.md').write_text('Synthetic governing criterion\n')
     (root / 'package.json').write_text(json.dumps({'version': '0.0.1', 'scripts': {

@@ -35,7 +35,7 @@ for node in tree.body:
  all_ids.extend(ids)
 assert sorted(all_ids)==sorted(declared) and len(all_ids)==len(set(all_ids)) and all_ids
 assert sorted(all_ids)==sorted(identity for row in rows for identity in row['ids'])
-paths=sorted(set(suite.oracle.REVIEW_POLICY_MODULES)|{'tests/oracle_spec_test.py','tests/published_fixture.py','tests/oracle-implementation-spec.test.mjs','tests/helpers/isolated-test-cohort.mjs','.agents/skills/oracle/review-output.schema.json'})
+paths=sorted(set(suite.oracle.REVIEW_POLICY_MODULES)|{'tests/oracle_spec_test.py','tests/published_fixture.py','tests/oracle_review_series.py','tests/privacy_coverage_test.py','tests/oracle-implementation-spec.test.mjs','tests/helpers/isolated-test-cohort.mjs','.agents/skills/oracle/review-output.schema.json'})
 source={}
 for name in paths:
  path=Path(name);fact=path.lstat();assert stat.S_ISREG(fact.st_mode) and not path.is_symlink()

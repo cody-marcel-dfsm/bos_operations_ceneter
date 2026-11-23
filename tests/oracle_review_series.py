@@ -66,8 +66,19 @@ def fixture_projection(root):
         total += len(body)
         if total > 32*1024*1024: raise ValueError('Constructor input total exceeds bound')
         entries[name] = {'mode':mode,'bytes':len(body),'sha256':hashlib.sha256(body).hexdigest()}
-    if set(entries) != names or len(entries) != 30: raise ValueError('Constructor input membership changed')
+    if set(entries) != names or len(entries) != 42: raise ValueError('Constructor input membership changed')
     return {name:entries[name] for name in sorted(entries)}
+
+
+def copy_review_policy_inputs(root):
+    """Copy exact nested policy bytes and modes from their canonical root."""
+    source_root = Path(inspect.getsourcefile(o._oracle)).resolve().parent.parent
+    for name in o.REVIEW_POLICY_MODULES:
+        original = source_root / name
+        target = Path(root) / name
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(original.read_bytes())
+        target.chmod(original.stat().st_mode & 0o777)
 
 
 class ReviewSeries(unittest.TestCase):
@@ -107,12 +118,7 @@ class ReviewSeries(unittest.TestCase):
                             "dependency.py": "dependency", "config.json": "{}"}.items():
             path = self.root / name; path.parent.mkdir(parents=True, exist_ok=True); path.write_text(value)
         self.release_metadata("0.0.0")
-        for name in o.REVIEW_POLICY_MODULES:
-            original = Path(inspect.getsourcefile(o._oracle)).parent / Path(name).name
-            path = self.root / name
-            path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_bytes(original.read_bytes())
-            path.chmod(original.stat().st_mode & 0o777)
+        copy_review_policy_inputs(self.root)
         patch.object(o, "__file__", str(self.root / "tools/oracle_approval.py")).start()
         self.git("add", "."); self.git("commit", "-qm", "base")
         self.base = self.git("rev-parse", "HEAD")

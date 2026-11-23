@@ -15,6 +15,17 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from tools import oracle_approval as o, privacy_coverage as privacy
 
 
+def copy_review_policy_inputs(root):
+    """Copy exact nested policy bytes and modes from their canonical root."""
+    source_root = Path(inspect.getsourcefile(o._oracle)).resolve().parent.parent
+    for name in o.REVIEW_POLICY_MODULES:
+        original = source_root / name
+        target = Path(root) / name
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(original.read_bytes())
+        target.chmod(original.stat().st_mode & 0o777)
+
+
 class PrivacyTransition(unittest.TestCase):
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory(); self.addCleanup(self.temporary.cleanup)
@@ -104,11 +115,7 @@ class PrivacyTransition(unittest.TestCase):
     def test_real_native_archive_gate_binds_current_policy_and_rejects_stale_or_tampered_proof(self):
         # A real native execution witness exercises the consumer gate here;
         # receipt and policy-preview fixtures isolate final authorization.
-        for name in o.REVIEW_POLICY_MODULES:
-            original = Path(inspect.getsourcefile(o._oracle)).parent / Path(name).name
-            target = self.root / name; target.parent.mkdir(parents=True, exist_ok=True)
-            target.write_bytes(original.read_bytes())
-            target.chmod(original.stat().st_mode & 0o777)
+        copy_review_policy_inputs(self.root)
         (self.root / '.gitignore').write_text('Vault/\n__pycache__/\n')
         for args in [('config', 'user.name', 'Synthetic Reviewer'),
                      ('config', 'user.email', 'review@example.invalid'), ('add', '.'), ('commit', '-qm', 'native archive fixture')]:
