@@ -257,7 +257,7 @@ function isGitScpTransport(text, match) {
   return /^:[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?\/[A-Za-z0-9][A-Za-z0-9_.-]{0,99}\.git(?=$|[\s"'`),}\]])/u.test(text.slice(match.index + match[0].length));
 }
 
-// Integer values of `*_bytes` keys are machine byte counts, never phone numbers.
+// Integer values of `*_bytes` keys are machine byte counts, and numeric `*_ms` values are machine timings.
 // Only those typed digits leave the phone check; every other check reads them.
 export function byteCountPrivacyText(text) {
   // Node TAP can split a diagnostic write inside the key or before its value.
@@ -268,7 +268,8 @@ export function byteCountPrivacyText(text) {
   const spacing = String.raw`(?:\s|\r?\n# )*`;
   const slot = new RegExp("(" + suffix + String.raw`\\*"` + spacing + ":" + spacing +
     String.raw`)\d+(?![\d.eE])`, "gu");
-  return text.replace(slot, "$10");
+  return text.replace(slot, "$10")
+    .replace(/(_ms\\*"\s*:\s*)\d+(?:\.\d+)?(?![\d.eE])/gu, "$10");
 }
 
 export function customerDataFindings(text, path, blockedDigests, phoneText = byteCountPrivacyText(text)) {

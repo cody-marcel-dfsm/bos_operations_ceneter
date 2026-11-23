@@ -22,11 +22,22 @@ import time
 import uuid
 
 _LIVE = {}
+# The reviewer SLA: crossing it is recorded BREACHED and the reviewer finishes its work (owner
+# direction: an overrun is recorded and corrected, never a reason to discard nearly finished work).
 REVIEWER_SECONDS = 180
+# Only a reviewer still running at this safety limit is treated as hung and ends INCOMPLETE.
+REVIEWER_HARD_SECONDS = 600
 # Missing structural inputs wait this long for attached evidence or source movement,
 # then the review ends INCOMPLETE instead of waiting without a deadline.
 STRUCTURAL_WAIT_SECONDS = REVIEWER_SECONDS
 REVIEWER_OUTPUT_BYTES = 8 * 1024 * 1024
+
+def reviewer_progress(elapsed, counts, overflow, complete):
+    return {'kind':'boc-reviewer-progress/1','elapsed_ms':round(elapsed*1000,3),'stdout_bytes':counts[0],
+            'stderr_bytes':counts[1],'sla_seconds':REVIEWER_SECONDS,
+            'sla_status':'BREACHED' if elapsed>=REVIEWER_SECONDS else 'WITHIN','deadline_seconds':REVIEWER_HARD_SECONDS,
+            'output_bound_bytes':REVIEWER_OUTPUT_BYTES,'output_overflow':overflow,'complete':complete}
+
 
 def bounded_reviewer_output(o, run, process, token, record, *, stdin_payload=None):
     """Drain both private streams continuously; expose only bounded counts/timing."""
@@ -61,13 +72,11 @@ def bounded_reviewer_output(o, run, process, token, record, *, stdin_payload=Non
             elapsed=time.monotonic()-start
             with lock:current=list(counts)
             if elapsed-last>=1 or process.poll() is not None:
-                o._atomic_write(run/'reviewer-progress.json',o._pretty({'kind':'boc-reviewer-progress/1',
-                    'elapsed_ms':round(elapsed*1000,3),'stdout_bytes':current[0],'stderr_bytes':current[1],
-                    'deadline_seconds':REVIEWER_SECONDS,'output_bound_bytes':REVIEWER_OUTPUT_BYTES,
-                    'output_overflow':overflow.is_set(),'complete':process.poll() is not None}))
+                o._atomic_write(run/'reviewer-progress.json',o._pretty(reviewer_progress(
+                    elapsed,current,overflow.is_set(),process.poll() is not None)))
                 last=elapsed
             if overflow.is_set():failure='Reviewer output bound exceeded';break
-            if elapsed>=REVIEWER_SECONDS:failure='Reviewer deadline reached; retain checkpoint and resume exact inputs';break
+            if elapsed>=REVIEWER_HARD_SECONDS:failure='Reviewer hard deadline reached; retain checkpoint and resume exact inputs';break
             if process.poll() is not None:break
             time.sleep(.05)
     finally:
@@ -92,10 +101,8 @@ def bounded_reviewer_output(o, run, process, token, record, *, stdin_payload=Non
         if overflow.is_set():failure=failure or 'Reviewer output bound exceeded'
         raw=[b''.join(value) for value in chunks]
         o._atomic_write(run/'stdout.log',raw[0]);o._atomic_write(run/'stderr.log',raw[1])
-        o._atomic_write(run/'reviewer-progress.json',o._pretty({'kind':'boc-reviewer-progress/1',
-            'elapsed_ms':round((time.monotonic()-start)*1000,3),'stdout_bytes':counts[0],'stderr_bytes':counts[1],
-            'deadline_seconds':REVIEWER_SECONDS,'output_bound_bytes':REVIEWER_OUTPUT_BYTES,
-            'output_overflow':overflow.is_set(),'complete':failure is None and not errors}))
+        o._atomic_write(run/'reviewer-progress.json',o._pretty(reviewer_progress(
+            time.monotonic()-start,counts,overflow.is_set(),failure is None and not errors)))
         process.native_output_drained=True
         process.stdout.close();process.stderr.close()
     if failure or errors:raise o.OracleReviewIncomplete(failure or 'Reviewer output stream failed')
