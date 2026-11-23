@@ -700,15 +700,15 @@ class PublicationCIDispatch(Fixture):
         with self.assertRaisesRegex(ValueError,'Outside'):profile.scope(self.root,self.base,unknown)
 
     def test_general_ci_consumes_required_native_applicability_without_duplicate_execution(self):
-        from tools import deterministic_package as package,deterministic_oracle as profile,command_coverage
+        from tools import deterministic_package as package,deterministic_oracle as profile
         with patch.object(package.native,'git',return_value=self.base),patch.object(profile,'applies',return_value=False), \
              patch.object(package.contract,'gate',return_value={'status':'SPEC_SEALED','seal':'synthetic'}), \
              patch.object(package.native,'scope',side_effect=ValueError('ordinary runtime')), \
              patch.object(package,'scope',side_effect=ValueError('ordinary runtime')), \
              patch.object(package.contract,'ci_execute',side_effect=AssertionError('Native-only categories were duplicated')) as duplicate, \
-             patch.object(command_coverage,'ci',return_value=[]) as required:
+             patch.object(package.subprocess,'run',return_value=subprocess.CompletedProcess([],0)) as required:
             self.assertEqual(package.ci(self.root,self.base,'synthetic'),0)
-        duplicate.assert_not_called();required.assert_called_once_with(self.root,self.base)
+        duplicate.assert_not_called();required.assert_called_once_with([sys.executable,'tools/command_coverage.py','ci','--candidate',self.base],cwd=self.root,check=True)
 
     def test_actual_workflow_keeps_public_runtime_setup_for_mixed_component_ranges(self):
         workflow=(REPOSITORY/'.github/workflows/publication-safety.yml').read_text()
@@ -735,8 +735,9 @@ class PublicationCIDispatch(Fixture):
                               'Path(os.environ["SYNTHETIC_RUNTIME_MARKER"]).write_text("used")\n'
                               'sys.stderr.write("Ran 5 tests in 0.01s\\n\\nOK\\n")\n')
         executable.chmod(0o700)
+        environment={key:value for key,value in os.environ.items() if key!='NODE_TEST_CONTEXT'}
         run=subprocess.run(['node','--test','tests/oracle-public-chroma.test.mjs'],cwd=REPOSITORY,
-                           env={**os.environ,'ORACLE_PUBLIC_PYTHON':str(executable),'SYNTHETIC_RUNTIME_MARKER':str(marker)},capture_output=True,text=True)
+                           env={**environment,'ORACLE_PUBLIC_PYTHON':str(executable),'SYNTHETIC_RUNTIME_MARKER':str(marker)},capture_output=True,text=True)
         self.assertEqual(run.returncode,0,run.stderr)
         self.assertTrue(marker.exists(),'The configured runtime was ignored in favor of the private local fallback')
 
@@ -834,7 +835,7 @@ class NativeDelta(Fixture):
 
     def schema_accepts(self,schema,values):
         code="import Ajv from 'ajv';import fs from 'node:fs';const x=JSON.parse(fs.readFileSync(0,'utf8'));const v=new Ajv({strict:false}).compile(x.schema);process.stdout.write(JSON.stringify(x.values.map(value=>v(value))));"
-        run=subprocess.run(['node','--input-type=module','-e',code],cwd=REPOSITORY,
+        run=subprocess.run(['node','--input-type=module','-e',code],cwd=REPOSITORY,env={key:value for key,value in os.environ.items() if key!='NODE_TEST_CONTEXT'},
                            input=json.dumps({'schema':schema,'values':values}),capture_output=True,text=True)
         self.assertEqual(run.returncode,0,run.stderr)
         return json.loads(run.stdout)
