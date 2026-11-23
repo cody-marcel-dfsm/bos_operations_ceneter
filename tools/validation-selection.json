@@ -4,12 +4,12 @@
   "stamp": {
     "engine": "claude",
     "model": "claude-opus-5-5",
-    "oracle_sha256": "debda826f86e7b241d8711409e09894dcb13f89a6342bb1b07238f9da14aa68f",
+    "oracle_sha256": "76a1a8dc8d0756179bd71bdb7d513c752ef6b9142800843b35a6cdea4459df95",
     "host": "Codys-MacBook-Pro.local",
-    "time": "2026-11-23T18:29:56Z",
-    "origin_main": "5336a54c97a73ded92b9918560cc1fcc6c564c8a",
+    "time": "2026-11-23T19:19:16Z",
+    "origin_main": "4451580fefadfeade5eb13f837091b93b806028e",
     "request_sha256": "fc7562b6053f376e51682f5b2c5654862ae9297b1581c2b29bb956a5093207a3",
-    "proposal_sha256": "c5de3dc43dc7a242bbb9e33845dd8ee5800ed70e7413d036375f43410b325f6d"
+    "proposal_sha256": "f7b47fbffba72e78922f2962c0f6ffd84b0cc61f62c0ffffc22ffe59d6a001e1"
   },
   "selection": {
     "acceptance": [
@@ -41,7 +41,10 @@
       "Release preparation, validation, publication and readback consistently use release/<major>.<minor>.<patch>. Legacy and malformed release refs are refused for new operations. Publication safety admits release push events against the main base, and publication admission executes all of its declared cases. Existing main/tag handling, exact-source CI, leased promotion, remote readback and existing remote legacy refs are preserved.",
       "The scalar-binding helper and the production closed-delta response schema agree exactly. Every binding field is required. String fields are constrained to their exact scalar constants, null fields are constrained to null, and additional fields are rejected. Full-binding equality, null design for deep fixes, feature design semantics and historical audit replay are preserved. Tampered, missing, extra, baseline-moved, origin-moved and inventory-changed bindings are refused under both independently authored assertion sets.",
       "The normal package patch bump propagates through every product and generated client, with exact skill dependency pins and byte parity between canonical and generated output. Both sets of authored guidance are preserved, including the CRM record-journey graph completion and presentation contract. No public API version, credential, authority, billing or installed-cache change is introduced.",
-      "The exact native selection admits every path in the complete current publication range, including the canonical native registration execution helper and each of its generated client mirrors. These paths come from the native publication-scope resolver without manual sealing, glob expansion or a caller-chosen baseline, and the canonical helper and every mirror keep identical, passing native registration behavior."
+      "The exact native selection admits every path in the complete current publication range, including the canonical native registration execution helper and each of its generated client mirrors. These paths come from the native publication-scope resolver without manual sealing, glob expansion or a caller-chosen baseline, and the canonical helper and every mirror keep identical, passing native registration behavior.",
+      "Every published history-integrity guard stays in force across proposal review, source review, gating and publication. Recorded spec bases, stamped origins, revision archives, review-series rounds and validation commits remain in required ancestry. Any reset, rebase, amend, force-push or replacement that would retire them is refused, and prepared ancestors stay valid through later descendant work.",
+      "The optional locally discovered application binding reaches the native registration builder with the exact current descriptor and context and the existing strict legacy defaults. Absent or mismatched descriptors fail closed, and current own-application HTTPS behavior is unchanged. The canonical producer and every client mirror are byte-identical. The before input is the published producer and its mirrors, the after input is the committed fixed bytes, and all test and fixture bytes are identical across that pair.",
+      "The package version is the next free ordinary patch above the actual published version. The occupied earlier release branch and its published source are preserved. No public API version, login, credential, grant, trust or tenant boundary, billing, or installed-cache change is introduced, and exact-source CI plus main readback remain required before publication."
     ],
     "acceptance_tests": [
       {
@@ -143,7 +146,8 @@
           9,
           13,
           18,
-          27
+          27,
+          31
         ],
         "module": "tests/package-model.test.mjs",
         "purpose": "Verify package composition, data minimization and generated product boundaries."
@@ -169,7 +173,8 @@
         "module": "tests/app-discovery.test.mjs",
         "covers": [
           11,
-          20
+          20,
+          30
         ],
         "purpose": "Verifies generic current app discovery agreement and strict legacy defaults without client route construction."
       },
@@ -185,7 +190,8 @@
         "covers": [
           11,
           20,
-          28
+          28,
+          30
         ],
         "purpose": "Verifies registration construction preserves the returned same-app opaque organization URI and unchanged current schemas."
       },
@@ -240,7 +246,8 @@
           11,
           13,
           27,
-          28
+          28,
+          30
         ],
         "purpose": "Verifies generated journey package parity for the registration and dependency changes."
       },
@@ -386,16 +393,26 @@
       {
         "module": "tests/publication-admission.test.mjs",
         "covers": [
-          25
+          25,
+          29,
+          31
         ],
         "purpose": "Release ref format enforcement across preparation, validation and publication admission, executing every declared case."
       },
       {
         "module": "tests/shipment-workflow.test.mjs",
         "covers": [
-          25
+          25,
+          31
         ],
         "purpose": "End-to-end release workflow with exact-source CI, leased promotion and remote readback."
+      },
+      {
+        "module": "tests/history-integrity.test.mjs",
+        "covers": [
+          29
+        ],
+        "purpose": "Proves that history-integrity admission refuses rewriting, dropping or replacing recorded commits and keeps prepared ancestors valid through descendant work."
       }
     ],
     "categories": [
@@ -457,7 +474,8 @@
           "tests/oracle_relocation_test.py",
           "tests/oracle_source_frontier_test.py",
           "tests/publication_admission_test.py",
-          "tests/shipment_workflow_test.py"
+          "tests/shipment_workflow_test.py",
+          "tests/history_integrity_test.py"
         ],
         "name": "interactions",
         "tests": [
@@ -494,14 +512,15 @@
           "tests/oracle-source-frontier.test.mjs",
           "tests/publication-admission.test.mjs",
           "tests/publication-safety.test.mjs",
-          "tests/shipment-workflow.test.mjs"
+          "tests/shipment-workflow.test.mjs",
+          "tests/history-integrity.test.mjs"
         ]
       }
     ],
     "change_class": "deep_bug_fix",
     "design": null,
-    "reason": "Scope-only revision of an existing deep fix. The native registration execution helper and its generated client mirrors are in the current publication range but were missing from the prior finite selection inventory. The native publication-scope resolver captures them automatically. Existing retained modules already exercise the canonical helper and verify that every generated mirror matches it and behaves the same. One admission criterion is added and mapped to those modules with their original purposes preserved. No test, fixture, source or public API version change is introduced.",
-    "revision_of": "65aa4a3132b9148367406ba0f995a789994ef8c191c9b2ee185fdf36376508c1",
+    "reason": "Published main added history-integrity admission guards and their tests, which changed selected fixture bytes. The existing deep fix must keep those guards as mandatory interactions. It must also show a real fail-before/pass-after for the discovered-application registration binding: the published producer and its mirrors are the before input, the committed fixed bytes are the after input, and the tests stay unchanged.",
+    "revision_of": "c4bfd2353e4dff22b3f776845d9e7b547aa37043613a0d35a36cb68cd581b242",
     "scope_paths": [
       ".github/workflows/publication-safety.yml",
       "README.md",
@@ -935,6 +954,8 @@
       "tests/helpers/lead-graph-acceptance.mjs",
       "tests/helpers/synthetic-bos-discovery-service.mjs",
       "tests/helpers/synthetic-notifications.mjs",
+      "tests/history-integrity.test.mjs",
+      "tests/history_integrity_test.py",
       "tests/journey-discovery.test.mjs",
       "tests/journey-package-parity.test.mjs",
       "tests/journey-registration-discovery.test.mjs",
@@ -1024,8 +1045,8 @@
       "tools/vault_index.py"
     ]
   },
-  "base_commit": "4f3efbefa83792edb5d3dc79939e771251024e9c",
-  "base_tree": "9dca6deebf6386aeb1b9595cfd9af69ea7a58024",
+  "base_commit": "44bec4549d915dba74509e3bf97d6703b87394a0",
+  "base_tree": "a1ece785f153c712df4d220a27c2c3aedecce697",
   "catalog_sha256": "51ee7ae8c1533604f7b2c68b9efba9d1b9d6f340d724d7c208dba434325859b3",
   "runtime": {
     "node": "v22.11.0",
@@ -1035,8 +1056,8 @@
     "architecture": "arm64",
     "options_sha256": "ebc442c160f8629073a82976daadaba1d95a60a38d768c81c8eb06598aedcac5"
   },
-  "proposal_sha256": "c5de3dc43dc7a242bbb9e33845dd8ee5800ed70e7413d036375f43410b325f6d",
-  "review_sha256": "1f0be28285c1fc22782861d3595e18eb6db29366dfaab2e2ea16923bb0c2f793",
+  "proposal_sha256": "f7b47fbffba72e78922f2962c0f6ffd84b0cc61f62c0ffffc22ffe59d6a001e1",
+  "review_sha256": "f44b151b43a5aa24757e66f51ad48b63a5db6d6147825a54536b504583e3a79c",
   "commands": [
     {
       "category": "sanity",
@@ -1128,7 +1149,8 @@
         "tests/oracle-source-frontier.test.mjs",
         "tests/publication-admission.test.mjs",
         "tests/publication-safety.test.mjs",
-        "tests/shipment-workflow.test.mjs"
+        "tests/shipment-workflow.test.mjs",
+        "tests/history-integrity.test.mjs"
       ],
       "tests": [
         "tests/oracle-lifecycle.test.mjs",
@@ -1164,7 +1186,8 @@
         "tests/oracle-source-frontier.test.mjs",
         "tests/publication-admission.test.mjs",
         "tests/publication-safety.test.mjs",
-        "tests/shipment-workflow.test.mjs"
+        "tests/shipment-workflow.test.mjs",
+        "tests/history-integrity.test.mjs"
       ],
       "fixtures": [
         "tests/oracle_lifecycle_test.py",
@@ -1193,7 +1216,8 @@
         "tests/oracle_relocation_test.py",
         "tests/oracle_source_frontier_test.py",
         "tests/publication_admission_test.py",
-        "tests/shipment_workflow_test.py"
+        "tests/shipment_workflow_test.py",
+        "tests/history_integrity_test.py"
       ]
     }
   ],
@@ -1206,6 +1230,6 @@
     "reasoning_effort": "medium",
     "maximum_reasoning_effort": "medium"
   },
-  "contract_sha256": "c4bfd2353e4dff22b3f776845d9e7b547aa37043613a0d35a36cb68cd581b242",
-  "seal": "47b40711b88318704921b0a895aa98c0efc8d11dff155ab64a92ea62c4b8e7f8"
+  "contract_sha256": "e3744ae0e8ab130cb9b3770d190ddcf03623d05e87d5c86c521f4d334dac34f4",
+  "seal": "3ac11bf65d926a33f12dcca22ae1cf2e630aadcd0fee051480b023b4d4966b5f"
 }
