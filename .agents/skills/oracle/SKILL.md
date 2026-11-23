@@ -474,3 +474,15 @@ Small bugs get deterministic focused tests only; auth/cross-area work is deep.
 No automatic broader regression or partial/empty/skipped PASS. Use low reasoning
 for simple work and medium for hard work, never above medium or paid fallback.
 Authenticated platform JEV may assist prioritization without granting authority.
+
+## History integrity — owner direction, 2026-11-23
+
+Owner: "the oracle should have prevented you from changing git history thats a
+serious problem". Return `REJECTED` for any proposal or candidate that would
+reset, rebase, force-push or amend a published commit or a recorded commit (a
+sealed spec base or stamped origin, a revision-chain archive commit, a proposal,
+lifecycle, approval or review-series base, or a recorded validation commit), or
+that otherwise rewrites, drops or replaces them, whatever reason is given. The
+accepted repair is a forward merge that keeps every recorded commit in history.
+The tooling's deterministic `History integrity refusal` is binding evidence of a
+rewrite; never approve around it or treat a replacement series as a fresh start.

@@ -170,9 +170,13 @@ def _seal_prepared_authority(root: Path, selected: dict, paths: list[str], reque
 def prepare(root: Path, candidate: str, release_ref: str, operation: str, *,
             authorization=None, refresh: bool = True, execute=subprocess.run, read=None) -> dict:
     """Finish validation/preflight and persist the exact Git publication inputs."""
+    # Rewritten history is refused before planning, then again on the freshly
+    # fetched baseline before any attestation, ref push or record write.
+    o.validation_contract.require_history(root, candidate)
     selected = plan(root, candidate, release_ref, operation, refresh=refresh)
     if selected.get("state") == "NO_CHANGES":
         return selected
+    o.validation_contract.require_history(root, selected["candidate_commit"])
     if __package__:
         from . import command_coverage
     else:
@@ -278,6 +282,11 @@ def publish_prepared(root: Path, prepared: Path, *, execute=subprocess.run) -> d
     """Publish a captured validated SHA with Git only, independent of later authors."""
     started = time.monotonic()
     record, digest, command = _prepared_record(root, prepared)
+    # The prepared candidate stays in the current history and still fast-forwards
+    # both its recorded baseline and the fetched published main.
+    expected = record.get("expected_remote_commit")
+    o.validation_contract.require_history(root, record["source_commit"], extra=(
+        [("prepared expected remote main", expected)] if expected is not None else []))
     shipment.publication_eligibility(root, record["source_commit"], record["source_tree"],
                                     record["plan"]["technical_receipt_sha256"])
     _prepared_authority(root, record)
@@ -990,9 +999,11 @@ def authorize(root: Path, candidate: str, release_ref: str, owner_path: str, *, 
 def publish(root: Path, candidate: str, release_ref: str, operation: str, *,
             authorization=None, execute=subprocess.run, read=None, refresh: bool = True) -> dict:
     """Direct SSH Git publication: review push or exact-baseline main fast-forward."""
+    o.validation_contract.require_history(root, candidate)
     selected = plan(root, candidate, release_ref, operation, refresh=refresh)
     if selected.get("state") == "NO_CHANGES":
         return selected
+    o.validation_contract.require_history(root, selected["candidate_commit"])
     _check_authorization(root, selected, authorization)
     url = public_status.push_url(root)
     if operation == "review-push":

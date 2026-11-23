@@ -1546,24 +1546,45 @@ def _environment_digest() -> str:
                             "environment": {key: _sha(os.environ.get(key, "").encode()) for key in keys}}))
 
 
+def _current_series(root: Path) -> Path | None:
+    """The active review series for HEAD, or None when its records are not yet readable."""
+    try:
+        return _series_directory(root, _git(root, "rev-parse", "HEAD").strip())
+    except validation_contract.HistoryRewritten:
+        raise
+    except (OSError, ValueError, KeyError, TypeError, OracleApprovalError):
+        return None
+
+
 def _series_directory(root: Path, base: str) -> Path:
     # Repair commits move HEAD while the same sealed proposal owns the lifecycle.
     if os.path.lexists(receipt_path(root).parent / "lifecycle-origin.json"):
         origin = _proposal_origin(root, {"base_commit": base}, base)
         identity = _sha(_canonical({"repository": str(root.resolve()), "base_commit": origin}))[:24]
         return receipt_path(root).parent / "series" / identity
+    orphaned = None
     try:
         raw = _custody_read(root, proposal_path(root))[1]
         proposal = json.loads(raw)
         body = {key: value for key, value in proposal.items() if key != "proposal_review_id"}
         if (raw == _pretty(proposal) and proposal["proposal_review_id"] == _sha(_canonical(body))
                 and proposal["review"]["verdict"] == "APPROVED"
-                and not proposal["review"].get("findings")
-                and subprocess.run(["git", "merge-base", "--is-ancestor", proposal["base_commit"], base],
-                                   cwd=root, capture_output=True).returncode == 0):
-            base = _proposal_origin(root, proposal, base)
+                and not proposal["review"].get("findings")):
+            if subprocess.run(["git", "merge-base", "--is-ancestor", proposal["base_commit"], base],
+                              cwd=root, capture_output=True).returncode == 0:
+                base = _proposal_origin(root, proposal, base)
+            elif subprocess.run(["git", "merge-base", "--is-ancestor", proposal["base_commit"], "HEAD"],
+                                cwd=root, capture_output=True).returncode:
+                # Neither this base nor the current tip contains the approved proposal:
+                # its history was rewritten. Never silently start a replacement series.
+                orphaned = proposal["base_commit"]
     except (OSError, ValueError, KeyError, TypeError, OracleApprovalError):
         pass
+    if orphaned is not None:
+        raise validation_contract.HistoryRewritten(
+            validation_contract.HISTORY_REFUSAL + ": recorded proposal.json base_commit " + str(orphaned)
+            + " is not an ancestor of the current tip; history was rewritten (reset, rebase, amend or force-push). "
+            "Merge that commit forward instead")
     identity = _sha(_canonical({"repository": str(root.resolve()), "base_commit": base}))[:24]
     return receipt_path(root).parent / "series" / identity
 
@@ -3287,6 +3308,8 @@ def review_proposal(root: Path, request: str, evidence_paths: Sequence[str], own
         if request_path is not None and request_bytes is not None:
             raise OracleApprovalError("Supply the original request either as a bound path or as bytes")
         origin = _fresh_origin(root) if (root / validation_contract.CATALOG).exists() else None
+        # Rewritten history is refused before any reviewer sees the proposal.
+        validation_contract.require_history(root, "HEAD", series=_current_series(root))
         evidence = _files(root, evidence_paths)
         owner = _files(root, [owner_path]) if owner_path else None
         if request_path is not None:
@@ -3466,6 +3489,8 @@ def verify_proposal(root: Path, record_path: str | Path | None = None) -> dict:
 def issue(root: Path, evidence_paths: Sequence[str], owner_path: str | None, reviewer: Callable = _oracle,
           *, proposal_record: str | Path | None = None) -> dict[str,Any]:
     with _phase("precheck_seconds"):
+        # Rewritten history is refused before any reviewer or receipt work.
+        validation_contract.require_history(root, "HEAD", series=_current_series(root))
         base, tree = _git(root,"rev-parse","HEAD").strip(), _review_tree(root)
         if subprocess.run(["git","diff","--check",base,tree], cwd=root).returncode:
             raise OracleApprovalError("Current source diff failed git diff --check")
@@ -3864,7 +3889,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(f"REJECTED: {exc}", file=sys.stderr); return 1
     except OracleReviewIncomplete as exc:
         print(f"INCOMPLETE: {exc}", file=sys.stderr); return 2
-    except (OracleApprovalError,OSError,subprocess.CalledProcessError) as exc:
+    except (OracleApprovalError,OSError,subprocess.CalledProcessError,validation_contract.HistoryRewritten) as exc:
         print(f"ERROR: {exc}", file=sys.stderr); return 2
     return 0
 if __name__=="__main__": raise SystemExit(main())
