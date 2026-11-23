@@ -34,6 +34,6 @@ class Retrieval(unittest.TestCase):
   with self.assertRaises(ValueError):Index(self.corpus,['linked.md'],self.root/'other')
 unittest.main()
 `;
-const run=spawnSync(process.env.ORACLE_PUBLIC_PYTHON??'Vault/index/venv/bin/python',['-B','-c',code],{cwd:new URL('../',import.meta.url),env:{...process.env,PYTHONPATH:'tools',PYTHONDONTWRITEBYTECODE:'1'},encoding:'utf8',timeout:60000,maxBuffer:4*1024*1024});
+const run=spawnSync('Vault/index/venv/bin/python',['-B','-c',code],{cwd:new URL('../',import.meta.url),env:{...process.env,PYTHONPATH:'tools',PYTHONDONTWRITEBYTECODE:'1'},encoding:'utf8',timeout:60000,maxBuffer:4*1024*1024});
 assert.equal(run.status,0,`${run.stdout}\n${run.stderr}`);assert.match(run.stderr,/Ran 5 tests/);assert.doesNotMatch(run.stderr,/skipped=/);
 });
