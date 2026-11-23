@@ -1,0 +1,172 @@
+{
+ "kind": "build-project/1",
+ "project": "bosops",
+ "needs": [
+  "node"
+ ],
+ "categories": {
+  "sanity": {
+   "label": "Privacy and publication safety",
+   "runner": "npm_script",
+   "selection": [
+    "check:privacy",
+    "check:publication"
+   ]
+  },
+  "package": {
+   "label": "Package parity",
+   "runner": "npm_script",
+   "selection": [
+    "check"
+   ]
+  },
+  "contracts": {
+   "label": "BOS client contracts",
+   "runner": "npm_script",
+   "selection": [
+    "contract:check"
+   ]
+  },
+  "spec": {
+   "label": "Sealed Oracle spec gate and its selected tests",
+   "runner": "release_check",
+   "selection": [
+    "spec:check"
+   ]
+  },
+  "changelist_tests": {
+   "label": "Changed node tests",
+   "runner": "node_tests",
+   "selection": [
+    "changelist-node-tests"
+   ],
+   "dynamic": "changelist"
+  }
+ },
+ "rules": [
+  {
+   "paths": [
+    "source/*",
+    "products/*",
+    "contracts/*",
+    "scripts/*",
+    "tools/*",
+    "clients/*",
+    "brand/*",
+    "privacy/*"
+   ],
+   "checks": [
+    "package",
+    "contracts"
+   ]
+  },
+  {
+   "paths": [
+    "tests/*",
+    "acceptance/*"
+   ],
+   "checks": [
+    "contracts"
+   ]
+  },
+  {
+   "paths": [
+    "package.json",
+    "package-lock.json",
+    "package-manifest.json",
+    "skill-release-manifest.json",
+    ".github/*",
+    ".githooks/*",
+    ".claude-plugin/*",
+    ".agents/*",
+    ".claude/*",
+    "AGENTS.md",
+    "CLAUDE.md",
+    "build-project.json"
+   ],
+   "checks": [
+    "package",
+    "contracts"
+   ]
+  },
+  {
+   "paths": [
+    ".gitignore",
+    "README.md",
+    "CODE_OF_CONDUCT.md",
+    "CONTRIBUTING.md",
+    "SECURITY.md",
+    "TRADEMARKS.md",
+    "Vault/*",
+    "LICENSE",
+    "NOTICE"
+   ],
+   "checks": [
+    "sanity",
+    "spec"
+   ]
+  }
+ ],
+ "classification": {
+  "always": [
+   "sanity",
+   "spec"
+  ],
+  "non_code": [
+   "sanity",
+   "spec"
+  ],
+  "docs_category": "sanity",
+  "non_runtime": [
+   "README.md",
+   "CODE_OF_CONDUCT.md",
+   "CONTRIBUTING.md",
+   "SECURITY.md",
+   "TRADEMARKS.md",
+   "Vault/*",
+   "LICENSE",
+   "NOTICE"
+  ],
+  "test_roots": [
+   "tests/"
+  ],
+  "unit_tests": "tests/",
+  "test_plan_paths": [
+   "Vault/docs/design/*.test-plan.json"
+  ],
+  "selection": {
+   "docs_only": {
+    "path_rules": true,
+    "changelist": false,
+    "feature_plan": false,
+    "add": []
+   },
+   "bug_fix": {
+    "path_rules": true,
+    "changelist": true,
+    "feature_plan": false,
+    "add": []
+   },
+   "deep_bug_fix": {
+    "path_rules": true,
+    "changelist": true,
+    "feature_plan": false,
+    "add": []
+   },
+   "feature": {
+    "path_rules": true,
+    "changelist": true,
+    "feature_plan": false,
+    "add": []
+   }
+  }
+ },
+ "impact": {
+  "categories": [],
+  "rules": [],
+  "criteria": [],
+  "deployment": [],
+  "affected_reason": "The change touches plugin source the selected categories exercise.",
+  "unaffected_reason": "The change touches no plugin runtime path."
+ }
+}
