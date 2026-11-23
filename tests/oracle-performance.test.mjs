@@ -294,8 +294,10 @@ with tempfile.TemporaryDirectory() as directory:
     # An intentionally unborn repository exercises the current public precheck.
     assert subprocess.run(['git','rev-parse','--verify','--quiet','HEAD'],cwd=root,capture_output=True).returncode!=0
     try:o.issue(root,[],None)
-    except o.OracleApprovalError as exc:
-        diagnostic=str(exc);assert 'HEAD' in diagnostic and 'unknown revision' in diagnostic
+    except o.validation_contract.HistoryRewritten as exc:
+        diagnostic=str(exc)
+        assert diagnostic.startswith(o.validation_contract.HISTORY_REFUSAL)
+        assert 'candidate HEAD or tip HEAD is not a commit' in diagnostic
     else:raise AssertionError('missing HEAD accepted')
     run=next(run for run in (o.receipt_path(root).parent/'runs').iterdir() if run.name.startswith('issue-'))
     timing=json.loads((run/'timings.json').read_text());outcome=json.loads((run/'outcome.json').read_text())
