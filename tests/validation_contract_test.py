@@ -202,6 +202,28 @@ class Contracts(unittest.TestCase):
    with self.assertRaisesRegex(ValueError,'runtime'):v.execute(self.root,'focused')
   (self.root/'outside.mjs').write_text('changed');self.commit()
   with self.assertRaisesRegex(ValueError,'outside'):v.verify(self.root)
+ def test_delta_expands_prior_glob_scope_into_exact_tracked_candidate_paths(self):
+  (self.root/'tests/reproduction.test.mjs').write_text("import test from 'node:test';test('r',()=>{});\n");self.publish();self.commit()
+  (self.root/'source.mjs').write_text('export default true;\n');(self.root/'tests/added.test.mjs').write_text('// added\n');head=self.commit()
+  context=v.delta_context(self.root,head,self.git('rev-parse','HEAD^{tree}'),origin_main=None,prior_proposal_sha256=None)
+  self.assertEqual(context['paths'],['source.mjs','tests/added.test.mjs','tests/regression.test.mjs','tests/reproduction.test.mjs',v.SELECTION])
+  self.assertFalse(any(c in p for p in context['paths'] for c in '*?[]'))
+  again=v.delta_context(self.root,head,self.git('rev-parse','HEAD^{tree}'),origin_main=None,prior_proposal_sha256=None)
+  self.assertEqual(again,context)
+  for name in context['paths']:
+   if name!=v.SELECTION:self.assertTrue(v.scoped(name,{'scope_paths':['source.mjs','tests/*']}))
+ def test_exact_scope_keeps_exact_paths_matches_gate_semantics_and_refuses_unsafe(self):
+  tracked=['a/b/SKILL.md','a/SKILL.md','c/x.mjs','']
+  self.assertEqual(v.exact_scope(['a/**/SKILL.md','gone.md'],tracked),{'a/b/SKILL.md','gone.md'})
+  self.assertEqual(v.exact_scope(['*/SKILL.md'],tracked),{'a/b/SKILL.md','a/SKILL.md'})  # fnmatchcase '*' crosses '/' as the gate does
+  self.assertEqual(v.exact_scope(['none/*'],tracked),set())
+  for unsafe in ['/abs/*','../up/*','-flag','a\\b','a\nb','']:
+   with self.assertRaisesRegex(ValueError,'finite exact paths'):v.exact_scope([unsafe],tracked)
+  self.assertEqual(v.exact_scope(['c/*'],['c/x[1].mjs']),{'c/x[1].mjs'})  # delta_context still refuses this unsafe expansion
+ def test_delta_refuses_an_unsafe_tracked_path_reached_through_a_prior_glob(self):
+  (self.root/'tests/reproduction.test.mjs').write_text("import test from 'node:test';test('r',()=>{});\n");self.publish();self.commit()
+  (self.root/'tests/odd[1].mjs').write_text('// odd\n');head=self.commit()
+  with self.assertRaisesRegex(ValueError,'finite exact paths'):v.delta_context(self.root,head,self.git('rev-parse','HEAD^{tree}'),origin_main=None,prior_proposal_sha256=None)
  def test_selection_preserves_initial_immutable_base_when_unadopted_source_moves(self):
   base=self.git('rev-parse','HEAD');(self.root/'source.mjs').write_text('concurrent change');self.commit()
   contract=self.seal(self.selection(),'Synthetic proposal',{},base=base)

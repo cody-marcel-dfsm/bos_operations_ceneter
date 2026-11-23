@@ -950,7 +950,7 @@ class NativeValidationFixtureInputs(unittest.TestCase):
         case = suite.ReviewSeries('runTest')
         try:
             case.setUp()
-            self.assertEqual(len(case.fixture_inputs), 30)
+            self.assertEqual(len(case.fixture_inputs), 32)
             for name in ('source.py', 'peer.py'):
                 (case.root/name).write_bytes(subprocess.check_output(['git','show','HEAD:'+name],cwd=case.root))
             self.assertEqual(suite.fixture_projection(case.root), case.fixture_inputs)

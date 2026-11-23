@@ -110,15 +110,29 @@ def delta_context(root, source, tree, *, origin_main=_CURRENT_ORIGIN, prior_prop
     if origin_main is not None:
         if not re.fullmatch('[a-f0-9]{40}',origin_main):raise ValueError('Exact delta origin required')
         git(root,'merge-base','--is-ancestor',origin_main,source)
+    tracked = git(root, 'ls-tree', '-r', '--name-only', '-z', tree).split('\0')
     paths = git(root, 'diff', '--name-only', '-z', prior['base_commit'], tree).split('\0')
-    paths = sorted(set(p for p in paths if p) | set(prior['selection']['scope_paths']))
+    paths = sorted(set(p for p in paths if p) | exact_scope(prior['selection']['scope_paths'], tracked))
     if len(paths)>4096 or any(not safe_path(p) or any(c in p for c in '*?[]\r\n') for p in paths):
         raise ValueError('Delta requires finite exact paths')
-    tracked = git(root, 'ls-tree', '-r', '--name-only', '-z', tree).split('\0')
     tests = sorted(p for p in tracked if p.startswith('tests/') and safe_path(p) and not any(c in p for c in '*?[]\r\n'))
     binding = {'prior_contract_sha256':prior['contract_sha256'], 'prior_proposal_sha256':prior_proposal_sha256, 'source_commit':source,
                'source_tree':tree, 'origin_main':origin_main, 'inventory_sha256':digest(paths), 'test_inventory_sha256':digest(tests)}
     return {'binding':binding, 'prior':prior, 'paths':paths, 'test_paths':tests}
+
+def exact_scope(patterns, tracked):
+    """Expand prior sealed scope into exact paths: a glob becomes the tracked candidate paths the gate's fnmatchcase
+    already admits under it; an exact path stays itself. Unsafe patterns and unsafe expansions still reject."""
+    names = [p for p in tracked if p]
+    exact = set()
+    for pattern in patterns:
+        if not safe_path(pattern) or any(c in pattern for c in '\r\n'):
+            raise ValueError('Delta requires finite exact paths')
+        if any(c in pattern for c in '*?['):
+            exact.update(p for p in names if fnmatch.fnmatchcase(p, pattern))
+        else:
+            exact.add(pattern)
+    return exact
 
 def delta_schema(context):
     row = {'type':'object','additionalProperties':False,'required':['name','tests','fixtures'],
