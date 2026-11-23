@@ -41,7 +41,7 @@ SECRET = (
     re.compile(r'(?i)\b(?:bearer|basic)\s+[A-Za-z0-9._~+/=-]{12,}'),
     re.compile(r'\b(?:ghp_|github_pat_|xox[baprs]-|sk_live_|sk_test_)[A-Za-z0-9_-]{12,}'),
     re.compile(r'\bAKIA[A-Z0-9]{16}\b'),
-    re.compile(r'(?i)\b(?:api[_-]?key|access[_-]?token|refresh[_-]?token|client[_-]?secret|password)\s*[=:]\s*[\"\x27]?[A-Za-z0-9_+/.-]{8,}'),
+    re.compile(r'(?i)\b(?:api[_-]?key|access[_-]?token|refresh[_-]?token|client[_-]?secret|password)\s*[\"\x27]?\s*[=:]\s*[\"\x27]?[A-Za-z0-9_+/.-]{8,}'),
     re.compile(r'\bFB-\d{4}-\d+\b'),
     re.compile(r'(?:/Users/|/home/[A-Za-z0-9_.-]+/|[A-Z]:\\Users\\)'),
     re.compile(r'(?i)(?:\.git/oracle/|\.codex/sessions/|\.claude/projects/)'),

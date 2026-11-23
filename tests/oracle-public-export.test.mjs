@@ -88,6 +88,7 @@ test('export rejects symlinks, missing blobs, private text, credentials and non-
   f=>rmSync(join(f.dir,'tools/oracle_core/config.py')),
   f=>writeFileSync(join(f.dir,'tools/oracle_public/README.md'),'Private path /Users/private-owner/workspace\n'),
   f=>writeFileSync(join(f.dir,'tools/oracle_public/README.md'),'Authorization: Bearer synthetic_fixture_token_0123456789\n'),
+  f=>writeFileSync(join(f.dir,'tools/oracle_public/README.md'),JSON.stringify({api_key:'synthetic_fixture_token_0123456789'})),
   f=>writeFileSync(join(f.dir,'tools/oracle_public/README.md'),'operator@private-customer.example.org\n'),
  ];
  for(const [i,change] of variants.entries()){
