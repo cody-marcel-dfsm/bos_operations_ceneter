@@ -176,11 +176,10 @@ def delta_schema(context):
                               'purpose':{'type':['string','null']}}}
     return {'type':'object','additionalProperties':False,
             'required':['kind','binding','reason','design','acceptance_additions','category_additions','coverage_additions'],
-            'properties':{'kind':{'type':'string','const':DELTA_KIND},'binding':{'type':'object',
+            'properties':{'kind':{'type':'string','const':DELTA_KIND},'binding':{'type':'object','const':context['binding'],
                           'additionalProperties':False,'required':list(context['binding']),
                           'properties':{k:{'type':'null' if value is None else 'string','const':value} for k,value in context['binding'].items()}},
-                          'reason':{'type':'string','minLength':1},
-                          'design':{'type':'string','minLength':1} if context['prior']['selection']['change_class']=='feature' else {'type':'null','const':None},
+                          'reason':{'type':'string','minLength':1},'design':{'type':['string','null']},
                           'acceptance_additions':{'type':'array','minItems':1,'maxItems':32,'items':{'type':'string'}},
                           'category_additions':{'type':'array','items':row,'maxItems':len(context['prior']['selection']['categories'])},
                           'coverage_additions':{'type':'array','items':coverage,'maxItems':128}}}

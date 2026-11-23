@@ -251,12 +251,6 @@ function allowedFictionalPhone(exchange, subscriber) {
   return exchange === "555" && /^01\d{2}$/u.test(subscriber);
 }
 
-function isGitScpTransport(text, match) {
-  if (match[0] !== ["git", "github.com"].join("@")) return false;
-  if (match.index > 0 && !/[\s"'`(]/u.test(text[match.index - 1])) return false;
-  return /^:[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?\/[A-Za-z0-9][A-Za-z0-9_.-]{0,99}\.git(?=$|[\s"'`),}\]])/u.test(text.slice(match.index + match[0].length));
-}
-
 // Integer values of `*_bytes` keys are machine byte counts, never phone numbers.
 // Only those typed digits leave the phone check; every other check reads them.
 export function byteCountPrivacyText(text) {
@@ -267,7 +261,7 @@ export function customerDataFindings(text, path, blockedDigests, phoneText = byt
   const findings = [];
   const publicNotice = isExactPublicLegalNotice(text, path);
   for (const match of text.matchAll(emailPattern)) {
-    if (!publicNotice && !allowedSyntheticDomain(match[1]) && !isGitScpTransport(text, match)) {
+    if (!publicNotice && !allowedSyntheticDomain(match[1])) {
       findings.push(`${path}: non-synthetic email address`);
     }
   }
@@ -567,7 +561,7 @@ async function scanPrivacyCandidates(candidates, {describeOnly = false, assessTr
     body: await readFile(new URL(import.meta.url))},
     ...await Promise.all(["./lib/privacy-scan-pool.mjs", "./lib/privacy-scan-worker.mjs"].map(async name => {const path = new URL(name, import.meta.url).pathname; return {path, body: await readFile(path)};})), ...rules], {
       functions: [customerDataFindings, isExactPublicLegalNotice, normalizeSensitiveText, hasBlockedDigest, blockedPhrase, blockedWordWindow, digestMatcher,
-        allowedSyntheticDomain, isGitScpTransport, allowedFictionalPhone, sha256, scanPrivacyCandidates,
+        allowedSyntheticDomain, allowedFictionalPhone, sha256, scanPrivacyCandidates,
         isCpuProfileTextArtifact, cpuProfilePrivacyText, isProposedTextArtifact, isOperationalTextArtifact,
         verifiedNativeProbeMetadataText, verifiedSyntheticSourceFixtureText, ownNativeProbeIdentity,
         ownSourceFixtureIdentity, isWatcherProcessMetadata, operationalPrivacyText, verifiedGithubMetadataText,
