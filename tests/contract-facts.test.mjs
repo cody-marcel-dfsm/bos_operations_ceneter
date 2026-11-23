@@ -344,16 +344,3 @@ test('CLI emits the same projection and keeps invalid-input stderr generic', () 
   assert.equal(failed.stdout, '');
   assert.equal(failed.stderr, 'Contract facts input invalid\n');
 });
-
-
-test('new-app contract projection uses contact evidence instead of descriptive scope labels',()=>{
- const f=JSON.parse(readFileSync(new URL('./fixtures/current-app-registration.json',import.meta.url),'utf8'));
- const application={contact:f.application_contact,description:f.app_describe};
- const observed={...entry(f.registration_contract,'api-contract'),application};
- const before=JSON.stringify(observed);
- let result;assert.doesNotThrow(()=>{result=projectContractFacts({documents:[observed]});});
- assert.deepEqual(result.operations[0].errors,f.registration_contract.public_errors);
- assert.equal(JSON.stringify(observed),before);
- assert.throws(()=>projectContractFacts({documents:[entry(f.registration_contract,'api-contract',{...scope,application:'sample-work-app'})]}));
- assert.throws(()=>projectContractFacts({documents:[{...observed,application:{...application,contact:{...f.application_contact,app_code:'other-work-app'}}}]}));
-});

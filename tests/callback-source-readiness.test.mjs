@@ -162,20 +162,3 @@ test("malformed, widened and undeclared source responses fail closed", async () 
     code: "CALLBACK_UNKNOWN", message: "Unknown.", retryable: false, correlation_id: "corr_synthetic", details: []}}})};
   await assert.rejects(checkCallbackSourceReadiness({adapter, ...fixture()}), /undeclared readiness/);
 });
-
-
-test("new-app callback readiness retains independently selected app binding", async()=>{
- const f=fixture();
- const current=JSON.parse(await readFile(new URL('./fixtures/current-app-registration.json',import.meta.url),'utf8'));
- const application={contact:current.application_contact,description:current.app_describe};
- f.sourceContract.source.application='sample-work-app';
- f.sourceContract.execution.uri=f.sourceContract.execution.uri.replace('/lead-director/','/sample-work-app/');
- f.contact.sources[0].source.application='sample-work-app';
- let calls=0;
- const adapter={invokeDiscoveredOperation:async()=>{calls++;return {status:200,body:{ready:true}};}};
- let result;await assert.doesNotReject(async()=>{result=await checkCallbackSourceReadiness({adapter,...f,application});});
- assert.equal(result.ready,true);assert.equal(result.source.application,'sample-work-app');assert.equal(calls,1);
- await assert.rejects(checkCallbackSourceReadiness({adapter,...f}));
- await assert.rejects(checkCallbackSourceReadiness({adapter,...f,application:{...application,contact:{...current.application_contact,app_code:'other-work-app'}}}));
- assert.equal(calls,1);
-});

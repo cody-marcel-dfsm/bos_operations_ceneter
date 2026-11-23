@@ -3,6 +3,7 @@ import test from "node:test";
 
 import {
   buildActionRequest,
+  buildJourneyRegistrationRequest,
   buildDiscoveredOperationRequest,
   buildIdentityV2JourneyActionRequest,
   interpretJourneyResponse,
