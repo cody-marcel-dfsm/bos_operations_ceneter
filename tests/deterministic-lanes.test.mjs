@@ -31,7 +31,7 @@ for path in ['tests/deterministic_source_test.py','tests/deterministic_package_t
  actual=list(flatten(unittest.defaultTestLoader.loadTestsFromModule(module)))
  assert sorted(actual)==sorted(declared) and len(actual)==len(set(actual)) and actual
  ids[path]=sorted(actual)
-paths=sorted(set(oracle.REVIEW_POLICY_MODULES)|set(ids)|{'tests/deterministic-lanes.test.mjs','tests/helpers/native-validation-git.mjs','tests/helpers/native-validation-state.mjs','.agents/skills/oracle/review-output.schema.json'})
+paths=sorted(set(oracle.REVIEW_POLICY_MODULES)|set(ids)|{'tests/deterministic-lanes.test.mjs','tools/deterministic_oracle.py','tests/deterministic-oracle.test.mjs','tests/helpers/native-validation-git.mjs','tests/helpers/native-validation-state.mjs','.agents/skills/oracle/review-output.schema.json'})
 inputs={}
 for name in paths:
  path=pathlib.Path(name);fact=path.lstat();assert stat.S_ISREG(fact.st_mode) and not path.is_symlink()

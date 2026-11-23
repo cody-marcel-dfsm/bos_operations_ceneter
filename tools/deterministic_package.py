@@ -1446,6 +1446,13 @@ def promote(root, ref):
 def ci(root, base, requested):
     """Spec gate first, then the admitting lane, then the sealed spec's own tests."""
     head = native.git(root, 'rev-parse', 'HEAD')
+    if (Path(root)/'tools/deterministic_oracle.py').is_file():
+        try:from . import deterministic_oracle as oracle_profile
+        except ImportError:import deterministic_oracle as oracle_profile
+        if oracle_profile.applies(root,base,head):
+            value=oracle_profile.validate(root,base,requested,ci=True)
+            print(json.dumps({key:value[key] for key in ('kind','status','source','sla_status')}))
+            return 0
     admitted = contract.gate(root, base, head)  # Missing or mismatched sealed spec: fail now.
     print(json.dumps({'spec_gate': admitted['status'], 'seal': admitted.get('seal')}))
     try:
@@ -1483,6 +1490,7 @@ def main(argv=None):
     parser.add_argument('action', choices=['validate', 'verify', 'push', 'merge', 'promote', 'ci',
                                            'verify-published', 'python-category'])
     parser.add_argument('component', nargs='?')
+    parser.add_argument('--profile',choices=('skill-package','oracle'),default='skill-package')
     parser.add_argument('--base')
     parser.add_argument('--requested-at')
     parser.add_argument('--ref')
@@ -1490,6 +1498,16 @@ def main(argv=None):
     parser.add_argument('--source')
     args = parser.parse_args(argv)
     root = Path(native.git(Path.cwd(), 'rev-parse', '--show-toplevel'))
+    if args.profile=='oracle':
+        if args.component is not None or args.pr or args.source or args.action not in ('validate','verify','ci','push','promote'):
+            raise ValueError('Unsupported Oracle profile operation')
+        try:from . import deterministic_oracle as oracle_profile
+        except ImportError:import deterministic_oracle as oracle_profile
+        selected=[args.action]
+        for name in ('base','requested_at','ref'):
+            value=getattr(args,name)
+            if value is not None:selected += ['--'+name.replace('_','-'),value]
+        return oracle_profile.main(selected)
     if args.action == 'python-category':
         if args.component != 'unittest' or any((args.base,args.requested_at,args.ref,args.pr,args.source)):
             raise ValueError('Exact fixed Python category required')

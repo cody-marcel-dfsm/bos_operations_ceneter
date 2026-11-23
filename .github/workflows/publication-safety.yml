@@ -33,12 +33,67 @@ jobs:
             refs/heads/codex/release-v*|refs/heads/codex/source-*) validation_base_sha="$(git rev-parse origin/main)" ;;
           esac
           python3 tools/validation_contract.py gate --base "$validation_base_sha"
+      - name: Identify the closed Oracle CI profile
+        id: oracle_profile
+        run: |
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+          from tools import deterministic_oracle as profile
+          root=Path.cwd()
+          base=os.environ['VALIDATION_BASE_SHA']
+          if os.environ.get('GITHUB_REF','').startswith(('refs/heads/codex/release-v','refs/heads/codex/source-')):
+              base=profile.native.git(root,'rev-parse','origin/main')
+          source=profile.native.git(root,'rev-parse','HEAD')
+          selected=profile.applies(root,base,source)
+          if selected:profile.scope(root,base,source)
+          with open(os.environ['GITHUB_OUTPUT'],'a') as output:output.write('selected='+str(selected).lower()+'\n')
+          PY
+      - name: Select the declared Oracle CI Python
+        if: steps.oracle_profile.outputs.selected == 'true'
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.13.5'
+      - name: Provision only locked public Oracle CI inputs
+        if: steps.oracle_profile.outputs.selected == 'true'
+        env:
+          PIP_CONFIG_FILE: /dev/null
+          PIP_INDEX_URL: https://pypi.org/simple
+          PIP_NO_INPUT: '1'
+          PIP_DISABLE_PIP_VERSION_CHECK: '1'
+        run: |
+          python3 -m venv "$GITHUB_WORKSPACE/.git/oracle-ci-runtime"
+          "$GITHUB_WORKSPACE/.git/oracle-ci-runtime/bin/python" -m pip install --require-hashes --only-binary=:all: --no-deps -r tools/oracle_public/requirements.lock
+          "$GITHUB_WORKSPACE/.git/oracle-ci-runtime/bin/python" -B - <<'PY'
+          import hashlib,json,os,pathlib,tarfile,urllib.request
+          root=pathlib.Path.cwd()
+          url='https://chroma-onnx-models.s3.amazonaws.com/all-MiniLM-L6-v2/onnx.tar.gz'
+          expected='913d7300ceae3b2dbc2c50d1de4baacab4be7b9380491c27fab7418616a16ec3'
+          archive=root/'.git/oracle-ci-model.tar.gz'
+          if archive.exists():raise RuntimeError('Fresh owned CI model download required')
+          total=0
+          with urllib.request.urlopen(url,timeout=60) as response,archive.open('xb') as stream:
+              while chunk:=response.read(1024*1024):
+                  total+=len(chunk)
+                  if total>256*1024*1024:raise RuntimeError('Public model download exceeds bound')
+                  stream.write(chunk)
+          if hashlib.sha256(archive.read_bytes()).hexdigest()!=expected:raise RuntimeError('Public embedding archive digest differs')
+          destination=pathlib.Path.home()/'.cache/chroma/onnx_models/all-MiniLM-L6-v2'
+          from tools import deterministic_oracle as profile
+          profile.verify_public_model_archive(archive,destination)
+          manifest={'kind':'oracle-ci-public-setup/1','python':'3.13.5','requirements_sha256':hashlib.sha256((root/'tools/oracle_public/requirements.lock').read_bytes()).hexdigest(),'embedding_url':url,'embedding_sha256':expected,'embedding_bytes':total}
+          path=root/'.git/oracle-ci-setup.json';path.write_text(json.dumps(manifest,sort_keys=True)+'\n')
+          with open(os.environ['GITHUB_ENV'],'a') as output:
+              output.write('ORACLE_PUBLIC_PYTHON='+str(root/'.git/oracle-ci-runtime/bin/python')+'\n')
+              output.write('ORACLE_PUBLIC_CI_SETUP_MANIFEST='+str(path)+'\n')
+          PY
       - name: Verify the fixed deterministic source or skill-package category
         run: |
           validation_base_sha="$VALIDATION_BASE_SHA"
           case "$GITHUB_REF" in
             refs/heads/codex/release-v*|refs/heads/codex/source-*) validation_base_sha="$(git rev-parse origin/main)" ;;
           esac
+          # Oracle changes select typed CI_ONLY. Native live proof remains required for promotion.
           python3 tools/deterministic_package.py ci --base "$validation_base_sha"
         env:
           GH_TOKEN: ${{ github.token }}

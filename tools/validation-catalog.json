@@ -37,5 +37,26 @@
     "deep_bug_fix": 300,
     "feature": 300
   },
-  "maximum_reasoning_effort": "medium"
+  "maximum_reasoning_effort": "medium",
+  "deterministic_profiles": {
+    "portable-actual-oracle/1": {
+      "native_kind": "boc-deterministic-oracle/1",
+      "ci_kind": "boc-deterministic-oracle-ci/1",
+      "native_result": "VERIFIED",
+      "ci_result": "CI_ONLY",
+      "native_commands": "complete current sealed spec commands plus immutable export and standalone tests",
+      "ci_omitted_native_only_module": "tests/oracle-public-live-proposal.test.mjs",
+      "ci_reason": "Actual existing-plan CLI proposal evidence stays native and private; public CI has no provider credentials or calls. CI_ONLY grants no standalone publication authority.",
+      "source_inventory_sha256": "7d00ffd1e65daa84441a195f290015f224cc231eb0a7e51bb82f4ada50b7d049",
+      "runtime_source_count": 43,
+      "public_member_count": 30,
+      "budgets_seconds": {
+        "structural": 120,
+        "chroma_export_benchmark": 60,
+        "native_proposal": 90,
+        "receipt_publication": 30
+      },
+      "automatic_install_or_download": false
+    }
+  }
 }
