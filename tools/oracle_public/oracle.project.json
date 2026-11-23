@@ -1,0 +1,19 @@
+{
+  "project": "synthetic-task-board",
+  "policy": "policy/example-policy.md",
+  "catalog": "validation-catalog.json",
+  "corpus": {
+    "root": "corpus",
+    "sources": ["example-architecture.md"]
+  },
+  "state": ".oracle",
+  "runner": {
+    "engine": "codex",
+    "executable": "codex",
+    "model": "gpt-6.1-sol",
+    "reasoning_effort": "medium",
+    "timeout_seconds": 90,
+    "sandbox": "read-only",
+    "max_output_bytes": 8388608
+  }
+}

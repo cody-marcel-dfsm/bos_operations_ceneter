@@ -1,0 +1,124 @@
+{
+  "kind": "oracle-public-export-map",
+  "members": [
+    {
+      "source": "tools/oracle_public/.gitignore",
+      "destination": ".gitignore"
+    },
+    {
+      "source": "LICENSE",
+      "destination": "LICENSE"
+    },
+    {
+      "source": "NOTICE",
+      "destination": "NOTICE"
+    },
+    {
+      "source": "tools/oracle_public/README.md",
+      "destination": "README.md"
+    },
+    {
+      "source": "tools/oracle_public/pyproject.toml",
+      "destination": "pyproject.toml"
+    },
+    {
+      "source": "tools/oracle_public/requirements.lock",
+      "destination": "requirements.lock"
+    },
+    {
+      "source": "tools/oracle_public/oracle.project.json",
+      "destination": "oracle.project.json"
+    },
+    {
+      "source": "tools/oracle_core/__init__.py",
+      "destination": "oracle_core/__init__.py"
+    },
+    {
+      "source": "tools/oracle_core/cli.py",
+      "destination": "oracle_core/cli.py"
+    },
+    {
+      "source": "tools/oracle_core/config.py",
+      "destination": "oracle_core/config.py"
+    },
+    {
+      "source": "tools/oracle_core/proposal.py",
+      "destination": "oracle_core/proposal.py"
+    },
+    {
+      "source": "tools/oracle_core/runner.py",
+      "destination": "oracle_core/runner.py"
+    },
+    {
+      "source": "tools/oracle_core/context.py",
+      "destination": "oracle_core/context.py"
+    },
+    {
+      "source": "tools/oracle_core/index.py",
+      "destination": "oracle_core/index.py"
+    },
+    {
+      "source": "tools/oracle_core/spec.py",
+      "destination": "oracle_core/spec.py"
+    },
+    {
+      "source": "tools/oracle_core/seal.py",
+      "destination": "oracle_core/seal.py"
+    },
+    {
+      "source": "tools/oracle_core/custody.py",
+      "destination": "oracle_core/custody.py"
+    },
+    {
+      "source": "tools/oracle_core/lifecycle.py",
+      "destination": "oracle_core/lifecycle.py"
+    },
+    {
+      "source": "tools/oracle_public/schemas/proposal-output.schema.json",
+      "destination": "schemas/proposal-output.schema.json"
+    },
+    {
+      "source": "tools/oracle_public/policy/example-policy.md",
+      "destination": "policy/example-policy.md"
+    },
+    {
+      "source": "tools/oracle_public/corpus/example-architecture.md",
+      "destination": "corpus/example-architecture.md"
+    },
+    {
+      "source": "tools/oracle_public/examples/proposal.txt",
+      "destination": "examples/proposal.txt"
+    },
+    {
+      "source": "tools/oracle_public/validation-catalog.json",
+      "destination": "validation-catalog.json"
+    },
+    {
+      "source": "tools/oracle_public/tests/test_proposal_to_spec.py",
+      "destination": "tests/test_proposal_to_spec.py"
+    },
+    {
+      "source": "tools/oracle_public/tests/test_public_chroma.py",
+      "destination": "tests/test_public_chroma.py"
+    },
+    {
+      "source": "tools/oracle_public/tests/test_runner_contract.py",
+      "destination": "tests/test_runner_contract.py"
+    },
+    {
+      "source": "tools/oracle_public/tests/test_export_boundary.py",
+      "destination": "tests/test_export_boundary.py"
+    },
+    {
+      "source": "tools/oracle_public/benchmarks/run.py",
+      "destination": "benchmarks/run.py"
+    },
+    {
+      "source": "tools/oracle_public/benchmarks/public_cases.json",
+      "destination": "benchmarks/public_cases.json"
+    }
+  ],
+  "generated": [
+    "oracle-export-manifest.json"
+  ]
+}

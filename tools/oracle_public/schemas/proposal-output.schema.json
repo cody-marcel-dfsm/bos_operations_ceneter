@@ -1,0 +1,181 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "review_status",
+    "verdict",
+    "summary",
+    "findings",
+    "validation_selection"
+  ],
+  "properties": {
+    "review_status": {
+      "enum": [
+        "COMPLETE"
+      ]
+    },
+    "verdict": {
+      "enum": [
+        "APPROVED",
+        "REJECTED"
+      ]
+    },
+    "summary": {
+      "type": "string",
+      "minLength": 1
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "severity",
+          "message"
+        ],
+        "properties": {
+          "severity": {
+            "enum": [
+              "critical",
+              "high",
+              "medium",
+              "low"
+            ]
+          },
+          "message": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "validation_selection": {
+      "anyOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "change_class",
+            "scope_paths",
+            "categories",
+            "reason",
+            "revision_of",
+            "design",
+            "acceptance",
+            "acceptance_tests"
+          ],
+          "properties": {
+            "change_class": {
+              "enum": [
+                "docs_only",
+                "bug_fix",
+                "deep_bug_fix",
+                "feature"
+              ]
+            },
+            "scope_paths": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "categories": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "name",
+                  "tests",
+                  "fixtures"
+                ],
+                "properties": {
+                  "name": {
+                    "enum": [
+                      "sanity",
+                      "focused",
+                      "interactions",
+                      "acceptance",
+                      "regression"
+                    ]
+                  },
+                  "tests": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "fixtures": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  }
+                }
+              }
+            },
+            "reason": {
+              "type": "string",
+              "minLength": 1
+            },
+            "revision_of": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "design": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "acceptance": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "acceptance_tests": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "module",
+                  "covers",
+                  "purpose"
+                ],
+                "properties": {
+                  "module": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "covers": {
+                    "type": "array",
+                    "items": {
+                      "type": "integer",
+                      "minimum": 0
+                    }
+                  },
+                  "purpose": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  }
+}
