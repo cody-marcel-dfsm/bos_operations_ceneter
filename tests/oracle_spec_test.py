@@ -701,7 +701,7 @@ class PublicationCIDispatch(Fixture):
 
     def test_general_ci_consumes_required_native_applicability_without_duplicate_execution(self):
         from tools import deterministic_package as package,deterministic_oracle as profile,command_coverage
-        with patch.object(package,'current_ci_source',return_value=self.base),patch.object(profile,'applies',return_value=False), \
+        with patch.object(package.native,'git',return_value=self.base),patch.object(profile,'applies',return_value=False), \
              patch.object(package.contract,'gate',return_value={'status':'SPEC_SEALED','seal':'synthetic'}), \
              patch.object(package.native,'scope',side_effect=ValueError('ordinary runtime')), \
              patch.object(package,'scope',side_effect=ValueError('ordinary runtime')), \

@@ -26,15 +26,6 @@ The compatible dispatcher is `tools/deterministic_package.py --profile oracle`.
 Existing invocations without that explicit profile retain their existing behavior.
 Public CI detects the closed Oracle range before choosing the older lanes.
 
-Known mixed Oracle/client ranges use the existing general native source/effect
-and command-applicability route. Unknown paths within the Oracle component
-namespace retain closed refusal even in a mixed range. Component presence selects
-the pinned public runtime/model setup independently of closed-profile selection;
-the closed profile's path set and CI-only obligations remain unchanged. General
-CI consumes exact native command/source/environment applicability and executes
-uncovered required commands once. It preserves native-only proof and original
-environment provenance without replaying provider-backed categories in public CI.
-
 Native verification executes every current sealed category through the maintained
 native contract producer. It binds complete committed inputs, Node dependencies,
 existing Chroma Python distribution bytes, cached embedding bytes and environment;

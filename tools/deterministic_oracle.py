@@ -89,22 +89,13 @@ def changed(root, base, source):
     return sorted(paths)
 
 
-def _component_paths(paths):
+def applies(root, base, source):
+    # Prefixes route unknown Oracle files to refusal; they never grant admission.
+    paths=changed(root,base,source)
     triggers={'tools/deterministic_oracle.py','tools/deterministic-oracle.md',
               'tools/export_oracle.py','tools/oracle-public-export.json',
               'tests/deterministic-oracle.test.mjs'}
-    return [name for name in paths if name in triggers or name.startswith(('tools/oracle_core/','tools/oracle_public/'))]
-
-
-def component_present(root, base, source):
-    return bool(_component_paths(changed(root,base,source)))
-
-
-def applies(root, base, source):
-    paths=changed(root,base,source);component=_component_paths(paths)
-    # Unknown component files retain closed refusal, including mixed ranges.
-    # Known mixed source uses the existing general native publication contract.
-    return bool(component) and (any(name not in OWN_PATHS for name in component) or set(paths)<=OWN_PATHS)
+    return any(name in triggers or name.startswith(('tools/oracle_core/','tools/oracle_public/')) for name in paths)
 
 
 def scope(root, base, source):
