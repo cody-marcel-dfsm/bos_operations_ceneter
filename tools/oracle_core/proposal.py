@@ -1,6 +1,6 @@
 """Actual proposal retrieval→independent judge→validated spec, with no-replay recovery."""
 from pathlib import Path
-import json,platform,subprocess
+import fnmatch,json,platform,subprocess
 from .config import load,relative
 from .context import context_input
 from .custody import canonical,digest,identity,immutable,read
@@ -73,13 +73,27 @@ def output_schema():
 def feature_binding(root,review):
     selection=review.get('validation_selection') or {}
     if selection.get('change_class')!='feature':return None
-    design=relative(root,selection['design']);name=selection['design'][:-3]+'.test-plan.json';plan_path=relative(root,name);plan=json.loads(plan_path.read_text())
-    if plan.get('kind')!='boc.feature-test-plan/v1' or plan.get('design')!=selection['design'] or plan.get('design_sha256')!=digest(design.read_bytes()):raise ValueError('Feature plan identity mismatch')
+    design=relative(root,selection['design']);name=selection['design'][:-3]+'.test-plan.json';plan_path=relative(root,name);raw=plan_path.read_bytes()
+    if len(raw)>65536:raise ValueError('Feature plan is too large')
+    try:plan=json.loads(raw)
+    except (ValueError,RecursionError) as error:raise ValueError('Feature plan is not valid JSON') from error
+    if not isinstance(plan,dict) or set(plan)!={'kind','feature','design','design_sha256','runtime_paths','tests'}:raise ValueError('Closed feature plan shape required')
+    if plan['kind']!='boc.feature-test-plan/v1' or plan['design']!=selection['design'] or plan['design_sha256']!=digest(design.read_bytes()):raise ValueError('Feature plan identity mismatch')
+    def text(value):return isinstance(value,str) and bool(value.strip())
+    if not text(plan['feature']):raise ValueError('Feature plan must name its feature')
     paths=plan.get('runtime_paths');tests=plan.get('tests');selected={t for c in selection['categories'] if c['name'] in ['interactions','acceptance'] for t in c['tests']}
     if not isinstance(paths,list) or not paths or not all(spec.safe_path(p) for p in paths):raise ValueError('Feature runtime inventory required')
-    if not isinstance(tests,list) or not tests or any(t.get('module') not in selected for t in tests):raise ValueError('Feature planned tests unselected')
-    if {p for t in tests for p in t.get('covers',[])}!=set(paths):raise ValueError('Feature runtime coverage incomplete')
-    return {'design':selection['design'],'design_sha256':digest(design.read_bytes()),'plan':name,'plan_sha256':digest(plan_path.read_bytes()),'tests':sorted(t['module'] for t in tests)}
+    if any(not any(fnmatch.fnmatchcase(p,scope) for scope in selection['scope_paths']) for p in paths):raise ValueError('Feature runtime inventory exceeds selected scope')
+    if not isinstance(tests,list) or not tests:raise ValueError('Feature planned tests required')
+    reached,names=set(),[]
+    for row in tests:
+        if not isinstance(row,dict) or set(row)!={'module','covers','purpose'} or not text(row['module']) or not text(row['purpose']) or not isinstance(row['covers'],list) or not row['covers'] or not all(text(p) for p in row['covers']):raise ValueError('Closed feature test mapping required')
+        if row['module'] not in selected:raise ValueError('Feature planned test unselected')
+        if set(row['covers'])-set(paths):raise ValueError('Feature planned test covers unlisted paths')
+        reached.update(row['covers']);names.append(row['module'])
+    if len(names)!=len(set(names)):raise ValueError('Feature planned test repeated')
+    if set(paths)-reached:raise ValueError('Feature runtime coverage incomplete')
+    return {'design':selection['design'],'design_sha256':digest(design.read_bytes()),'plan':name,'plan_sha256':digest(raw),'tests':sorted(names)}
 
 
 def materialize(directory,root,proposal,context,binding,provenance,output):

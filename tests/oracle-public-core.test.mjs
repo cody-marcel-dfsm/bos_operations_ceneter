@@ -89,3 +89,9 @@ unittest.main()
 const run=spawnSync('Vault/index/venv/bin/python',['-B','-c',code],{cwd:new URL('../',import.meta.url),env:{...process.env,PYTHONPATH:'tools',PYTHONDONTWRITEBYTECODE:'1'},encoding:'utf8',timeout:90000,maxBuffer:4*1024*1024});
 assert.equal(run.status,0,`${run.stdout}\n${run.stderr}`);assert.match(run.stderr,/Ran 9 tests/);assert.doesNotMatch(run.stderr,/skipped=/);
 });
+
+
+test('portable published proposal fixtures enforce plan and private-value boundaries',()=>{
+const run=spawnSync('Vault/index/venv/bin/python',['-B','tools/oracle_public/tests/test_proposal_to_spec.py'],{cwd:new URL('../',import.meta.url),env:{...process.env,PYTHONPATH:'tools',PYTHONDONTWRITEBYTECODE:'1'},encoding:'utf8',timeout:90000,maxBuffer:4*1024*1024});
+assert.equal(run.status,0,`${run.stdout}\n${run.stderr}`);assert.match(run.stderr,/Ran 4 tests/);assert.doesNotMatch(run.stderr,/skipped=/);
+});

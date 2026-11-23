@@ -1,9 +1,11 @@
 """Provider-free tests of actual spec materialization, explicitly synthetic inputs."""
 import copy
 import json
+import tempfile
+from unittest.mock import patch
 from pathlib import Path
 import unittest
-from oracle_core import spec, seal
+from oracle_core import spec, seal, proposal
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -51,6 +53,69 @@ class ProposalMaterialization(unittest.TestCase):
             mutate(review)
             with self.assertRaises(ValueError):
                 spec.validate_review(review, catalog)
+
+
+    def test_feature_plan_portable_consumer_refuses_invalid_boundaries(self):
+        with tempfile.TemporaryDirectory(prefix='oracle-portable-plan-') as directory:
+            root = Path(directory)
+            (root / 'design.md').write_text('Synthetic design')
+            from oracle_core.custody import digest
+            selection = {'change_class': 'feature', 'design': 'design.md',
+                         'scope_paths': ['src/*.py'],
+                         'categories': [{'name': 'interactions', 'tests': ['tests/check.py']}]}
+            review = {'validation_selection': selection}
+            plan = {'kind': 'boc.feature-test-plan/v1', 'feature': 'Synthetic',
+                    'design': 'design.md', 'design_sha256': digest((root / 'design.md').read_bytes()),
+                    'runtime_paths': ['src/a.py'], 'tests': [
+                        {'module': 'tests/check.py', 'covers': ['src/a.py'], 'purpose': 'Exercise boundary'}]}
+            target = root / 'design.test-plan.json'
+            target.write_text(json.dumps(plan))
+            binding = proposal.feature_binding(root, review)
+            self.assertEqual(binding['plan_sha256'], digest(target.read_bytes()))
+            self.assertEqual(binding['tests'], ['tests/check.py'])
+            mutations = [
+                lambda p: p.update(runtime_paths=['outside.py']),
+                lambda p: p.update(extra=True),
+                lambda p: p.update(feature=''),
+                lambda p: p.update(feature='x' * 65536),
+                lambda p: p['tests'][0].update(purpose=''),
+                lambda p: p['tests'].append(copy.deepcopy(p['tests'][0])),
+                lambda p: p['tests'][0].update(covers=['src/unknown.py']),
+                lambda p: p['tests'][0].update(extra=True)]
+            for index, mutate in enumerate(mutations):
+                with self.subTest(case=index):
+                    invalid = copy.deepcopy(plan)
+                    mutate(invalid)
+                    target.write_text(json.dumps(invalid))
+                    with self.assertRaises(ValueError):
+                        proposal.feature_binding(root, review)
+
+    def test_private_sealed_values_are_refused_before_hashing(self):
+        catalog = json.loads((ROOT / 'validation-catalog.json').read_text())
+        provenance = {'engine': 'codex', 'model': 'synthetic', 'core_sha256': 'a' * 64,
+                      'host_sha256': 'b' * 64, 'source_commit': 'c' * 40,
+                      'source_tree': 'd' * 40, 'origin_main': 'e' * 40}
+        values = ['/' + 'Users/' + 'synthetic/private',
+                  'api' + '_key=' + 'syntheticvalueonly',
+                  'Bearer ' + 'syntheticvalueonly',
+                  'Cookie' + ': synthetic']
+        for index, value in enumerate(values):
+            for field in ['reason', 'acceptance', 'purpose', 'runtime', 'command']:
+                with self.subTest(case=index, field=field):
+                    review = synthetic_review()
+                    runtime = copy.deepcopy(provenance)
+                    commands = copy.deepcopy(catalog)
+                    if field == 'reason': review['validation_selection']['reason'] = value
+                    elif field == 'acceptance': review['validation_selection']['acceptance'] = [value]
+                    elif field == 'purpose': review['validation_selection']['acceptance_tests'][0]['purpose'] = value
+                    elif field == 'runtime': runtime['nested'] = {'values': [value]}
+                    else: commands['modules']['tests/test_proposal_to_spec.py'] = ['python', value]
+                    with patch.object(spec, 'identity') as identity, patch.object(spec, 'compute_seal') as compute:
+                        with self.assertRaises(ValueError) as error:
+                            spec.materialize(review, 'Synthetic proposal', commands, runtime)
+                        identity.assert_not_called()
+                        compute.assert_not_called()
+                        self.assertNotIn(value, str(error.exception))
 
 
 if __name__ == '__main__':
