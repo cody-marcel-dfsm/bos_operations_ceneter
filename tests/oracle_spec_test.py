@@ -722,7 +722,9 @@ class NativeDelta(Fixture):
                 finally:oracle._PROPOSAL_DELTA.reset(token)
         finally:oracle._RUN.reset(active);oracle._METADATA_ROOT.reset(metadata)
         selected=captured[0][1]['properties']['validation_selection']
-        self.assertEqual(selected['properties']['binding']['const'],context['binding'])
+        self.assertEqual(selected['properties']['binding'],v.binding_schema(context['binding']))
+        self.assertNotIn('const',selected['properties']['binding'])  # provider refuses object-level const
+        self.assertEqual({k:r.get('const') for k,r in selected['properties']['binding']['properties'].items()},context['binding'])
         self.assertNotIn('scope_paths',selected['properties'])
         self.assertNotIn('"scope_paths": [',captured[0][0])
         self.assertEqual(captured[1][1]['properties']['validation_selection']['properties']['revision_of'],
@@ -740,7 +742,8 @@ class NativeDelta(Fixture):
         self.assertEqual(audit['retained_coverage_sha256'],v.digest(prior['selection']['acceptance_tests']))
         self.assertEqual(v.materialize_delta(self.root,context,delta),(value,audit))
         schema=v.delta_schema(context)
-        self.assertEqual(schema['properties']['binding']['const'],context['binding'])
+        binding=schema['properties']['binding'];self.assertFalse(binding['additionalProperties']);self.assertEqual(binding['required'],list(context['binding']))
+        self.assertEqual({k:r.get('const') for k,r in binding['properties'].items()},context['binding'])
         self.assertFalse(schema['additionalProperties'])
 
     def test_older_closed_binding_reconstructs_only_with_the_actual_verified_native_prior(self):
