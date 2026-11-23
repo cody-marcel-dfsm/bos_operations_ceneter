@@ -118,7 +118,25 @@ class Profile(unittest.TestCase):
    self.assertFalse(destination.exists())
  def test_synthetic_model_output_never_satisfies_actual_witness(self):
   store=self.root/'private';p=store/'standalone/.oracle/operations'/('a'*64);p.mkdir(parents=True);(p/'completed.json').write_text(json.dumps({'provenance':{'execution_mode':'synthetic'}}))
-  with self.assertRaisesRegex(ValueError,'actual native CLI'):d.native_proposal_witness(store,self.head,'b'*40)
+  with self.assertRaisesRegex(ValueError,'actual native CLI'):d.native_proposal_witness(store,self.head,'b'*40,root=self.root)
+ def test_upstream_witness_preserves_candidate_manifest_and_real_outcome_semantics(self):
+  origin=self.base;self.put('tools/validation-selection.json',json.dumps({'stamp':{'origin_main':origin}}));self.commit();source=self.git('rev-parse','HEAD');self.assertNotEqual(source,origin)
+  artifact=self.root/'artifact';artifact.mkdir();manifest=artifact/'oracle-export-manifest.json';manifest.write_text(json.dumps({'origin_main':origin}))
+  approved={'status':'APPROVED','provenance':{'origin_main':origin},'spec':{'stamp':{'origin_main':origin}}}
+  rejected={'status':'REJECTED','provenance':{'origin_main':origin},'spec':None,'review':{'findings':[{'summary':'Synthetic required correction'}]}}
+  for outcome in (None,approved,rejected):self.assertEqual(d.upstream_witness(self.root,source,artifact,outcome),origin)
+  for upstream in (None,'bad','f'*40,source):
+   manifest.write_text(json.dumps({'origin_main':upstream}))
+   with self.assertRaisesRegex(ValueError,'Export upstream'):d.upstream_witness(self.root,source,artifact,approved)
+  manifest.write_text(json.dumps({'origin_main':origin}))
+  for field in ('provenance','spec'):
+   bad=json.loads(json.dumps(approved));bad[field]={'origin_main':'f'*40} if field=='provenance' else {'stamp':{'origin_main':'f'*40}}
+   with self.assertRaisesRegex(ValueError,'upstream'):d.upstream_witness(self.root,source,artifact,bad)
+  for spec,findings in (({},[{'summary':'Synthetic'}]),(None,[])):
+   bad={**rejected,'spec':spec,'review':{'findings':findings}}
+   with self.assertRaisesRegex(ValueError,'Rejected'):d.upstream_witness(self.root,source,artifact,bad)
+  self.put('tools/validation-selection.json',json.dumps({'stamp':{}}));self.commit()
+  with self.assertRaisesRegex(ValueError,'Export upstream'):d.upstream_witness(self.root,self.git('rev-parse','HEAD'),artifact)
  def test_future_old_profile_changes_do_not_route_to_oracle(self):
   base=self.head;self.put('package.json','{"version":"2"}');self.commit()
   self.assertFalse(d.applies(self.root,base,self.git('rev-parse','HEAD')))

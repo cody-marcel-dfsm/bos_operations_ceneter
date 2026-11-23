@@ -50,6 +50,13 @@ truthful proposal rejection remains distinct from an execution failure. Original
 model input/output/process records stay private; the deterministic receipt binds
 their hashes. No model assesses completed source.
 
+The generated manifest's `origin_main` equals the immutable candidate's sealed
+native stamp. The completed proposal carries that same upstream separately from
+its canonical tool source commit/tree. An approved materialized spec must retain
+the matching stamp; a rejected proposal retains actual findings and a null spec.
+Missing or differing upstream bindings refuse verification. Current upstream
+readback remains separately observed metadata.
+
 Public CI produces the separately typed `boc-deterministic-oracle-ci/1` result
 `CI_ONLY`. Its projection removes exactly the native-only live-proposal module
 and executes every other selected module unchanged, including actual Chroma,

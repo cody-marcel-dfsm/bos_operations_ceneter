@@ -277,6 +277,7 @@ def export_proof(root, source, store, executable):
             p=standalone/member.name;p.parent.mkdir(parents=True,exist_ok=True)
             with p.open('xb') as stream:stream.write(tar.extractfile(member).read())
             p.chmod(member.mode)
+    upstream_witness(root,source,standalone)
     inventory=member_inventory(standalone)
     return {'receipt':receipt,'receipt_sha256':native.digest(regular(target/'oracle-export-receipt.json')),
             'archive_path':str(archive),'standalone_inputs':inventory,'runs':[row]}
@@ -312,7 +313,28 @@ def standalone_proof(root, store, artifact, executable):
     return dict(artifact,runs=[*artifact['runs'],test])
 
 
-def native_proposal_witness(store, source, tree):
+def upstream_witness(root, source, artifact, completed=None):
+    """Keep the sealed upstream independent of the exported tool source pin."""
+    selected=json.loads(native.git(root,'show',source+':tools/validation-selection.json'))
+    origin=selected.get('stamp',{}).get('origin_main')
+    manifest=json.loads(regular(Path(artifact)/'oracle-export-manifest.json'))
+    if not isinstance(origin,str) or not re.fullmatch('[a-f0-9]{40}',origin) or manifest.get('origin_main')!=origin:
+        raise ValueError('Export upstream differs from the immutable candidate native stamp')
+    if completed is not None:
+        if completed.get('provenance',{}).get('origin_main')!=origin:
+            raise ValueError('Native proposal upstream differs from the immutable export')
+        spec=completed.get('spec')
+        if completed.get('status')=='APPROVED':
+            if not isinstance(spec,dict) or spec.get('stamp',{}).get('origin_main')!=origin:
+                raise ValueError('Materialized native spec upstream differs')
+        elif completed.get('status')=='REJECTED':
+            if spec is not None or not completed.get('review',{}).get('findings'):
+                raise ValueError('Rejected native proposal needs findings and no invented spec')
+        else:raise ValueError('Complete native proposal outcome required')
+    return origin
+
+
+def native_proposal_witness(store, source, tree, *, root):
     state=store/'standalone/.oracle/operations'
     found=[]
     for path in state.glob('*/completed.json'):
@@ -324,6 +346,7 @@ def native_proposal_witness(store, source, tree):
             or provenance.get('source_commit')!=source or provenance.get('source_tree')!=tree):
         raise ValueError('Native proposal source/operation/outcome differs')
     artifact=store/'standalone'
+    origin=upstream_witness(root,source,artifact,value)
     expected_core={Path(name).name:native.digest(regular(artifact/name)) for name in sorted(PUBLIC_MEMBERS) if name.startswith('oracle_core/') and name.endswith('.py')}
     expected_core_hash=native.digest(json.dumps(expected_core,sort_keys=True,separators=(',',':'),ensure_ascii=False).encode())
     if provenance.get('core_sha256')!=expected_core_hash or provenance.get('config_sha256')!=native.digest(regular(artifact/'oracle.project.json')):
@@ -354,7 +377,7 @@ def native_proposal_witness(store, source, tree):
     for name in ('completed.json','inputs.json','invocation.json','runtime.json','process.json','result.json','stdout.log','stderr.log'):
         f=operation/name;files[str(f.relative_to(store))]=native.digest(regular(f))
     return {'execution_mode':'native_cli','operation':operation.name,'status':value['status'],
-            'source_commit':source,'source_tree':tree,'runtime':runtime,'process':process,'files':files}
+            'source_commit':source,'source_tree':tree,'origin_main':origin,'runtime':runtime,'process':process,'files':files}
 
 
 def validate(root, base, requested_at, *, ci=False, artifact_only=False):
@@ -378,7 +401,7 @@ def validate(root, base, requested_at, *, ci=False, artifact_only=False):
         with cohort_environment(store,executable):
             before=identity(root)
             selected=native.spec_runs(root,base,before['source'],store,failure,ci=ci)
-            witness=native_proposal_witness(store,before['source'],before['tree'])
+            witness=native_proposal_witness(store,before['source'],before['tree'],root=root)
             artifact=standalone_proof(root,store,artifact,executable)
             if identity(root)!=before:raise ValueError('Source/runtime/dependencies/environment changed during Oracle verification')
     except (ValueError,OSError,KeyError,TypeError,subprocess.SubprocessError) as error:
@@ -429,7 +452,7 @@ def verify(root):
         if failed.get('identity',{}).get('source')==current['source'] and failure.parent.name>store.name:
             raise ValueError('A later native Oracle failure invalidated readiness')
     native.check_spec_runs(root,value['base'],current['source'],value['spec_runs'],store,receipt_completed=value['completed_at'],mode='native')
-    if native_proposal_witness(store,current['source'],current['tree'])!=value.get('native_proposal'):
+    if native_proposal_witness(store,current['source'],current['tree'],root=root)!=value.get('native_proposal'):
         raise ValueError('Original actual proposal witness changed')
     export=value['export']; receipt=export['receipt']; archive=Path(export['archive_path'])
     if archive!=store/'export/oracle-public.tar.gz' or native.digest(regular(archive))!=receipt['archive']['sha256']:
