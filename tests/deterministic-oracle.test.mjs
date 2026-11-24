@@ -223,6 +223,8 @@ class Profile(unittest.TestCase):
   for bad in [[],[rows[0]],[{'category':'acceptance','tests':[d.LIVE_MODULE],'argv':['node',d.LIVE_MODULE]}]]:
    with self.assertRaises(ValueError):d.offline_commands(bad)
  def ci_execution_fixture(self,*,delay=False,failing=False):
+  # Model a standalone CI command, outside the outer Node test worker.
+  self.enterContext(patch.dict(os.environ));os.environ.pop('NODE_TEST_CONTEXT',None)
   focused='tests/selected-ci-focused.test.mjs';offline='tests/selected-ci-offline.test.mjs'
   label='synthetic selected CI failure' if failing else 'synthetic selected CI completion'
   self.put(focused,"import test from 'node:test';import assert from 'node:assert/strict';test("+json.dumps(label)+",async()=>{"+("await new Promise(resolve=>setTimeout(resolve,250));" if delay else "")+"assert.equal(1,"+('2' if failing else '1')+");});")

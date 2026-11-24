@@ -513,56 +513,27 @@ def offline_commands(rows):
     return result
 
 
-def _ci_category_diagnostic(row, outcome, output, summary):
-    """Public failure facts; full original command output stays in native custody."""
-    names=[]
-    for name in re.findall(r'^\s*not ok [0-9]+ - ([^\r\n]+)',output.decode('utf-8','replace'),re.M):
-        name=re.sub(r'\x1b\[[0-?]*[ -/]*[@-~]','',name)
-        name=re.sub(r'(?:file://)?/[^\s]+','[path]',name)
-        name=re.sub(r'[^\s]+@[^\s]+','[identity]',name)
-        name=re.sub(r'[0-9]+\.[0-9]{6,}|[0-9]{7,}','[numeric]',name)
-        name=''.join(c for c in name if c.isprintable())[:160]
-        if name not in names:names.append(name)
-    facts={'category':row['category'],'exit_code':outcome['exit_code'],
-           'summary':summary,'output_sha256':outcome['output_sha256'],
-           'output_size_bytes':len(output),
-           'elapsed_ms':max(0,int((outcome['completed_at']-outcome['started_at'])*1000)),
-           'failed_tests':names[:32],'omitted_failed_tests':max(0,len(names)-32)}
-    if not summary.get('complete') and row['tests']:
-        facts['partial_counts']={key:[int(v) for v in re.findall(r'^# '+key+r' ([0-9]+)\s*$',output.decode('utf-8','replace'),re.M)[:32]]
-                                 for key in ('tests','pass','fail','cancelled','skipped','todo')}
-    return facts
-
-
 def validate_ci(root,base,requested_at):
     initial=native.identity(root);paths=scope(root,base,initial['source'])
     if contract.gate(root,base,initial['source'])['status']!='SPEC_SEALED':raise ValueError('Current sealed Oracle feature spec required')
     selected=native.selected_commands(root,base,initial['source']);projection=offline_commands(selected)
     store=directory(root)/str(time.time_ns());store.mkdir(parents=True,mode=0o700)
     failure={'kind':CI_KIND+'-failure','identity':initial,'base':base}
-    rows=[];failed_category=None;diagnostic=None
     try:
         executable=python_runtime(root)['executable']
         artifact=export_proof(root,initial['source'],store,executable)
         with cohort_environment(store,executable):
-            before=identity(root,native_proposal=False)
+            before=identity(root,native_proposal=False);rows=[]
             for row in projection:
-                # Match the existing native selected-category producer bound.
-                # Export/standalone and genuine CLI budgets remain independent.
-                outcome,output=run(root,row['argv'],store,timeout=900)
-                summary=contract.result_summary(output.decode('utf-8','replace'),outcome['exit_code'],bool(row['tests']))
-                outcome.update(category=row['category'],tests=row['tests'],summary=summary)
+                outcome,output=run(root,row['argv'],store,timeout=60 if row['category']=='acceptance' else 120)
+                outcome.update(category=row['category'],tests=row['tests'])
                 rows.append(outcome)
-                if outcome['exit_code']!=0 or not summary['passed']:
-                    failed_category=row['category']
-                    diagnostic=_ci_category_diagnostic(row,outcome,output,summary)
-                    print('CI_ONLY_CATEGORY_FAILURE '+json.dumps(diagnostic,sort_keys=True,separators=(',',':')),file=sys.stderr)
-                    raise ValueError('CI-only exact deterministic category did not completely pass: '+row['category']+'; '+str(outcome['exit_code']))
+                if outcome['exit_code']!=0 or not contract.result_summary(output.decode('utf-8','replace'),outcome['exit_code'],bool(row['tests']))['passed']:
+                    raise ValueError('CI-only exact deterministic category did not completely pass')
             artifact=standalone_proof(root,store,artifact,executable)
             if identity(root,native_proposal=False)!=before:raise ValueError('CI-only source/runtime/dependencies changed')
     except (ValueError,OSError,KeyError,TypeError,subprocess.SubprocessError) as error:
-        native.private_write(store/'failure.json',native.encoded(dict(failure,error=type(error).__name__,runs=rows,
-                             failed_category=failed_category,diagnostic=diagnostic)))
+        native.private_write(store/'failure.json',native.encoded(dict(failure,error=type(error).__name__)))
         raise
     value={'kind':CI_KIND,'profile':PROFILE,'status':'CI_ONLY',**before,'base':base,'paths':paths,
            'commands':projection,'runs':rows,'export':artifact,'native_only_module':LIVE_MODULE,
@@ -570,6 +541,7 @@ def validate_ci(root,base,requested_at):
            'store':str(store),'request_started_at':requested_at,'completed_at':time.time(),'sla_status':'CI_PHASE_ONLY'}
     value['sha256']=native.digest(native.encoded(value));native.private_write(store/'ci-receipt.json',native.encoded(value))
     return value
+
 
 def observe_origin(root):
     destinations=native.git(root,'remote','get-url','--push','--all','origin').splitlines()
