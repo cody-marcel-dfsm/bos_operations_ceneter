@@ -4,25 +4,27 @@
   "stamp": {
     "engine": "claude",
     "model": "claude-fable-5-2",
-    "oracle_sha256": "f1bd633497fa446a6e70a239452280bfbe5d5b4f7d306f3adde5c7c419839e18",
+    "oracle_sha256": "8935be2e0c84fe2f8e2372a70456e06d1b9658acc810243bc0be956ceca1dafc",
     "host": "aio",
-    "time": "2026-11-24T01:39:34Z",
+    "time": "2026-11-24T01:42:38Z",
     "origin_main": "b994663ddc5e6e804f39f050ff1ec0e84c3845be",
-    "request_sha256": "1ffe57902ba447380a4b3120c739ce98db5ed09710b257330c8d8a1864cb2253",
-    "proposal_sha256": "eeb5167cb844d56ba9f39aad8ecf8993ca78bf3feec7f3d57f2ab01afbe9bdf9"
+    "request_sha256": "c7735675eb56fb40a7352731e2e4eb7d4841e078786bbb66ce9b0aea45bd0cbf",
+    "proposal_sha256": "06746f82c83557c1e6ed003ddd85d76dd4b590f3b0f615360eb02cc54ef327eb"
   },
   "selection": {
     "acceptance": [
       "When the Claude reviewer process exits non-zero and its standard output is a JSON envelope, either a single object or an event list with exactly one result event, that reports an error with a non-empty result, the raised launcher error keeps the existing process-failure wording and diagnostics location and additionally names the reported reason, bounded to its last 2000 characters.",
       "When the Claude reviewer process exits non-zero with non-JSON output, an envelope without an error flag or reason, or an event list without exactly one result event, the raised error is exactly the existing plain process-failure message with the diagnostics location.",
-      "A non-zero reviewer exit always raises and never yields an answer, approval, retry or alternate engine; failures of the other engine keep their existing message, and the existing zero-exit error-envelope behavior is unchanged."
+      "A non-zero reviewer exit always raises and never yields an answer, approval, retry or alternate engine; failures of the other engine keep their existing message, and the existing zero-exit error-envelope behavior is unchanged.",
+      "On the release-versioned tree, where the only changes beyond the sealed correction are the package patch-version advance and the regenerated release and client manifests, the reviewer failure-reason behavior described by the existing criteria holds unchanged."
     ],
     "acceptance_tests": [
       {
         "covers": [
           0,
           1,
-          2
+          2,
+          3
         ],
         "module": "tests/oracle-implementation-spec.test.mjs",
         "purpose": "Run the launcher spec suite through a fake process runner to prove a non-zero error envelope surfaces its reported reason with the diagnostics location, that unreadable or reasonless output keeps the plain failure message, and that no answer is produced on failure."
@@ -48,16 +50,43 @@
     ],
     "change_class": "bug_fix",
     "design": null,
-    "reason": "A small deterministic diagnostic correction in the review launcher: a failed reviewer process discarded the reason its own output envelope already carried. The owning spec suite, run through its existing Node wrapper, gives a fail-before and pass-after reproduction without launching a model. No authentication, package, interaction or recurrence coverage is affected, so no wider category is selected.",
-    "revision_of": "9da5698e3a360454a73a9ed8c78d3e185590877d4d811c6f8344670d00ac8802",
+    "reason": "Additive scope revision only: the diagnostic correction ships with the next patch release, whose version files and regenerated client manifests fall outside the original scope. The release adds no behavior, so the class, categories and selected tests stay as sealed, and the retained focused suite confirms the corrected launcher behavior on the release-versioned tree.",
+    "revision_of": "7166ebcd94bce2b3e7235cbb7856fd6f7547acbc3bd084c7eef15fdbc159932d",
     "scope_paths": [
-      "tools/oracle_approval.py",
+      "README.md",
+      "clients/claude/plugins/bos/.bos-product.json",
+      "clients/claude/plugins/bos/.claude-plugin/plugin.json",
+      "clients/claude/plugins/education-center/.bos-product.json",
+      "clients/claude/plugins/education-center/.claude-plugin/plugin.json",
+      "clients/codex/plugins/bos/.bos-product.json",
+      "clients/codex/plugins/bos/.codex-plugin/plugin.json",
+      "clients/codex/plugins/education-center/.bos-product.json",
+      "clients/codex/plugins/education-center/.codex-plugin/plugin.json",
+      "clients/copilot/products/bos/.bos-product.json",
+      "clients/copilot/products/education-center/.bos-product.json",
+      "clients/gemini/extensions/bos/.bos-product.json",
+      "clients/gemini/extensions/bos/gemini-extension.json",
+      "clients/gemini/extensions/bos/plugin.json",
+      "clients/gemini/extensions/education-center/.bos-product.json",
+      "clients/gemini/extensions/education-center/gemini-extension.json",
+      "clients/gemini/extensions/education-center/plugin.json",
+      "clients/muse/plugins/bos/.bos-product.json",
+      "clients/muse/plugins/bos/.muse-plugin/plugin.json",
+      "clients/muse/plugins/education-center/.bos-product.json",
+      "clients/muse/plugins/education-center/.muse-plugin/plugin.json",
+      "package-lock.json",
+      "package-manifest.json",
+      "package.json",
+      "products/bos/product.json",
+      "products/education-center/product.json",
+      "skill-release-manifest.json",
       "tests/oracle_spec_test.py",
+      "tools/oracle_approval.py",
       "tools/validation-selection.json"
     ]
   },
-  "base_commit": "b994663ddc5e6e804f39f050ff1ec0e84c3845be",
-  "base_tree": "fdf2432932f093d3812bffad1231efa46e7f0c10",
+  "base_commit": "e500b4f291a63daf27ba2e868dfcd65f17ede8f4",
+  "base_tree": "65dfb44380dbc3c2c65eed257f2705e72416ae1e",
   "catalog_sha256": "9a96f1cd2a973457f9da681dddcc5161aa8ffda188b092d849e5bc83999391c8",
   "runtime": {
     "node": "v26.12.0",
@@ -67,8 +96,8 @@
     "architecture": "x86_64",
     "options_sha256": "ebc442c160f8629073a82976daadaba1d95a60a38d768c81c8eb06598aedcac5"
   },
-  "proposal_sha256": "eeb5167cb844d56ba9f39aad8ecf8993ca78bf3feec7f3d57f2ab01afbe9bdf9",
-  "review_sha256": "bd0b762562348be12075e2a2f2c3d20854a265ec579eba8a2ea4ac1b34231158",
+  "proposal_sha256": "06746f82c83557c1e6ed003ddd85d76dd4b590f3b0f615360eb02cc54ef327eb",
+  "review_sha256": "f5792892c8990c7024df0c8fd34ab89d35d067d7c30d2f91c3a5add5d04be9f2",
   "commands": [
     {
       "category": "sanity",
@@ -108,6 +137,6 @@
     "reasoning_effort": "low",
     "maximum_reasoning_effort": "medium"
   },
-  "contract_sha256": "7166ebcd94bce2b3e7235cbb7856fd6f7547acbc3bd084c7eef15fdbc159932d",
-  "seal": "a400d7a07577c00af070662aba77c573667c0e5be23ae90e0eed85967ac2416b"
+  "contract_sha256": "8fbc8bffde7385967a835557ea107ff2eceabb703a23be5e175199f6a5fbb845",
+  "seal": "392b1cd66f825760e1c4067a3a88377915e6ab2b7d12acd60db0bf534a3cb3a0"
 }
