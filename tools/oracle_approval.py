@@ -803,6 +803,131 @@ def _committed_effect_history(root: Path, commit: str) -> tuple[list, list]:
     return prior, limitations
 
 
+def _completion_files(root: Path, proof: Path, proposal: Path) -> dict:
+    """Retain hashes of the actual native originals; publish no new approval."""
+    files = {}
+    def add(path):
+        name = _custody_name(root, path)
+        if not name.startswith(".git/oracle/"):
+            raise OracleApprovalError("Lifecycle proof escaped native custody")
+        files[name] = _sha(_custody_read(root, name)[1])
+    def execution(path):
+        add(path)
+        record = json.loads(_custody_read(root, path)[1])
+        add(record["output_file"])
+        if record.get("stream_custody"):
+            validation_contract.verify_stream_execution(root, record)
+            folder = Path(path).parent / "streams" / record["stream_custody"]["run_id"]
+            for member in sorted(folder.iterdir()):
+                add(member)
+    add(proof); add(proposal)
+    value = json.loads(_custody_read(root, proof)[1])
+    store = proof.parent
+    for row in value.get("runs", []):
+        add(store / (row["output_sha256"] + ".log"))
+    selected = validation_contract.verify(root, value["source"])
+    for row in value["spec_runs"]:
+        add(store / (row["output_sha256"] + ".log"))
+        execution(Path(row["record"]))
+        if row["category"] == "focused" and selected["selection"]["change_class"] in {"bug_fix", "deep_bug_fix"}:
+            command = next(item for item in selected["commands"] if item["category"] == "focused")
+            fixtures = {name: _git(root, "rev-parse", value["source"] + ":" + name).strip()
+                        for name in [*command["tests"], *command["fixtures"]]}
+            for before in validation_contract.fail_before(root, selected, "focused", fixtures, command["argv"], value["source"]):
+                execution(Path(before["_record_path"]))
+    if value["kind"] == "boc-deterministic-oracle/1":
+        export = value["export"]
+        add(export["archive_path"]); add(store / "export/oracle-export-receipt.json")
+        for row in export["runs"]:
+            add(store / (row["output_sha256"] + ".log"))
+        for name in export["standalone_inputs"]:
+            add(store / "standalone" / name)
+        for name in value["native_proposal"]["files"]:
+            add(store / name)
+    return files
+
+
+@_metadata_owner
+def _typed_lifecycle_completion(root: Path, origin: str, head: str) -> list[str]:
+    """Observed native publication is historical completion, never current review."""
+    directory = receipt_path(root).parent / "lifecycle-completions"
+    completed = []
+    for path in sorted(directory.glob("*.json")):
+        raw = _custody_read(root, path)[1]; record = json.loads(raw)
+        body = {key: value for key, value in record.items() if key != "record_sha256"}
+        if (raw != _pretty(record) or record.get("kind") != "oracle-lifecycle-completion-v1"
+                or record.get("record_sha256") != _sha(_canonical(body))
+                or path.stem != _sha(_canonical({key: record[key] for key in ("origin", "source", "proof_sha256")}))):
+            raise OracleApprovalError("Native lifecycle completion custody changed")
+        if record["origin"] != origin:
+            continue
+        expected = {"kind","origin","source","tree","producer","proof_file","proof_sha256","proposal_file","files","observed_at","record_sha256"}
+        proof = json.loads(_custody_read(root, record["proof_file"])[1])
+        selected = validation_contract.verify(root, record["source"])
+        proposal = root / record["proposal_file"]
+        if (set(record) != expected or record["producer"] not in {"boc-deterministic-source/1","boc-deterministic-package/1","boc-deterministic-oracle/1"}
+                or proof.get("kind") != record["producer"] or proof.get("source") != record["source"]
+                or proof.get("tree") != record["tree"] or proof.get("status") != "VERIFIED" or proof.get("spec_mode") != "native"
+                or not validation_contract.native_proposal_record(root, proposal, selected, record["source"])
+                or json.loads(_custody_read(root, proposal)[1]).get("lifecycle_origin", selected["base_commit"]) != origin):
+            raise OracleApprovalError("Native lifecycle completion task or producer binding changed")
+        if (record["tree"] != _git(root, "show", "-s", "--format=%T", record["source"]).strip()
+                or subprocess.run(["git", "merge-base", "--is-ancestor", origin, record["source"]], cwd=root, capture_output=True).returncode
+                or any(_sha(_custody_read(root, name)[1]) != digest for name, digest in record["files"].items())
+                or record["files"].get(record["proof_file"]) != record["proof_sha256"]):
+            raise OracleApprovalError("Native lifecycle completion original proof changed")
+        if _completion_files(root, root / record["proof_file"], proposal) != record["files"]:
+            raise OracleApprovalError("Native lifecycle completion proof closure changed")
+        if not subprocess.run(["git", "merge-base", "--is-ancestor", record["source"], head], cwd=root, capture_output=True).returncode:
+            completed.append(record["source"])
+    # A new observation must belong to the currently authenticated task/spec.
+    current_path = proposal_path(root)
+    if not current_path.exists():
+        return completed
+    raw = _custody_read(root, current_path)[1]; active = json.loads(raw)
+    body = {key: value for key, value in active.items() if key != "proposal_review_id"}
+    selected = active.get("validation_contract")
+    if (raw != _pretty(active) or active.get("proposal_review_id") != _sha(_canonical(body))
+            or active.get("review", {}).get("verdict") != "APPROVED"
+            or active.get("review", {}).get("review_status") != "COMPLETE"
+            or active.get("lifecycle_origin", active.get("base_commit")) != origin
+            or not isinstance(selected, dict)):
+        return completed
+    oracle = receipt_path(root).parent
+    paths = [*sorted((oracle / "deterministic-source").glob("*.json")),
+             *sorted((oracle / "deterministic-package").glob("*.json")),
+             *sorted((oracle / "deterministic-oracle").glob("*/receipt.json"))]
+    for path in paths:
+        try:
+            value = json.loads(_custody_read(root, path)[1])
+            source = value.get("source")
+            if (source in completed or source == origin or value.get("status") != "VERIFIED"
+                    or value.get("spec_mode") != "native" or not re.fullmatch("[a-f0-9]{40}", source or "")
+                    or subprocess.run(["git", "merge-base", "--is-ancestor", source, head], cwd=root, capture_output=True).returncode
+                    or validation_contract.verify(root, source) != selected):
+                continue
+            proposal = Path(validation_contract.native_origin(root, source))
+            approved = json.loads(_custody_read(root, proposal)[1])
+            if approved.get("lifecycle_origin", approved["base_commit"]) != origin:
+                continue
+            proof = _deterministic_provenance(root, source, value["tree"])
+            if proof is None or Path(proof) != path:
+                continue
+            files = _completion_files(root, path, proposal)
+            body = {"kind":"oracle-lifecycle-completion-v1", "origin":origin, "source":source,
+                    "tree":value["tree"], "producer":value["kind"], "proof_file":_custody_name(root,path),
+                    "proof_sha256":_sha(_custody_read(root,path)[1]), "proposal_file":_custody_name(root,proposal),
+                    "files":files, "observed_at":datetime.now(timezone.utc).isoformat()}
+            identity = _sha(_canonical({key:body[key] for key in ("origin","source","proof_sha256")}))
+            target = directory / (identity + ".json")
+            if not target.exists():
+                _atomic_write(target, _pretty(dict(body,record_sha256=_sha(_canonical(body)))))
+            completed.append(source)
+        except (OSError,ValueError,KeyError,TypeError,AttributeError,subprocess.CalledProcessError):
+            continue  # Absent/inapplicable typed proof establishes no completion.
+    return completed
+
+
 def _proposal_origin(root: Path, proposal: dict, candidate: str) -> str:
     origin = proposal.get("lifecycle_origin", proposal["base_commit"])
     path = receipt_path(root).parent / "lifecycle-origin.json"
@@ -840,7 +965,16 @@ def _proposal_origin(root: Path, proposal: dict, candidate: str) -> str:
         rounds = _read_rounds(directory)
         if any(record["series_id"] != identity for record in rounds):
             raise OracleApprovalError("Lifecycle completion belongs to another review series")
-        if not rounds or any(item["state"] == "OPEN" for item in rounds[-1]["finding_ledger"].values()):
+        if rounds and any(item["state"] == "OPEN" for item in rounds[-1]["finding_ledger"].values()):
+            break
+        typed = set(_typed_lifecycle_completion(root, origin, head))
+        if typed:
+            completion = next(commit for commit in _git(root, "rev-list", "--reverse", "--topo-order", origin + ".." + head).splitlines() if commit in typed)
+            if completion == candidate_commit:
+                break
+            origin = completion
+            continue
+        if not rounds:
             break
         # An older successful assessment cannot complete a different unfinished
         # candidate, including a rejected or interrupted later repair.
@@ -3907,6 +4041,59 @@ def verify_message(root: Path, path: Path) -> None:
 DETERMINISTIC_LANES = ("deterministic-source", "deterministic-package")
 
 
+def _oracle_deterministic_provenance(root: Path, commit: str, tree: str) -> str | None:
+    """Historical actual-Oracle proof keeps its own native type and custody."""
+    if __package__:
+        from . import deterministic_oracle as lane, deterministic_source as native
+    else:
+        import deterministic_oracle as lane, deterministic_source as native
+    for path in sorted(lane.directory(root).glob("*/receipt.json")):
+        try:
+            value = json.loads(_custody_read(root, path)[1])
+            claimed = value.pop("sha256")
+            if (claimed != native.digest(native.encoded(value)) or value.get("kind") != lane.KIND
+                    or value.get("profile") != lane.PROFILE or value.get("status") != "VERIFIED"
+                    or value.get("source") != commit or value.get("tree") != tree
+                    or value.get("spec_mode") != "native" or value.get("verification_scope") != lane.SOURCE_SCOPE
+                    or value.get("source_publication") is not True or value.get("source_only") is not True
+                    or Path(value["store"]) != path.parent
+                    or lane.scope(root, value["base"], commit) != value["paths"]):
+                continue
+            selected = validation_contract.verify(root, commit)
+            validation_contract.native_origin(root, commit)
+            fixtures = {name for row in selected["selection"]["categories"] for name in [*row["tests"], *row["fixtures"]]}
+            inputs = {}
+            for name in sorted(lane.OWN_PATHS | set(lane.NATIVE_INPUTS) | fixtures):
+                entry = _git(root, "ls-tree", commit, "--", name).split()
+                if len(entry) < 4 or entry[0] not in {"100644", "100755"} or entry[1] != "blob":
+                    raise OracleApprovalError("Historical Oracle input is not a regular committed source")
+                inputs[name] = {"sha256":_sha(_git_bytes(root,"show",commit+":"+name)), "mode":entry[0], "blob":entry[2]}
+            if inputs != value["inputs"]:
+                continue
+            store = path.parent
+            if any(json.loads(_custody_read(root, failure)[1]).get("identity", {}).get("source") == commit
+                   and failure.parent.name > store.name for failure in lane.directory(root).glob("*/failure.json")):
+                continue
+            native.check_spec_runs(root, value["base"], commit, value["spec_runs"], store,
+                                   receipt_completed=value["completed_at"], mode="native")
+            if lane.native_proposal_witness(store, commit, tree, root=root) != value["native_proposal"]:
+                continue
+            export = value["export"]; archive = Path(export["archive_path"])
+            if (archive != store / "export/oracle-public.tar.gz"
+                    or _sha(_custody_read(root,archive)[1]) != export["receipt"]["archive"]["sha256"]
+                    or _sha(_custody_read(root,store/"export/oracle-export-receipt.json")[1]) != export["receipt_sha256"]
+                    or lane.member_inventory(store/"standalone") != export["standalone_inputs"]):
+                continue
+            lane.load_exporter(root).verify_archive(archive, export["receipt"])
+            if any(row["exit_code"] != 0 or _sha(_custody_read(root,store/(row["output_sha256"]+".log"))[1]) != row["output_sha256"]
+                   for row in export["runs"]):
+                continue
+            return str(path)
+        except (OSError,ValueError,KeyError,TypeError,AttributeError,OracleApprovalError,subprocess.CalledProcessError):
+            continue
+    return None
+
+
 def _deterministic_provenance(root: Path, commit: str, tree: str) -> str | None:
     """A VERIFIED deterministic-lane receipt that satisfies its lane's own contract for this
     exact commit and tree (owner decision). Native approval remains separately accepted.
@@ -3959,7 +4146,7 @@ def _deterministic_provenance(root: Path, commit: str, tree: str) -> str | None:
             except (OSError, ValueError, KeyError, TypeError, AttributeError, OracleApprovalError,
                     subprocess.CalledProcessError):
                 continue
-    return None
+    return _oracle_deterministic_provenance(root, commit, tree)
 
 
 def _verify_historical_commit(root: Path, commit: str, tree: str, *, expected_digest: str | None = None) -> None:
