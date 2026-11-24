@@ -810,7 +810,8 @@ def _completion_files(root: Path, proof: Path, proposal: Path) -> dict:
         name = _custody_name(root, path)
         if not name.startswith(".git/oracle/"):
             raise OracleApprovalError("Lifecycle proof escaped native custody")
-        files[name] = _sha(_custody_read(root, name)[1])
+        fact, raw = _custody_read(root, name)
+        files[name] = {"sha256":_sha(raw), "mode":fact["source"]["mode"]}
     def execution(path):
         add(path)
         record = json.loads(_custody_read(root, path)[1])
@@ -873,8 +874,9 @@ def _typed_lifecycle_completion(root: Path, origin: str, head: str) -> list[str]
             raise OracleApprovalError("Native lifecycle completion task or producer binding changed")
         if (record["tree"] != _git(root, "show", "-s", "--format=%T", record["source"]).strip()
                 or subprocess.run(["git", "merge-base", "--is-ancestor", origin, record["source"]], cwd=root, capture_output=True).returncode
-                or any(_sha(_custody_read(root, name)[1]) != digest for name, digest in record["files"].items())
-                or record["files"].get(record["proof_file"]) != record["proof_sha256"]):
+                or any({"sha256":fact["sha256"], "mode":fact["source"]["mode"]} != expected
+                       for name, expected in record["files"].items() for fact, _ in [_custody_read(root, name)])
+                or record["files"].get(record["proof_file"], {}).get("sha256") != record["proof_sha256"]):
             raise OracleApprovalError("Native lifecycle completion original proof changed")
         if _completion_files(root, root / record["proof_file"], proposal) != record["files"]:
             raise OracleApprovalError("Native lifecycle completion proof closure changed")
