@@ -1449,5 +1449,51 @@ class CategoryContentReuse(Fixture):
                         with self.assertRaises((ValueError,oracle.OracleApprovalError)):case.admit_current()
                 finally:case.doCleanups()
 
+
+    def test_review_context_invalidates_staged_and_committed_native_capture(self):
+        self.prepare_reuse()
+        name=str(self.capture_path)
+        evidence={name:oracle._sha(self.capture_path.read_bytes())}
+        def current():
+            tree=self.git('rev-parse','HEAD^{tree}')
+            inputs=oracle._candidate_inputs(self.root,tree,evidence)
+            try:
+                return oracle._current_validation_proofs(self.root,evidence,inputs,oracle._environment_digest(),{})
+            except (ValueError,OSError) as error:
+                self.fail('Review-context consumer leaked expected stale-capture refusal: '+str(error))
+        verified,invalid=current()
+        self.assertEqual(len(verified),1)
+        self.assertEqual(invalid,[])
+        self.assertIn('applicability',verified[0])
+        path=self.root/'source.mjs'
+        path.write_bytes(path.read_bytes()+b'// synthetic changed source')
+        self.git('add','source.mjs')
+        for state in ['staged','committed']:
+            with self.subTest(state=state):
+                if state=='committed':self.commit('synthetic changed source')
+                verified,invalid=current()
+                self.assertEqual(verified,[])
+                self.assertEqual(len(invalid),1)
+                self.assertEqual(invalid[0]['evidence_path'],name)
+                self.assertTrue(invalid[0]['reason'])
+        for path,raw in self.original_bytes.items():self.assertEqual(path.read_bytes(),raw)
+
+    def test_missing_original_output_refuses_category_reuse_as_validation_error(self):
+        self.prepare_reuse()
+        Path(self.original_record['output_file']).unlink()
+        tree=self.git('rev-parse','HEAD^{tree}')
+        contract=v.verify(self.root,'HEAD')
+        row=next(item for item in contract['commands'] if item['category']=='focused')
+        try:
+            v.reusable_category(self.root,tree,contract,row)
+        except ValueError as error:
+            self.assertTrue(str(error))
+        except OSError as error:
+            self.fail('Category reuse leaked missing-output operating-system error: '+str(error))
+        else:
+            self.fail('Missing original output did not refuse category reuse')
+        self.assertEqual(self.capture_path.read_bytes(),self.original_bytes[self.capture_path])
+        self.assertEqual(self.original_record_path.read_bytes(),self.original_bytes[self.original_record_path])
+
 if __name__ == '__main__':
     unittest.main()
