@@ -2,103 +2,30 @@
   "schema": "boc.validation-contract/v2",
   "kind": "oracle-spec/1",
   "stamp": {
-    "engine": "codex",
-    "model": "gpt-6.1-sol",
+    "engine": "claude",
+    "model": "claude-fable-5-2",
     "oracle_sha256": "f1bd633497fa446a6e70a239452280bfbe5d5b4f7d306f3adde5c7c419839e18",
     "host": "aio",
-    "time": "2026-11-23T20:18:45Z",
-    "origin_main": "144c7ae07469bec33e64fe205bde41c397312986",
-    "request_sha256": "e135e779edbd079304b07574dceda9926263eb0a083a9af17aab937d5bc76be8",
-    "proposal_sha256": "c4de0950083be23aaa0b55427f3cbb1ccb4dbf131976f642085a48dcb61de5e0"
+    "time": "2026-11-24T01:39:34Z",
+    "origin_main": "b994663ddc5e6e804f39f050ff1ec0e84c3845be",
+    "request_sha256": "1ffe57902ba447380a4b3120c739ce98db5ed09710b257330c8d8a1864cb2253",
+    "proposal_sha256": "eeb5167cb844d56ba9f39aad8ecf8993ca78bf3feec7f3d57f2ab01afbe9bdf9"
   },
   "selection": {
     "acceptance": [
-      "The build declaration identifies the existing project and schema, selects only registered runner types and intended npm scripts, and contains no arbitrary command or argument-vector execution fields.",
-      "Every tracked path is routed appropriately. Only plain documentation is non-runtime; skills, agent instructions, tool and contract Markdown, package configuration and the build declaration remain executable.",
-      "Every change class retains sanity and sealed-spec checks. Documentation selection preserves both checks, and every non-documentation class selects its changed Node tests without adding unrelated categories.",
-      "The new npm script invokes the existing validation controller's CI action against origin/main while preserving the existing release-check script. Isolated repository cases demonstrate documentation admission, rejection of absent or invalid specifications and out-of-scope changes, execution of a valid specification's selected commands, and refusal of failed, empty, skipped or incomplete test results.",
-      "The definition selects privacy and publication checks for sanity, package and contract checks for their declared path groups, and the sealed-spec script through its designated runner. Local checks make no claim of host enrollment, publication authority or live client acceptance.",
-      "The publication allowlist admits exactly the new top-level build-project.json entry while retaining rejection of an unlisted sibling, private Vault paths and reachable Vault history, and preserving existing release-workflow boundaries.",
-      "The package release advances from 0.0.228 to 0.0.229 consistently across canonical versions, lockfile root versions, active product versions, generated product metadata and client manifests, the skill-release manifest and the README release marker. Generated manifests retain canonical product parity and existing connection ownership; independently versioned skills and unrelated runtime content remain unchanged.",
-      "Reviewer execution retains a 180-second SLA, records BREACHED when crossed and permits a complete assessment before the separate 600-second hard limit. Hard timeout and output overflow retain bounded original output, yield no approval and clean up only the registered reviewer process group. Original delivery clocks and historical failures remain intact.",
-      "Full and delta proposal dispatch supply the complete current governing documents in precedence order with exact path, byte-count and SHA-256 headers through the existing bounded stdin transport. Review instructions require governing criteria first and reuse of supplied unchanged bodies; missing or changed governing inputs cannot produce approval.",
-      "A null delta design retains the prior feature design, while an explicit replacement remains subject to existing design and test-plan validation. Native materialization and subsequent consumption preserve prior criteria, categories, fixtures, mapping purposes, immutable revision bindings and historical records.",
-      "Unquoted integer and decimal values of keys ending exactly in _ms are excluded only from phone detection, including escaped-key representations in operational evidence. Existing integer _bytes behavior remains unchanged.",
-      "Phone values under other keys, quoted numeric values, additional fields, bare text and keys ending in _ms_note remain rejected. Millisecond exemptions do not suppress non-synthetic email or prohibited identifier-digest findings.",
-      "Complete operational-file scanning accepts native timing records while rejecting otherwise equivalent records containing a phone in an additional field."
+      "When the Claude reviewer process exits non-zero and its standard output is a JSON envelope, either a single object or an event list with exactly one result event, that reports an error with a non-empty result, the raised launcher error keeps the existing process-failure wording and diagnostics location and additionally names the reported reason, bounded to its last 2000 characters.",
+      "When the Claude reviewer process exits non-zero with non-JSON output, an envelope without an error flag or reason, or an event list without exactly one result event, the raised error is exactly the existing plain process-failure message with the diagnostics location.",
+      "A non-zero reviewer exit always raises and never yields an answer, approval, retry or alternate engine; failures of the other engine keep their existing message, and the existing zero-exit error-envelope behavior is unchanged."
     ],
     "acceptance_tests": [
       {
         "covers": [
-          3,
-          8
-        ],
-        "module": "tests/validation-contract.test.mjs",
-        "purpose": "Preserve validation class, specification, scope, revision and complete-result admission boundaries exercised by the existing controller; verify full proposal dispatch supplies complete governing inputs."
-      },
-      {
-        "covers": [
           0,
           1,
-          2,
-          3,
-          4,
-          5
-        ],
-        "module": "tests/build-project.test.mjs",
-        "purpose": "Verify the declaration, effective class and path selection, exact npm script wiring, and isolated success and refusal cases through the selected validation entrypoint."
-      },
-      {
-        "covers": [
-          5
-        ],
-        "module": "tests/publication-safety.test.mjs",
-        "purpose": "Preserve unknown-path refusal, private-path and reachable-history protection, and existing release-workflow boundaries."
-      },
-      {
-        "covers": [
-          6
-        ],
-        "module": "tests/release-version.test.mjs",
-        "purpose": "Verify patch advancement, canonical release consistency, documentation markers and preservation of independent component versions."
-      },
-      {
-        "covers": [
-          6
-        ],
-        "module": "tests/package-model.test.mjs",
-        "purpose": "Verify generated product metadata and client manifest parity with canonical product versions and descriptions."
-      },
-      {
-        "covers": [
-          6
-        ],
-        "module": "tests/muse-package.test.mjs",
-        "purpose": "Verify Muse manifest and metadata parity while preserving composed content and the existing host-managed connection."
-      },
-      {
-        "covers": [
-          7
-        ],
-        "module": "tests/oracle-lifecycle.test.mjs",
-        "purpose": "Exercise actual bounded reviewer processes across SLA completion, hard timeout, output overflow, retained output and registered-group cleanup using short controlled timing."
-      },
-      {
-        "covers": [
-          8,
-          9
+          2
         ],
         "module": "tests/oracle-implementation-spec.test.mjs",
-        "purpose": "Verify full and delta proposal transport and native feature-delta materialization, reconstruction and refusal boundaries without launching a model."
-      },
-      {
-        "module": "tests/customer-data-privacy.test.mjs",
-        "covers": [
-          10,
-          11,
-          12
-        ],
-        "purpose": "Verify typed timing normalization, retained privacy rejection boundaries and complete operational-file scanning."
+        "purpose": "Run the launcher spec suite through a fake process runner to prove a non-zero error envelope surfaces its reported reason with the diagnostics location, that unreadable or reasonless output keeps the plain failure message, and that no answer is produced on failure."
       }
     ],
     "categories": [
@@ -109,89 +36,28 @@
       },
       {
         "fixtures": [
-          "tests/validation_contract_test.py",
-          "tests/oracle_lifecycle_test.py",
           "tests/oracle_spec_test.py",
-          "tests/oracle_review_series.py",
           "tests/published_fixture.py",
           "tests/helpers/isolated-test-cohort.mjs"
         ],
-        "name": "interactions",
+        "name": "focused",
         "tests": [
-          "tests/validation-contract.test.mjs",
-          "tests/publication-safety.test.mjs",
-          "tests/release-version.test.mjs",
-          "tests/package-model.test.mjs",
-          "tests/muse-package.test.mjs",
-          "tests/oracle-lifecycle.test.mjs",
-          "tests/oracle-implementation-spec.test.mjs",
-          "tests/customer-data-privacy.test.mjs"
-        ]
-      },
-      {
-        "fixtures": [],
-        "name": "acceptance",
-        "tests": [
-          "tests/build-project.test.mjs"
+          "tests/oracle-implementation-spec.test.mjs"
         ]
       }
     ],
-    "change_class": "feature",
-    "design": "Vault/docs/design/family-build-definition.md",
-    "reason": "Preserve the existing feature contract and design while adding the owning privacy module for a numeric timing false positive. This module exercises both normalization and its file-scanning consumers; unrelated suites and recurrence additions are unnecessary. Retain every prior selection and historical outcome.",
-    "revision_of": "2f083090c196acd37f190dc062bb8c44ac152f2b1fa3fda8767dd045bc5e646e",
+    "change_class": "bug_fix",
+    "design": null,
+    "reason": "A small deterministic diagnostic correction in the review launcher: a failed reviewer process discarded the reason its own output envelope already carried. The owning spec suite, run through its existing Node wrapper, gives a fail-before and pass-after reproduction without launching a model. No authentication, package, interaction or recurrence coverage is affected, so no wider category is selected.",
+    "revision_of": "9da5698e3a360454a73a9ed8c78d3e185590877d4d811c6f8344670d00ac8802",
     "scope_paths": [
-      "README.md",
-      "build-project.json",
-      "clients/claude/plugins/bos/.bos-product.json",
-      "clients/claude/plugins/bos/.claude-plugin/plugin.json",
-      "clients/claude/plugins/education-center/.bos-product.json",
-      "clients/claude/plugins/education-center/.claude-plugin/plugin.json",
-      "clients/codex/plugins/bos/.bos-product.json",
-      "clients/codex/plugins/bos/.codex-plugin/plugin.json",
-      "clients/codex/plugins/education-center/.bos-product.json",
-      "clients/codex/plugins/education-center/.codex-plugin/plugin.json",
-      "clients/copilot/products/bos/.bos-product.json",
-      "clients/copilot/products/education-center/.bos-product.json",
-      "clients/gemini/extensions/bos/.bos-product.json",
-      "clients/gemini/extensions/bos/gemini-extension.json",
-      "clients/gemini/extensions/bos/plugin.json",
-      "clients/gemini/extensions/education-center/.bos-product.json",
-      "clients/gemini/extensions/education-center/gemini-extension.json",
-      "clients/gemini/extensions/education-center/plugin.json",
-      "clients/muse/plugins/bos/.bos-product.json",
-      "clients/muse/plugins/bos/.muse-plugin/plugin.json",
-      "clients/muse/plugins/education-center/.bos-product.json",
-      "clients/muse/plugins/education-center/.muse-plugin/plugin.json",
-      "package-lock.json",
-      "package-manifest.json",
-      "package.json",
-      "products/bos/product.json",
-      "products/education-center/product.json",
-      "scripts/check-customer-data.mjs",
-      "scripts/check-publication-safety.mjs",
-      "skill-release-manifest.json",
-      "tests/build-project.test.mjs",
-      "tests/customer-data-privacy.test.mjs",
-      "tests/muse-package.test.mjs",
-      "tests/oracle-implementation-spec.test.mjs",
-      "tests/oracle-lifecycle.test.mjs",
-      "tests/oracle_lifecycle_test.py",
-      "tests/oracle_spec_test.py",
-      "tests/package-model.test.mjs",
-      "tests/publication-safety.test.mjs",
-      "tests/release-version.test.mjs",
-      "tests/validation-contract.test.mjs",
-      "tests/validation_contract_test.py",
       "tools/oracle_approval.py",
-      "tools/oracle_lifecycle.py",
-      "tools/validation-contract.md",
-      "tools/validation-selection.json",
-      "tools/validation_contract.py"
+      "tests/oracle_spec_test.py",
+      "tools/validation-selection.json"
     ]
   },
-  "base_commit": "41e120f6df4c77afaf1866ce262ce4fb81c2f68b",
-  "base_tree": "9539abdd4e44a75d9b59b662b30b930832e9c9fc",
+  "base_commit": "b994663ddc5e6e804f39f050ff1ec0e84c3845be",
+  "base_tree": "fdf2432932f093d3812bffad1231efa46e7f0c10",
   "catalog_sha256": "9a96f1cd2a973457f9da681dddcc5161aa8ffda188b092d849e5bc83999391c8",
   "runtime": {
     "node": "v26.12.0",
@@ -201,8 +67,8 @@
     "architecture": "x86_64",
     "options_sha256": "ebc442c160f8629073a82976daadaba1d95a60a38d768c81c8eb06598aedcac5"
   },
-  "proposal_sha256": "c4de0950083be23aaa0b55427f3cbb1ccb4dbf131976f642085a48dcb61de5e0",
-  "review_sha256": "f3c9bbf8e6057b1d66372c2b350d250ab1da4ec16b21ab16291cf8feaddff800",
+  "proposal_sha256": "eeb5167cb844d56ba9f39aad8ecf8993ca78bf3feec7f3d57f2ab01afbe9bdf9",
+  "review_sha256": "bd0b762562348be12075e2a2f2c3d20854a265ec579eba8a2ea4ac1b34231158",
   "commands": [
     {
       "category": "sanity",
@@ -215,74 +81,33 @@
       "fixtures": []
     },
     {
-      "category": "interactions",
+      "category": "focused",
       "argv": [
         "node",
         "--test",
         "--test-reporter=tap",
         "--test-concurrency=1",
-        "tests/validation-contract.test.mjs",
-        "tests/publication-safety.test.mjs",
-        "tests/release-version.test.mjs",
-        "tests/package-model.test.mjs",
-        "tests/muse-package.test.mjs",
-        "tests/oracle-lifecycle.test.mjs",
-        "tests/oracle-implementation-spec.test.mjs",
-        "tests/customer-data-privacy.test.mjs"
+        "tests/oracle-implementation-spec.test.mjs"
       ],
       "tests": [
-        "tests/validation-contract.test.mjs",
-        "tests/publication-safety.test.mjs",
-        "tests/release-version.test.mjs",
-        "tests/package-model.test.mjs",
-        "tests/muse-package.test.mjs",
-        "tests/oracle-lifecycle.test.mjs",
-        "tests/oracle-implementation-spec.test.mjs",
-        "tests/customer-data-privacy.test.mjs"
+        "tests/oracle-implementation-spec.test.mjs"
       ],
       "fixtures": [
-        "tests/validation_contract_test.py",
-        "tests/oracle_lifecycle_test.py",
         "tests/oracle_spec_test.py",
-        "tests/oracle_review_series.py",
         "tests/published_fixture.py",
         "tests/helpers/isolated-test-cohort.mjs"
       ]
-    },
-    {
-      "category": "acceptance",
-      "argv": [
-        "node",
-        "--test",
-        "--test-reporter=tap",
-        "--test-concurrency=1",
-        "tests/build-project.test.mjs"
-      ],
-      "tests": [
-        "tests/build-project.test.mjs"
-      ],
-      "fixtures": []
     }
   ],
   "delivery_policy": {
-    "sla_seconds": 300,
+    "sla_seconds": 180,
     "clock_owner": "build_host",
     "clock_start": "original_insertion",
     "completion": "verified_remote_git",
     "retries_reset_clock": false,
-    "reasoning_effort": "medium",
+    "reasoning_effort": "low",
     "maximum_reasoning_effort": "medium"
   },
-  "design_binding": {
-    "design": "Vault/docs/design/family-build-definition.md",
-    "design_sha256": "e65f653af0e9aee43a7944d09511f1e04baf4cb17ac7d50cff54c39b678d5c09",
-    "plan": "Vault/docs/design/family-build-definition.test-plan.json",
-    "plan_sha256": "53e79d35d9cd49b14c2a93c31be38fc13615164912d94780aa1843d42291373f",
-    "tests": [
-      "tests/build-project.test.mjs",
-      "tests/publication-safety.test.mjs"
-    ]
-  },
-  "contract_sha256": "9da5698e3a360454a73a9ed8c78d3e185590877d4d811c6f8344670d00ac8802",
-  "seal": "cfdce017489437b46014bf997c08d9c74223bae6498844aef08f87271a9e962f"
+  "contract_sha256": "7166ebcd94bce2b3e7235cbb7856fd6f7547acbc3bd084c7eef15fdbc159932d",
+  "seal": "a400d7a07577c00af070662aba77c573667c0e5be23ae90e0eed85967ac2416b"
 }
