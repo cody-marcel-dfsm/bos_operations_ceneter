@@ -4,12 +4,12 @@
   "stamp": {
     "engine": "claude",
     "model": "claude-opus-5-5",
-    "oracle_sha256": "de76ce6e2550bf626c7f4be33a3d9d741023142850b3c635fe2d6845012173b6",
+    "oracle_sha256": "87a88409be2c331c1ccf524eee5f7c123071fc34186568800b7c59d1bd8b0fe9",
     "host": "Codys-MacBook-Pro.local",
-    "time": "2026-11-23T23:44:18Z",
+    "time": "2026-11-24T00:33:48Z",
     "origin_main": "b994663ddc5e6e804f39f050ff1ec0e84c3845be",
-    "request_sha256": "fc7562b6053f376e51682f5b2c5654862ae9297b1581c2b29bb956a5093207a3",
-    "proposal_sha256": "451d510301963df99909b05d08a04b77da292947d560f9cd8eb232b91cf40d1b"
+    "request_sha256": "4524cc1febdbd3cec87fb6f64f083ead5824243af735d6c84375cd9d51d10925",
+    "proposal_sha256": "ad2bf7de104d13769f7ab88bc481056bb95b4efd99811e26859f4e2bb3819f79"
   },
   "selection": {
     "acceptance": [
@@ -56,7 +56,8 @@
       "Portable feature test-plan binding enforces the same rules as the canonical binding: a 65536-byte raw plan limit, closed plan and row key sets, exact kind, design path and design digest, a nonempty feature, a nonempty list of safe runtime paths each inside the selected scope under the same fnmatch semantics, planned modules that are selected, unique and carry nonempty purposes and covers, and coverage that exactly equals the listed runtime paths. A finite synthetic parity matrix shows that valid portable output equals the canonical binding and that every malformed, out-of-scope or mismatched case is refused. The portable code stays standard-library only and keeps its existing contract versions.",
       "Before any hashing or sealing, portable spec materialization refuses every sealed value that matches the canonical secret-like or local-absolute-path patterns, including reason, acceptance criteria, test-mapping purposes and nested provenance fields. Diagnostics name the offending field and never echo its value. Valid synthetic output and the existing seal formula and identity stay unchanged, and the tests use assembled synthetic values only.",
       "The publication-safety CI job selects the explicit standard ubuntu-24.04 x64 runner instead of a moving label. It keeps the pinned Python 3.13.5 runtime, pinned action SHAs, locked dependency and model hashes, component-present setup, closed versus general dispatch and exact-source checks unchanged. A focused assertion against the actual workflow fails on the moving-label source and passes after the correction. The existing portable export/CI consumer also checks the publication job runner and Python pin. Actual exact-source required CI must pass, with no skip, attestation, runtime fallback or gate waiver.",
-      "A genuine approved native revision that changes only selector provenance, revision or evidence bookkeeping may reuse an original complete positive focused or interactions category result without invoking its command again. This requires identical selected criteria, mappings, scopes, commands, fixtures, catalog and runtime, an exact source ancestry, and unchanged non-selector source bytes and modes, declared dependencies, configuration, authority, environment and closed runtime-artifact inputs. Original record, output, stream and capture custody must also still verify. The reused result keeps its original commit, tree, contract, output and time with a distinct current applicability proof and nothing copied, resealed or relabeled. Sanity always executes fresh. Any changed source, test, fixture, dependency, configuration, catalog, criterion, mapping, command, runtime, environment, authority or origin; any missing, deleted, symlinked, untracked or staged drift; any orphaned, fake or unapproved revision; any changed record, output, stream or index; any partial, failing, skipped or cancelled result; or any unknown legacy closure refuses reuse. Current exact-tree admission behavior is unchanged."
+      "A genuine approved native revision that changes only selector provenance, revision or evidence bookkeeping may reuse an original complete positive focused or interactions category result without invoking its command again. This requires identical selected criteria, mappings, scopes, commands, fixtures, catalog and runtime, an exact source ancestry, and unchanged non-selector source bytes and modes, declared dependencies, configuration, authority, environment and closed runtime-artifact inputs. Original record, output, stream and capture custody must also still verify. The reused result keeps its original commit, tree, contract, output and time with a distinct current applicability proof and nothing copied, resealed or relabeled. Sanity always executes fresh. Any changed source, test, fixture, dependency, configuration, catalog, criterion, mapping, command, runtime, environment, authority or origin; any missing, deleted, symlinked, untracked or staged drift; any orphaned, fake or unapproved revision; any changed record, output, stream or index; any partial, failing, skipped or cancelled result; or any unknown legacy closure refuses reuse. Current exact-tree admission behavior is unchanged.",
+      "Every unittest method of the category-content-reuse class runs as its own job through the existing exact-discovery isolated per-test cohort route. The per-job deadline stays at 120000 ms, concurrency stays at 4, and the supporting unittest fixture keeps its original bytes. Every declared test is discovered and executed exactly once, with unchanged source, mode, runtime, environment, output custody and terminal-report requirements. The class keeps the default class-level setup and teardown hooks. A missing, failed, timed-out or skipped unit still keeps the whole focused category from passing."
     ],
     "acceptance_tests": [
       {
@@ -72,7 +73,8 @@
           26,
           40,
           41,
-          42
+          42,
+          44
         ],
         "module": "tests/oracle-implementation-spec.test.mjs",
         "purpose": "Exercise genuine synthetic native capture, materialization, archive reconstruction, historical compatibility and source-movement refusal."
@@ -557,8 +559,8 @@
     ],
     "change_class": "deep_bug_fix",
     "design": null,
-    "reason": "Additive deep-fix revision for the native validation consumers. It adds one criterion that lets a genuine evidence-only selector supersession reuse an original complete positive category result only under independently proven identical selected semantics and unchanged inputs and custody. Sanity always runs fresh, and every adversarial change refuses reuse. Existing focused and interaction modules that own contract, review-series, command-coverage and publication-admission behavior prove it.",
-    "revision_of": "990d28a1dd3dd19dea3cb7a935dcbe5f649bd73a142e45682b1437bb3a226887",
+    "reason": "Additive revision: each method of the category-content-reuse unittest class becomes its own job in the existing per-test isolated cohort split. The current per-job deadline, concurrency, exact discovery and exactly-once inventory stay unchanged, as do the source, mode, runtime and environment custody checks. All prior criteria, categories, modules, fixtures and mappings are retained.",
+    "revision_of": "715549a76ca53dd29f213afc5e83fdf8a44e8ae2808839a25eb4bba5ccbff088",
     "scope_paths": [
       ".github/workflows/publication-safety.yml",
       "README.md",
@@ -1084,8 +1086,8 @@
       "tools/vault_index.py"
     ]
   },
-  "base_commit": "f97f983fc13f71f5fc444010793c8c3407481839",
-  "base_tree": "9f745d17bf6cb0a5623616933c5814515c0d9e33",
+  "base_commit": "bafd9d486febe784efa2203f9788fd62b9141b42",
+  "base_tree": "289e575b7020ed05633e1734dda0aaafc3d97ffb",
   "catalog_sha256": "51ee7ae8c1533604f7b2c68b9efba9d1b9d6f340d724d7c208dba434325859b3",
   "runtime": {
     "node": "v22.11.0",
@@ -1095,8 +1097,8 @@
     "architecture": "arm64",
     "options_sha256": "ebc442c160f8629073a82976daadaba1d95a60a38d768c81c8eb06598aedcac5"
   },
-  "proposal_sha256": "451d510301963df99909b05d08a04b77da292947d560f9cd8eb232b91cf40d1b",
-  "review_sha256": "442549e41c3b954f4ed9d3e2782170ffda217954ae14a54ce61e4c1f5f790a27",
+  "proposal_sha256": "ad2bf7de104d13769f7ab88bc481056bb95b4efd99811e26859f4e2bb3819f79",
+  "review_sha256": "c38c4a5345c791aa34f605078b18eb10ef65b2a39da728eb95e967eafb8c936b",
   "commands": [
     {
       "category": "sanity",
@@ -1271,6 +1273,6 @@
     "reasoning_effort": "medium",
     "maximum_reasoning_effort": "medium"
   },
-  "contract_sha256": "715549a76ca53dd29f213afc5e83fdf8a44e8ae2808839a25eb4bba5ccbff088",
-  "seal": "f5df936a2442282fbc503f34b3f915b93fab36bbd54b70e365e4ab3b969c3b6f"
+  "contract_sha256": "807886553524054ed3993fadcc3853aa171e55f9c4699564a9244ccdbf2b01d6",
+  "seal": "5cfedc1f9b3f6e7152bbbc7cbeab0eefaf02d9d755a11b791294fcc3538dd681"
 }
