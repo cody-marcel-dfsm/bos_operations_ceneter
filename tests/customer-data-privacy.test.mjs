@@ -762,3 +762,56 @@ test("local typed-slot scanning completes bounded synthetic spacing checks", () 
   assert.equal(result.status, 0, result.stderr);
   assert.equal(result.stdout.trim(), "validated");
 });
+
+
+test("complete TAP-framed nanosecond scalars retain every digit across supported quotes", () => {
+  const digits = ["1702", "867", "5309", "12345678"].join("");
+  assert.equal(digits.length, 19);
+  for (const key of ["mtime_ns", "ctime_ns"]) {
+    let whole = JSON.stringify({[key]: digits});
+    for (let level = 0; level < 4; level++) {
+      for (const continuation of ["\n# ", "\r\n# "]) {
+        for (let split = 1; split < digits.length; split++) {
+          const text = whole.replace(digits, digits.slice(0, split) + continuation + digits.slice(split));
+          const phoneView = byteCountPrivacyText(text);
+          assert.equal(phoneView, whole);
+          assert.deepEqual(customerDataFindings(operationalPrivacyText(text, {}), "synthetic-tap.log", new Set(),
+            operationalPrivacyText(phoneView, {})), []);
+        }
+        const text = whole.replace(digits, [...digits].join(continuation));
+        assert.equal(byteCountPrivacyText(text), whole);
+      }
+      whole = JSON.stringify(whole);
+    }
+  }
+});
+
+test("nanosecond TAP recognition preserves unknown structures and contact or digest checks", () => {
+  const digits = ["1702", "867", "5309", "12345678"].join("");
+  const split = digits.slice(0, 11) + "\n# " + digits.slice(11);
+  for (const text of [
+    `{"other_mtime_ns":"${split}"}`, `{"mtime_ns_note":"${split}"}`, `{"MTIME_NS":"${split}"}`,
+    `{"mtime_ns":${split}}`, `{"mtime_ns":"${split}`, `{"mtime_ns":"${split}x"}`,
+    `{"mtime_ns":"${split.slice(0, -1)}"}`, `{"mtime_ns":"${split}0"}`,
+    `{"mtime_ns":"${digits.slice(0, 11)}\n## ${digits.slice(11)}"}`,
+    `{"mtime_ns":"${digits.slice(0, 11)}\n # ${digits.slice(11)}"}`,
+    `{"mtime_ns":"${digits.slice(0, 11)}\n#\t${digits.slice(11)}"}`,
+    `{"mtime_ns\\":\\"${split}"}`
+  ]) assert.equal(byteCountPrivacyText(text), text);
+  const phone = ["202", "867", "5309"].join("");
+  for (const value of [phone, "1" + phone]) {
+    const text = JSON.stringify({mtime_ns: value, ctime_ns: value});
+    assert(customerDataFindings(text, "synthetic-tap.log", new Set(), byteCountPrivacyText(text))
+      .some(row => row.endsWith("non-fictional phone number")));
+  }
+  const timestamp = `{"mtime_ns":"${split}"}`;
+  const contact = ["person", "production-domain.invalidated"].join("@");
+  const sentinel = "synthetic protected credential sentinel";
+  const text = timestamp + "\n" + JSON.stringify({contact, phone, credential: sentinel});
+  const findings = customerDataFindings(operationalPrivacyText(text, {}), "synthetic-tap.log", new Set([sha256(sentinel)]),
+    operationalPrivacyText(byteCountPrivacyText(text), {}));
+  for (const suffix of ["non-synthetic email address", "non-fictional phone number", "prohibited customer identifier digest"])
+    assert(findings.some(row => row.endsWith(suffix)));
+  assert(customerDataFindings(timestamp, "synthetic-tap.log", new Set([sha256(digits)]), byteCountPrivacyText(timestamp))
+    .some(row => row.endsWith("prohibited customer identifier digest")));
+});

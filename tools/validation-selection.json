@@ -4,12 +4,12 @@
   "stamp": {
     "engine": "claude",
     "model": "claude-opus-5-5",
-    "oracle_sha256": "de76ce6e2550bf626c7f4be33a3d9d741023142850b3c635fe2d6845012173b6",
+    "oracle_sha256": "87a88409be2c331c1ccf524eee5f7c123071fc34186568800b7c59d1bd8b0fe9",
     "host": "Codys-MacBook-Pro.local",
-    "time": "2026-11-24T00:39:24Z",
+    "time": "2026-11-24T01:14:49Z",
     "origin_main": "b994663ddc5e6e804f39f050ff1ec0e84c3845be",
-    "request_sha256": "e9cf58d80a2cf20014b84b543bb174467316f00331e5c406fb3eb76058fa3191",
-    "proposal_sha256": "a006e43abaf2c2d57c0f2c9bda6adc0a96b2b069d0831d506cf1420717d83a86"
+    "request_sha256": "7d26553a565502b5e2a6303f7ec649588f42223e3fcb2c1e9ab7c0f0d0a204e5",
+    "proposal_sha256": "baccb7f9b3aa21e7a76f2fc4e03725b74dd1daa8dd39fb33af3b05ea577c9996"
   },
   "selection": {
     "acceptance": [
@@ -57,7 +57,8 @@
       "Before any hashing or sealing, portable spec materialization refuses every sealed value that matches the canonical secret-like or local-absolute-path patterns, including reason, acceptance criteria, test-mapping purposes and nested provenance fields. Diagnostics name the offending field and never echo its value. Valid synthetic output and the existing seal formula and identity stay unchanged, and the tests use assembled synthetic values only.",
       "The publication-safety CI job selects the explicit standard ubuntu-24.04 x64 runner instead of a moving label. It keeps the pinned Python 3.13.5 runtime, pinned action SHAs, locked dependency and model hashes, component-present setup, closed versus general dispatch and exact-source checks unchanged. A focused assertion against the actual workflow fails on the moving-label source and passes after the correction. The existing portable export/CI consumer also checks the publication job runner and Python pin. Actual exact-source required CI must pass, with no skip, attestation, runtime fallback or gate waiver.",
       "A genuine approved native revision that changes only selector provenance, revision or evidence bookkeeping may reuse an original complete positive focused or interactions category result without invoking its command again. This requires identical selected criteria, mappings, scopes, commands, fixtures, catalog and runtime, an exact source ancestry, and unchanged non-selector source bytes and modes, declared dependencies, configuration, authority, environment and closed runtime-artifact inputs. Original record, output, stream and capture custody must also still verify. The reused result keeps its original commit, tree, contract, output and time with a distinct current applicability proof and nothing copied, resealed or relabeled. Sanity always executes fresh. Any changed source, test, fixture, dependency, configuration, catalog, criterion, mapping, command, runtime, environment, authority or origin; any missing, deleted, symlinked, untracked or staged drift; any orphaned, fake or unapproved revision; any changed record, output, stream or index; any partial, failing, skipped or cancelled result; or any unknown legacy closure refuses reuse. Current exact-tree admission behavior is unchanged.",
-      "Every unittest method of the category-content-reuse class runs as its own job through the existing exact-discovery isolated per-test cohort route. The per-job deadline stays at 120000 ms, concurrency stays at 4, and the supporting unittest fixture keeps its original bytes. Every declared test is discovered and executed exactly once, with unchanged source, mode, runtime, environment, output custody and terminal-report requirements. The class keeps the default class-level setup and teardown hooks. A missing, failed, timed-out or skipped unit still keeps the whole focused category from passing."
+      "Every unittest method of the category-content-reuse class runs as its own job through the existing exact-discovery isolated per-test cohort route. The per-job deadline stays at 120000 ms, concurrency stays at 4, and the supporting unittest fixture keeps its original bytes. Every declared test is discovered and executed exactly once, with unchanged source, mode, runtime, environment, output custody and terminal-report requirements. The class keeps the default class-level setup and teardown hooks. A missing, failed, timed-out or skipped unit still keeps the whole focused category from passing.",
+      "The customer-data scanner's phone-detection view removes only exact Node TAP newline-comment continuation framing that falls inside a complete quoted value of exactly nineteen decimal digits under an mtime_ns or ctime_ns key, including the scanner's existing escaped-quote representation, so the reassembled contiguous nineteen-digit value is not reported as a phone number. Every digit and every byte outside that framing is kept, and the email, secret, identifier and blocked-digest checks still read the unmodified original text. Committed synthetic tests built from reconstructed tokens must cover: splits at each digit position, LF and CRLF continuations, and escaped forms, which must not be reported; ordinary ten- and eleven-digit non-fictional phone numbers, unrelated keys, malformed, partial or non-nineteen-digit values, and true phone, email, secret or blocked-digest content adjacent to a normalized value, which must still be reported; and the existing bounded adversarial spacing-performance cases, which must keep passing. The change adds no path or key exemption, no general phone allowlist, no raw-evidence edit, no timeout or budget increase, and no change to worker policy or input binding."
     ],
     "acceptance_tests": [
       {
@@ -230,7 +231,8 @@
           36,
           37,
           38,
-          39
+          39,
+          45
         ],
         "module": "tests/customer-data-privacy.test.mjs",
         "purpose": "Reproduces and verifies the bounded Git transport exemption while contacts and unsafe variants remain flagged."
@@ -559,8 +561,8 @@
     ],
     "change_class": "deep_bug_fix",
     "design": null,
-    "reason": "Ordinary successor revision binding the actual current source baseline for a genuine native before and after witness of the per-test split of the category-content-reuse class. All prior criteria, categories, modules, fixtures, mappings and selected commands are retained verbatim; no limit, profile, runtime or gate changes.",
-    "revision_of": "807886553524054ed3993fadcc3853aa171e55f9c4699564a9244ccdbf2b01d6",
+    "reason": "Adds one acceptance criterion for a small, deterministic privacy-scanner change. The new cases go in the existing focused customer-data privacy test module. Those added cases must fail against the current scanner and pass after the scanner change. No new modules, fixtures, budgets or categories.",
+    "revision_of": "d66e769984bafa14bca5a3132b9a7df39d9b9b68ad76e8be2140e8d5f15d60c0",
     "scope_paths": [
       ".github/workflows/publication-safety.yml",
       "README.md",
@@ -1086,8 +1088,8 @@
       "tools/vault_index.py"
     ]
   },
-  "base_commit": "fd48589aca48c1d1e29cd78542281af9bb2475f4",
-  "base_tree": "bca93516fd218312ec21161ea940f55b875a4113",
+  "base_commit": "272e17f4b08961253623b07d1b20cd94c4aea362",
+  "base_tree": "218aa54846b1efe6ba1e899282909f50cb15d45a",
   "catalog_sha256": "51ee7ae8c1533604f7b2c68b9efba9d1b9d6f340d724d7c208dba434325859b3",
   "runtime": {
     "node": "v22.11.0",
@@ -1097,8 +1099,8 @@
     "architecture": "arm64",
     "options_sha256": "ebc442c160f8629073a82976daadaba1d95a60a38d768c81c8eb06598aedcac5"
   },
-  "proposal_sha256": "a006e43abaf2c2d57c0f2c9bda6adc0a96b2b069d0831d506cf1420717d83a86",
-  "review_sha256": "1cdbe84eea66fc3af0fa8ee23faa4225edeb92f613ef2a8d18d8ab794b574d72",
+  "proposal_sha256": "baccb7f9b3aa21e7a76f2fc4e03725b74dd1daa8dd39fb33af3b05ea577c9996",
+  "review_sha256": "d9cea11f8124963a327246abca94c0f284c822c223bbd6e89236700833901366",
   "commands": [
     {
       "category": "sanity",
@@ -1273,6 +1275,6 @@
     "reasoning_effort": "medium",
     "maximum_reasoning_effort": "medium"
   },
-  "contract_sha256": "d66e769984bafa14bca5a3132b9a7df39d9b9b68ad76e8be2140e8d5f15d60c0",
-  "seal": "dd7d9f064f62d1eb7fe143009da20ae97a9401c9bf0846f8b9ab64732d923ba2"
+  "contract_sha256": "bbac78974e6a11a55c88cbc511bfb11b7bc142631ade4eab7ff7bc7049268d93",
+  "seal": "27294f2a01db2c671633eba0be54785202d81826299bae25eae9e0f66cb0cff2"
 }
