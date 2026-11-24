@@ -310,3 +310,49 @@ test('closed native Oracle profile boundaries',async()=>{
   assert.equal(result.status,0,result.stdout+result.stderr);assert.match(result.stderr,/Ran [1-9][0-9]* tests? in/u);assert.match(result.stderr,/\nOK\s*$/u);assert.doesNotMatch(result.stderr,/skipped=/u);
  }finally{await rm(work,{recursive:true,force:true});}
 });
+
+const portableAcceptanceSuite=String.raw`
+import io,json,os,pathlib,subprocess,sys,unittest
+from tools import deterministic_oracle as d
+class PortableAcceptance(unittest.TestCase):
+ def setUp(self):self.root=pathlib.Path(sys.argv[1])
+ def test_ci_projected_acceptance_uses_declared_runtime_without_private_fallback(self):
+  import shutil
+  from tools import oracle_approval as approval
+  canonical=pathlib.Path.cwd();artifact=self.root/'isolated-acceptance';artifact.mkdir()
+  (artifact/'Vault/tmp').mkdir(parents=True)
+  # This finite native fixture contains only consumed public/policy source,
+  # never a checkout/clone, private runtime, node_modules or maintainer data.
+  names=set(approval.REVIEW_POLICY_MODULES)|{'tests/oracle-public-core.test.mjs','tests/oracle_spec_test.py',
+   'tests/oracle_review_series.py','tools/oracle_public/tests/test_proposal_to_spec.py',
+   'tools/oracle_public/validation-catalog.json','.agents/skills/oracle/review-output.schema.json'}
+  for name in sorted(names):
+   target=artifact/name;target.parent.mkdir(parents=True,exist_ok=True);shutil.copy2(canonical/name,target)
+  fallback=artifact/'Vault/index/venv/bin/python';self.assertFalse(fallback.exists())
+  installed=str(pathlib.Path(os.environ.get('ORACLE_PUBLIC_PYTHON') or canonical/'Vault/index/venv/bin/python').absolute())
+  self.assertTrue(pathlib.Path(installed).is_file(),'Use only the existing installed declared runtime')
+  marker=artifact/'declared-runtime-calls';launcher=artifact/'declared-python'
+  launcher.write_text('#!'+sys.executable+'\nimport os,sys\nwith open('+repr(str(marker))+',"ab") as output:output.write(b"x")\nos.execv('+repr(installed)+',['+repr(installed)+',*sys.argv[1:]])\n');launcher.chmod(0o700)
+  selected=json.loads((canonical/'tools/validation-selection.json').read_text())
+  row=next(row for row in d.offline_commands(selected['commands']) if row['category']=='acceptance')
+  self.assertEqual(row['tests'],['tests/oracle-public-core.test.mjs'])
+  environment={key:value for key,value in os.environ.items() if key!='NODE_TEST_CONTEXT'}
+  environment.update(ORACLE_PUBLIC_PYTHON=str(launcher),PYTHONDONTWRITEBYTECODE='1')
+  result=subprocess.run(row['argv'],cwd=artifact,env=environment,capture_output=True,text=True,timeout=300)
+  self.assertEqual(result.returncode,0,result.stdout+result.stderr)
+  summary=d.contract.result_summary(result.stdout+result.stderr,result.returncode,True)
+  self.assertTrue(summary['passed'],summary);self.assertTrue(summary['complete']);self.assertEqual(summary['tests'],3)
+  self.assertGreaterEqual(len(marker.read_bytes()),4,'Every existing core Python launch must consume the declared runtime')
+  self.assertFalse(fallback.exists(),'The isolated acceptance artifact never provisions a private fallback')
+
+unittest.main(argv=['portable-acceptance'],verbosity=2)
+`;
+test('CI acceptance uses the declared runtime without a private fallback',async()=>{
+ const parent=join(root,'Vault/tmp/oracle-publication-boundary/portable-acceptance');await mkdir(parent,{recursive:true});
+ const work=await mkdtemp(join(parent,'unit-'));
+ try{
+  const result=spawnSync('python3',['-B','-c',portableAcceptanceSuite,work],{cwd:root,encoding:'utf8',timeout:330000,maxBuffer:4*1024*1024});
+  console.log('BOC_ORACLE_PORTABLE_ACCEPTANCE '+JSON.stringify({exit_code:result.status,stdout_base64:Buffer.from(result.stdout??'').toString('base64'),stderr_base64:Buffer.from(result.stderr??'').toString('base64')}));
+  assert.equal(result.status,0,result.stdout+result.stderr);assert.match(result.stderr,/Ran 1 test in/u);assert.match(result.stderr,/\nOK\s*$/u);assert.doesNotMatch(result.stderr,/skipped=/u);
+ }finally{await rm(work,{recursive:true,force:true});}
+});

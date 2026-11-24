@@ -6,10 +6,10 @@
     "model": "gpt-6.1-sol",
     "oracle_sha256": "304d980c8a53466df6a6c682be71daa47ff8a62a3224cefd928669f6c3cb6ea8",
     "host": "Codys-MacBook-Pro.local",
-    "time": "2026-11-24T18:40:53Z",
+    "time": "2026-11-24T19:47:25Z",
     "origin_main": "3db7dd41af8a0259d622f32ad44723069247374e",
     "request_sha256": "93743d85123e320c9ab52fdd7e39cc3f4730015bea3284608bce784239af4e47",
-    "proposal_sha256": "4877513737b944d40e29229d3d59ecb638630b21cbb0aa43211b3a1f20a9849d"
+    "proposal_sha256": "3ab3d911dd27db28f5311b9c952115d1280953eae66eab77b832621d7b968d11"
   },
   "selection": {
     "acceptance": [
@@ -22,7 +22,8 @@
       "Native deterministic verification includes exactly one genuine bounded existing-CLI conceptual proposal witness with immutable source, runtime and output custody. Public CI removes only the native-only live-proposal module and completely executes the remaining nonempty selected projection without provider calls; all existing profile obligations remain required.",
       "Lifecycle completion accepts distinct native source, package and actual-Oracle proof kinds only with authentic approved task/spec binding, exact original candidate and immutable producer custody, no unresolved findings, and actual corresponding source publication ancestry. Source/package positives use their real native producers with synthetic fixed checks; actual-Oracle consumption verifies original scope, selected commands, export, genuine CLI witness and outputs through its existing native profile. Unrelated publications, artifact-only or CI-only evidence, missing, tampered or stale custody and a second unfinished task cannot establish completion. Completion observations preserve original marker, series, clocks, finding IDs and proof identities; VERIFIED remains distinct from APPROVED.",
       "A valid sealed spec whose exact selected commands contain the unique native-only proposal module and a nonempty offline acceptance projection selects both the actual-Oracle CI lane and its declared runtime preparation for a nonempty descendant history entirely within the unchanged literal profile inventory. Synthetic Git regressions prove fail-before/pass-after behavior and reject dependency admission for absent, malformed, tampered or unsealed specs, invalid command projections, empty ranges, and outside or reverted-outside history. Existing direct-component refusal, mixed/general routing, customer and credential safeguards, native proposal custody and publication requirements remain intact.",
-      "Selected CI categories use the existing native 900-second category bound while retaining each test module's own deadlines, declared concurrency, exact nonempty offline projection and complete-result requirements. Existing structural/export and genuine-CLI limits remain intact. Real Node process regressions with short explicit scaled durations prove completion beyond the former adapter limit and fail-closed handling of assertion failure, timeout and incomplete output. New failure records retain actual attempted command rows, category, available complete or explicitly partial counts and original output hashes/files; public diagnostics expose only bounded sanitized category/result facts with integer timing metadata. Historical records, runtime guards, original delivery clocks and native verification/publication requirements remain unchanged."
+      "Selected CI categories use the existing native 900-second category bound while retaining each test module's own deadlines, declared concurrency, exact nonempty offline projection and complete-result requirements. Existing structural/export and genuine-CLI limits remain intact. Real Node process regressions with short explicit scaled durations prove completion beyond the former adapter limit and fail-closed handling of assertion failure, timeout and incomplete output. New failure records retain actual attempted command rows, category, available complete or explicitly partial counts and original output hashes/files; public diagnostics expose only bounded sanitized category/result facts with integer timing metadata. Historical records, runtime guards, original delivery clocks and native verification/publication requirements remain unchanged.",
+      "All four offline core Python launches use the declared installed ORACLE_PUBLIC_PYTHON when set and retain the existing local fallback only when unset. An unchanged focused regression copies the finite required public, native and synthetic policy fixture closure into an isolated artifact, proves the private fallback interpreter absent, and executes the complete CI-projected acceptance vector through a real recording launcher that executes the existing installed Python. It requires all three Node cases, their 9, 4 and 2 Python tests, the parity check and all four launcher invocations to complete successfully with original deadlines and no skips, cancellations or substituted results. The regression produces a complete assertion failure before the repair and passes afterward; native verification and exact-source CI retain their full existing obligations."
     ],
     "acceptance_tests": [
       {
@@ -63,7 +64,8 @@
       },
       {
         "covers": [
-          6
+          6,
+          10
         ],
         "module": "tests/oracle-public-core.test.mjs",
         "purpose": "Provide complete offline proposal-core and custody checks in the nonempty public CI acceptance projection."
@@ -71,7 +73,8 @@
       {
         "covers": [
           8,
-          9
+          9,
+          10
         ],
         "module": "tests/deterministic-oracle.test.mjs",
         "purpose": "Verify sealed dependency routing and runtime readiness through synthetic descendant histories while preserving closed scope, command projection and existing dispatch boundaries."
@@ -88,7 +91,8 @@
           "tests/oracle_review_series.py",
           "tests/helpers/isolated-test-cohort.mjs",
           "tests/helpers/native-validation-git.mjs",
-          "tests/helpers/native-validation-state.mjs"
+          "tests/helpers/native-validation-state.mjs",
+          "tests/oracle_spec_test.py"
         ],
         "name": "focused",
         "tests": [
@@ -123,19 +127,20 @@
     ],
     "change_class": "deep_bug_fix",
     "design": null,
-    "reason": "Review lineage and CI execution affect finding retention, evidence custody and publication accounting. Preserve all nine prior criteria, mapping purposes, modules and fixtures; add one selected-CI execution/custody criterion to the existing dedicated module. Prior deadline preservation applies to test-owned deadlines; the CI adapter adopts the existing native 900-second category bound. Retain complete unchanged-test reproduction, all selected native checks, genuine CLI evidence, exact-source CI, publication gates, immutable failures and the original delivery clock.",
-    "revision_of": "64584be81da374700e3566a293fb04b7e29bcc8c44525f4ace951e935a0837b9",
+    "reason": "Review lineage and CI runtime portability affect evidence custody and publication accounting. Retain all ten prior criteria, mapping purposes, selected modules and existing fixtures; add one portable-runtime criterion to the existing dedicated profile and offline core modules, and declare the consumed Python test fixture in focused inputs. Preserve complete unchanged-regression fail-before/pass-after execution, all selected native categories, genuine CLI custody, successful exact-source CI and native publication gates. Keep the closed source inventory, every test-owned deadline, immutable failures and original delivery clock.",
+    "revision_of": "d2c8966da7d285637540081c5a2fadfdc853d93161e048372177a2f07d042d95",
     "scope_paths": [
       "tools/oracle_approval.py",
       "tests/oracle_review_series.py",
       "tools/validation-selection.json",
       "tools/deterministic_oracle.py",
       "tests/deterministic-oracle.test.mjs",
-      "tools/deterministic-oracle.md"
+      "tools/deterministic-oracle.md",
+      "tests/oracle-public-core.test.mjs"
     ]
   },
-  "base_commit": "68466deaf817ea34e48bcac70a8d7591af709dce",
-  "base_tree": "26ed752833ac5b4ae0d8e0cbfc2bfb5b22c1fdab",
+  "base_commit": "8704a620474d2d6b0e85a4dd027c46e033e46076",
+  "base_tree": "8fb1937ce12ee8b152b06c8c321681cae7ade6ec",
   "catalog_sha256": "51ee7ae8c1533604f7b2c68b9efba9d1b9d6f340d724d7c208dba434325859b3",
   "runtime": {
     "node": "v22.11.0",
@@ -145,8 +150,8 @@
     "architecture": "arm64",
     "options_sha256": "ebc442c160f8629073a82976daadaba1d95a60a38d768c81c8eb06598aedcac5"
   },
-  "proposal_sha256": "4877513737b944d40e29229d3d59ecb638630b21cbb0aa43211b3a1f20a9849d",
-  "review_sha256": "a2caeccc6c74c5a7f0eb765120b9c3213c4bf020d3fb4b7d3c5d8e33dab964e9",
+  "proposal_sha256": "3ab3d911dd27db28f5311b9c952115d1280953eae66eab77b832621d7b968d11",
+  "review_sha256": "b34122575c007a8914e669df50d690fc44bd532b0620849287ef761463caefc6",
   "commands": [
     {
       "category": "sanity",
@@ -176,7 +181,8 @@
         "tests/oracle_review_series.py",
         "tests/helpers/isolated-test-cohort.mjs",
         "tests/helpers/native-validation-git.mjs",
-        "tests/helpers/native-validation-state.mjs"
+        "tests/helpers/native-validation-state.mjs",
+        "tests/oracle_spec_test.py"
       ]
     },
     {
@@ -229,6 +235,6 @@
     "reasoning_effort": "medium",
     "maximum_reasoning_effort": "medium"
   },
-  "contract_sha256": "d2c8966da7d285637540081c5a2fadfdc853d93161e048372177a2f07d042d95",
-  "seal": "3a4746e374d311cda72d1bd40460979ac5cc96615e45c5af753ea04f6d5a9a03"
+  "contract_sha256": "9a4549e5d7a5fcf2f2eea2640b1a093ea7e209ecbb6a390b6bbaf03aa2b5b30c",
+  "seal": "5aeb2c5931edd84a36fcbd550a9faaf9571c5c67bbb7484962a45ba7e38b0e14"
 }
