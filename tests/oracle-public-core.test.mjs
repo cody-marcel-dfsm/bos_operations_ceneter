@@ -109,7 +109,6 @@ from tools import oracle_approval as o
 
 class CategoryApplicabilityAdversaries(unittest.TestCase):
     def test_native_capture_refuses_semantic_and_custody_adversaries(self):
-        sys.path.insert(0,str(Path(__file__).resolve().parent))
         from oracle_spec_test import CategoryContentReuse, v
         case=CategoryContentReuse('runTest')
         try:
