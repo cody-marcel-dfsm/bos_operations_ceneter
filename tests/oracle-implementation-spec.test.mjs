@@ -19,7 +19,7 @@ import oracle_spec_test as suite
 assert not any(hasattr(suite,name) for name in ('setUpModule','tearDownModule'))
 path=Path('tests/oracle_spec_test.py');raw=path.read_bytes();tree=ast.parse(raw)
 assert not any(isinstance(n,(ast.FunctionDef,ast.AsyncFunctionDef)) and n.name in {'setUpModule','tearDownModule'} for n in tree.body)
-rows=[];all_ids=[];declared=[];split={'LaneExecution','DeterministicProvenance'}
+rows=[];all_ids=[];declared=[];split={'LaneExecution','DeterministicProvenance','CategoryContentReuse'}
 for node in tree.body:
  if not isinstance(node,ast.ClassDef):continue
  cls=getattr(suite,node.name)

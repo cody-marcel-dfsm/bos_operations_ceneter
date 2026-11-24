@@ -4,12 +4,12 @@
   "stamp": {
     "engine": "claude",
     "model": "claude-opus-5-5",
-    "oracle_sha256": "87a88409be2c331c1ccf524eee5f7c123071fc34186568800b7c59d1bd8b0fe9",
+    "oracle_sha256": "de76ce6e2550bf626c7f4be33a3d9d741023142850b3c635fe2d6845012173b6",
     "host": "Codys-MacBook-Pro.local",
-    "time": "2026-11-24T00:33:48Z",
+    "time": "2026-11-24T00:39:24Z",
     "origin_main": "b994663ddc5e6e804f39f050ff1ec0e84c3845be",
-    "request_sha256": "4524cc1febdbd3cec87fb6f64f083ead5824243af735d6c84375cd9d51d10925",
-    "proposal_sha256": "ad2bf7de104d13769f7ab88bc481056bb95b4efd99811e26859f4e2bb3819f79"
+    "request_sha256": "e9cf58d80a2cf20014b84b543bb174467316f00331e5c406fb3eb76058fa3191",
+    "proposal_sha256": "a006e43abaf2c2d57c0f2c9bda6adc0a96b2b069d0831d506cf1420717d83a86"
   },
   "selection": {
     "acceptance": [
@@ -559,8 +559,8 @@
     ],
     "change_class": "deep_bug_fix",
     "design": null,
-    "reason": "Additive revision: each method of the category-content-reuse unittest class becomes its own job in the existing per-test isolated cohort split. The current per-job deadline, concurrency, exact discovery and exactly-once inventory stay unchanged, as do the source, mode, runtime and environment custody checks. All prior criteria, categories, modules, fixtures and mappings are retained.",
-    "revision_of": "715549a76ca53dd29f213afc5e83fdf8a44e8ae2808839a25eb4bba5ccbff088",
+    "reason": "Ordinary successor revision binding the actual current source baseline for a genuine native before and after witness of the per-test split of the category-content-reuse class. All prior criteria, categories, modules, fixtures, mappings and selected commands are retained verbatim; no limit, profile, runtime or gate changes.",
+    "revision_of": "807886553524054ed3993fadcc3853aa171e55f9c4699564a9244ccdbf2b01d6",
     "scope_paths": [
       ".github/workflows/publication-safety.yml",
       "README.md",
@@ -1086,8 +1086,8 @@
       "tools/vault_index.py"
     ]
   },
-  "base_commit": "bafd9d486febe784efa2203f9788fd62b9141b42",
-  "base_tree": "289e575b7020ed05633e1734dda0aaafc3d97ffb",
+  "base_commit": "fd48589aca48c1d1e29cd78542281af9bb2475f4",
+  "base_tree": "bca93516fd218312ec21161ea940f55b875a4113",
   "catalog_sha256": "51ee7ae8c1533604f7b2c68b9efba9d1b9d6f340d724d7c208dba434325859b3",
   "runtime": {
     "node": "v22.11.0",
@@ -1097,8 +1097,8 @@
     "architecture": "arm64",
     "options_sha256": "ebc442c160f8629073a82976daadaba1d95a60a38d768c81c8eb06598aedcac5"
   },
-  "proposal_sha256": "ad2bf7de104d13769f7ab88bc481056bb95b4efd99811e26859f4e2bb3819f79",
-  "review_sha256": "c38c4a5345c791aa34f605078b18eb10ef65b2a39da728eb95e967eafb8c936b",
+  "proposal_sha256": "a006e43abaf2c2d57c0f2c9bda6adc0a96b2b069d0831d506cf1420717d83a86",
+  "review_sha256": "1cdbe84eea66fc3af0fa8ee23faa4225edeb92f613ef2a8d18d8ab794b574d72",
   "commands": [
     {
       "category": "sanity",
@@ -1273,6 +1273,6 @@
     "reasoning_effort": "medium",
     "maximum_reasoning_effort": "medium"
   },
-  "contract_sha256": "807886553524054ed3993fadcc3853aa171e55f9c4699564a9244ccdbf2b01d6",
-  "seal": "5cfedc1f9b3f6e7152bbbc7cbeab0eefaf02d9d755a11b791294fcc3538dd681"
+  "contract_sha256": "d66e769984bafa14bca5a3132b9a7df39d9b9b68ad76e8be2140e8d5f15d60c0",
+  "seal": "dd7d9f064f62d1eb7fe143009da20ae97a9401c9bf0846f8b9ab64732d923ba2"
 }
