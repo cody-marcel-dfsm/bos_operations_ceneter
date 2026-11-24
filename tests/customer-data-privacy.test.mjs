@@ -812,6 +812,6 @@ test("nanosecond TAP recognition preserves unknown structures and contact or dig
     operationalPrivacyText(byteCountPrivacyText(text), {}));
   for (const suffix of ["non-synthetic email address", "non-fictional phone number", "prohibited customer identifier digest"])
     assert(findings.some(row => row.endsWith(suffix)));
-  assert(customerDataFindings(timestamp, "synthetic-tap.log", new Set([sha256(digits)]), byteCountPrivacyText(timestamp))
+  assert(customerDataFindings(timestamp, "synthetic-tap.log", new Set([sha256(normalizeSensitiveText(split))]), byteCountPrivacyText(timestamp))
     .some(row => row.endsWith("prohibited customer identifier digest")));
 });
