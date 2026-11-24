@@ -146,6 +146,62 @@ class Profile(unittest.TestCase):
   base=self.git('rev-parse','HEAD');self.put('tools/oracle_core/unlisted.py','unknown');self.commit()
   self.assertTrue(d.applies(self.root,base,self.git('rev-parse','HEAD')))
   with self.assertRaisesRegex(ValueError,'Outside'):d.scope(self.root,base,self.git('rev-parse','HEAD'))
+ def routing_fixture(self,name,*,live=True,sealed=True,empty=False,outside=None,revert=False):
+  root=self.root/name;root.mkdir()
+  def git(*args):return subprocess.check_output(['git',*args],cwd=root,text=True,stderr=subprocess.DEVNULL).strip()
+  def put(name,body):
+   path=root/name;path.parent.mkdir(parents=True,exist_ok=True);path.write_text(body)
+  def commit():git('add','-A');git('commit','-qm','synthetic routing fixture')
+  git('init','-q');git('config','user.name','Synthetic');git('config','user.email','synthetic@example.invalid')
+  put('tools/validation-catalog.json',pathlib.Path('tools/validation-catalog.json').read_text())
+  put('tools/oracle_approval.py','baseline')
+  modules=['tests/deterministic-oracle.test.mjs','tests/oracle-public-core.test.mjs',d.LIVE_MODULE]
+  for module in modules:put(module,'// synthetic routing fixture')
+  commit();base=git('rev-parse','HEAD')
+  acceptance=([d.LIVE_MODULE] if live else [])+([] if empty else ['tests/oracle-public-core.test.mjs'])
+  selection={'change_class':'deep_bug_fix','scope_paths':['tools/oracle_approval.py','tools/validation-selection.json',*([outside] if outside else [])],
+   'categories':[{'name':category,'tests':tests,'fixtures':[]} for category,tests in [('sanity',[]),('focused',[modules[0]]),('interactions',[modules[1]]),('acceptance',acceptance)]],
+   'acceptance':['Synthetic routing criterion'],'acceptance_tests':[{'module':modules[0],'covers':[0],'purpose':'Synthetic routing boundary'}],
+   'revision_of':None,'reason':'Synthetic routing fixture','design':None}
+  proposal='synthetic routing fixture'
+  stamp={'engine':'codex','model':'synthetic','oracle_sha256':'a'*64,'host':'synthetic.invalid','time':'2026-11-24T15:11:24Z','origin_main':base,'request_sha256':None,'proposal_sha256':d.native.digest(proposal.encode())}
+  spec=d.contract.seal(root,selection,proposal,{'fixture':True},base,stamp=stamp)
+  if sealed:put('tools/validation-selection.json',json.dumps(spec))
+  put('tools/oracle_approval.py','candidate')
+  if outside:put(outside,'synthetic unrelated content')
+  commit()
+  if revert:git('rm',outside);commit()
+  return root,base,git('rev-parse','HEAD')
+ def test_sealed_native_dependency_routes_shared_controller_without_component_trigger(self):
+  self.gate.stop()
+  root,base,head=self.routing_fixture('sealed')
+  self.assertFalse(d.applies(root,head,head));self.assertFalse(d.component_present(root,head,head))
+  self.assertEqual(d._component_paths(d.changed(root,base,head)),[])
+  self.assertEqual(d.contract.gate(root,base,head)['status'],'SPEC_SEALED')
+  self.assertTrue(d.applies(root,base,head))
+  self.assertTrue(d.component_present(root,base,head))
+  selection=root/'tools/validation-selection.json';original=selection.read_text();selection.write_text('{}')
+  self.assertTrue(d.applies(root,base,head));self.assertTrue(d.component_present(root,base,head))
+  selection.write_text(original)
+  rows=d.native.selected_commands(root,base,head);projection=d.offline_commands(rows)
+  self.assertIn(d.LIVE_MODULE,rows[-1]['tests'])
+  self.assertEqual(projection[-1]['tests'],['tests/oracle-public-core.test.mjs'])
+ def test_shared_controller_routing_requires_valid_seal_projection_and_entire_owned_history(self):
+  self.gate.stop()
+  cases=[('unsealed',{'sealed':False}),('general',{'live':False}),('empty',{'empty':True}),
+   ('outside',{'outside':'source/unrelated.py'}),('reverted',{'outside':'source/unrelated.py','revert':True}),
+   ('customer',{'outside':'skills/customer/SKILL.md'}),('credentials',{'outside':'.env'})]
+  for name,options in cases:
+   with self.subTest(name=name):
+    root,base,head=self.routing_fixture(name,**options)
+    self.assertFalse(d.applies(root,base,head));self.assertFalse(d.component_present(root,base,head))
+  for name,mutate in [('tampered',lambda spec:spec['stamp'].update(model='changed')),('malformed',lambda spec:spec.clear())]:
+   with self.subTest(name=name):
+    root,base,head=self.routing_fixture(name)
+    path=root/'tools/validation-selection.json';spec=json.loads(path.read_text());mutate(spec);path.write_text(json.dumps(spec))
+    subprocess.check_call(['git','add','-A'],cwd=root);subprocess.check_call(['git','commit','-qm','synthetic invalid contract'],cwd=root)
+    head=subprocess.check_output(['git','rev-parse','HEAD'],cwd=root,text=True).strip()
+    self.assertFalse(d.applies(root,base,head));self.assertFalse(d.component_present(root,base,head))
  def test_dispatcher_is_explicit_and_default_package_lane_remains(self):
   from tools import deterministic_package as package
   with patch.object(package.native,'git',return_value=str(self.root)),patch.object(d,'main',return_value=17) as selected:
