@@ -322,6 +322,7 @@ _DISPATCH_BUDGET = ContextVar("oracle_dispatch_budget", default=None)
 _METADATA_ROOT = ContextVar("oracle_metadata_root", default=None)
 _SCOPE_AUDIT = ContextVar("oracle_scope_audit", default=None)
 _PROPOSAL_DELTA = ContextVar("oracle_proposal_delta", default=None)
+_TYPED_COMPLETION_ACTIVE = ContextVar("oracle_typed_completion_active", default=frozenset())
 LIVE_AUTHORITIES = (*AUTHORITY_PATHS, ".agents/skills/oracle/review-output.schema.json",
                     "Vault/docs/CONSTITUTION.md", "Vault/docs/architecture.md",
                     "Vault/docs/issues/ISSUE_HISTORY.md", "Vault/specs/oracle-and-vault.md")
@@ -850,6 +851,20 @@ def _completion_files(root: Path, proof: Path, proposal: Path) -> dict:
 
 @_metadata_owner
 def _typed_lifecycle_completion(root: Path, origin: str, head: str) -> list[str]:
+    # Producer scope checks independently require full native history. Resolve
+    # that history without recursively treating this still-unverified proof as
+    # its own completion witness; all history predicates continue to execute.
+    active = _TYPED_COMPLETION_ACTIVE.get()
+    if root in active:
+        return []
+    token = _TYPED_COMPLETION_ACTIVE.set(active | {root})
+    try:
+        return _typed_lifecycle_completion_current(root, origin, head)
+    finally:
+        _TYPED_COMPLETION_ACTIVE.reset(token)
+
+
+def _typed_lifecycle_completion_current(root: Path, origin: str, head: str) -> list[str]:
     """Observed native publication is historical completion, never current review."""
     directory = receipt_path(root).parent / "lifecycle-completions"
     completed = []
