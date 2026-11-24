@@ -910,14 +910,43 @@ class ReviewSeries(unittest.TestCase):
                 self.assertEqual(o.receipt_path(self.root).read_bytes(), original_receipt)
                 o.verify_staged(self.root)
 
+    def independent_publication(self):
+        """Merge a real independently published fixture branch into unfinished work."""
+        if self.git("diff", "--cached", "--name-only"):
+            self.git("commit", "-qm", "unfinished synthetic task candidate")
+        branch = self.git("symbolic-ref", "--short", "HEAD")
+        baseline = self.git("rev-parse", "refs/remotes/origin/main")
+        self.git("checkout", "-qb", "published-" + str(len(self.contexts)), baseline)
+        self.change("independent.py", "published independent change " + str(len(self.contexts)))
+        self.git("commit", "-qm", "independent synthetic publication")
+        published = self.git("rev-parse", "HEAD")
+        self.git("update-ref", "refs/remotes/origin/main", published)
+        self.git("checkout", "-q", branch)
+        self.git("merge", "--no-edit", "--no-ff", published)
+        return published
+
     def test_repair_delta_tracks_findings_new_defects_and_exact_receipt(self):
+        self.git("remote", "add", "origin", o.PUBLICATION_REMOTE)
+        self.git("update-ref", "refs/remotes/origin/main", self.base)
         self.submit(lambda c: self.result(c, findings=[self.finding()]), error=o.OracleCandidateRejected)
+        directory = o._series_directory(self.root, self.base)
+        original_round = (directory / "round-0001.json").read_bytes()
+        original_origin = (o.receipt_path(self.root).parent / "lifecycle-origin.json").read_bytes()
+        published = self.independent_publication()
+        self.assertEqual(o._series_directory(self.root, self.git("rev-parse", "HEAD")), directory)
+        self.propose()
+        self.assertEqual(o.verify_proposal(self.root)["lifecycle_origin"], self.base)
         self.change("source.py", "repair introduced defect B")
         self.submit(lambda c: self.result(c, findings=[self.finding("F002", origin="REPAIR")],
                                          resolutions=[self.resolve(c, "F001")]), error=o.OracleCandidateRejected)
         context = self.contexts[-1]
-        self.assertEqual(context["changed_since_previous"], ["source.py"])
+        self.assertEqual(set(context["changed_since_previous"]), {"source.py", "independent.py"})
         self.assertEqual([item["path"] for item in context["reusable_coverage"]], ["peer.py"])
+        self.assertEqual(context["prior_findings"]["F001"]["state"], "OPEN")
+        self.assertEqual(context["publication_scope"]["baseline_commit"], published)
+        self.assertEqual((directory / "round-0001.json").read_bytes(), original_round)
+        self.assertEqual((o.receipt_path(self.root).parent / "lifecycle-origin.json").read_bytes(), original_origin)
+        self.independent_publication()
         self.change("source.py", "both defects repaired")
         receipt = self.submit(lambda c: self.result(c, resolutions=[self.resolve(c, "F002")]))
         self.assertEqual(receipt["candidate_tree"], self.git("write-tree"))
@@ -928,6 +957,22 @@ class ReviewSeries(unittest.TestCase):
         self.change("source.py", "later mutation")
         with self.assertRaisesRegex(o.OracleApprovalError, "stale"):
             o.verify_staged(self.root)
+        # An approved staged tree is completed only by an actual matching publication.
+        self.change("source.py", "both defects repaired")
+        self.git("commit", "-qm", "publish successful synthetic task candidate")
+        completed = self.git("rev-parse", "HEAD")
+        self.git("update-ref", "refs/remotes/origin/main", completed)
+        self.assertEqual(o._series_directory(self.root, completed), directory)
+        self.change("source.py", "next synthetic task")
+        self.git("commit", "-qm", "next synthetic task")
+        next_directory = o._series_directory(self.root, self.git("rev-parse", "HEAD"))
+        self.assertNotEqual(next_directory, directory)
+        self.propose()
+        self.assertEqual(o.verify_proposal(self.root)["lifecycle_origin"], completed)
+        published = self.independent_publication()
+        self.assertEqual(o._series_directory(self.root, self.git("rev-parse", "HEAD")), next_directory)
+        self.assertNotEqual(o.verify_proposal(self.root)["lifecycle_origin"], published)
+        self.assertEqual((directory / "round-0001.json").read_bytes(), original_round)
 
     def test_new_finding_reusing_a_resolved_id_is_renumbered_not_fatal(self):
         self.submit(lambda c: self.result(c, findings=[self.finding()]), error=o.OracleCandidateRejected)
@@ -942,9 +987,13 @@ class ReviewSeries(unittest.TestCase):
         self.assertEqual(ledger["F002"]["origin"], "REPAIR")
 
     def test_dependency_config_authority_environment_and_evidence_invalidation(self):
+        self.git("remote", "add", "origin", o.PUBLICATION_REMOTE)
+        self.git("update-ref", "refs/remotes/origin/main", self.base)
         scenarios = ["dependency.py", "config.json", "AGENTS.md", "environment", "evidence", "tools/oracle_approval.py"]
         for number, name in enumerate(scenarios):
             self.submit(lambda c: self.result(c, validation=True))
+            original_series = self.contexts[-1]["series_id"]
+            self.independent_publication()
             if name == "environment":
                 self.environment.return_value = "environment-B"
             elif name == "evidence":
@@ -957,6 +1006,7 @@ class ReviewSeries(unittest.TestCase):
             self.record_check()
             self.submit(lambda c: self.result(c, validation=True))
             context = self.contexts[-1]
+            self.assertEqual(context["series_id"], original_series)
             if name == "evidence":
                 self.assertTrue(context["invalidated_validations"])
                 self.assertIn("validation evidence changed", context["invalidated_validations"][0]["invalidation_reasons"][0])
