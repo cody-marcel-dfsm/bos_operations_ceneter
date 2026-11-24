@@ -604,6 +604,15 @@ class Engines(Fixture):
             with self.assertRaises(oracle.OracleApprovalError):
                 oracle._claude_answer(stdout, oracle.CLAUDE_DEFAULT_MODEL)
 
+    def test_failed_claude_reviewer_reports_its_own_reason(self):
+        not_logged_in = json.dumps({'type': 'result', 'is_error': True, 'result': 'Not logged in · Please run /login'})
+        self.assertEqual(oracle._claude_failure(not_logged_in),
+                         ': Claude Oracle reported an error: Not logged in · Please run /login')
+        self.assertEqual(oracle._claude_failure(json.dumps([{'type': 'system'}, json.loads(not_logged_in)])),
+                         ': Claude Oracle reported an error: Not logged in · Please run /login')
+        for stdout in ('', 'not json', json.dumps({'is_error': True}), json.dumps({'is_error': False, 'result': 'ok'})):
+            self.assertEqual(oracle._claude_failure(stdout), '')
+
     def test_claude_event_list_reads_its_single_result_event(self):
         result = {'type': 'result', 'is_error': False, 'structured_output': {'verdict': 'REJECTED'},
                   'modelUsage': {'claude-synthetic-1': {}}}
@@ -626,7 +635,7 @@ class Engines(Fixture):
         (self.root / 'AGENTS.md').write_text('Family: `' + str(family) + '`\n')
         return projects, family
 
-    def launch(self, stdout):
+    def launch(self, stdout, returncode=0):
         schema = self.root / 'schema.json'
         schema.write_text('{"type":"object"}')
         (self.root / 'tools/codex_child_model.py').write_text('# synthetic model helper\n')
@@ -636,7 +645,7 @@ class Engines(Fixture):
 
         def fake(argv, **kwargs):
             calls.append((argv, kwargs))
-            return subprocess.CompletedProcess(argv, 0, stdout, '')
+            return subprocess.CompletedProcess(argv, returncode, stdout, '')
         token = oracle._RUN.set(run)
         try:
             with patch.dict(os.environ, {'BOC_ORACLE_ENGINE': 'claude', 'CLAUDECODE': '1', 'CLAUDE_CODE_ENTRYPOINT': 'cli'}), \
@@ -665,6 +674,19 @@ class Engines(Fixture):
         self.assertEqual(json.loads((run / 'engine-model.json').read_text()),
                          {'engine': 'claude', 'model': 'claude-synthetic-1', 'requested_model': oracle.CLAUDE_DEFAULT_MODEL})
         self.assertEqual(json.loads((run / 'result.json').read_text()), {'verdict': 'APPROVED'})
+
+    def test_failed_claude_launch_names_the_reported_reason(self):
+        self.external_family()
+        failed = {'type': 'result', 'is_error': True, 'result': 'Not logged in · Please run /login'}
+        cases = ((json.dumps(failed), 'failed: Claude Oracle reported an error: Not logged in · Please run /login; diagnostics'),
+                 (json.dumps([{'type': 'system'}, failed]), 'failed: Claude Oracle reported an error: Not logged in'),
+                 (json.dumps(dict(failed, result='x' * 3000)), 'reported an error: ' + 'x' * 2000 + '; diagnostics'),
+                 ('not json', r'process failed; diagnostics retained at '),
+                 (json.dumps({'is_error': True}), r'process failed; diagnostics retained at '),
+                 (json.dumps([failed, failed]), r'process failed; diagnostics retained at '))
+        for stdout, message in cases:
+            with self.subTest(stdout=stdout[:40]), self.assertRaisesRegex(oracle.OracleApprovalError, message):
+                self.launch(stdout, returncode=1)
 
     def test_missing_or_changed_external_authority_fails_before_launch(self):
         projects, family = self.external_family()
