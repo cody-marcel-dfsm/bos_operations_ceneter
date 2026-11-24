@@ -96,16 +96,34 @@ def _component_paths(paths):
     return [name for name in paths if name in triggers or name.startswith(('tools/oracle_core/','tools/oracle_public/'))]
 
 
+def _sealed_native_dependency(root, base, source, paths):
+    """Shared inputs inherit the actual-Oracle execution dependency from its spec."""
+    if not paths or not set(paths) <= OWN_PATHS:
+        return False
+    try:
+        selected = contract.verify(root, source)
+        if not selected or not any(LIVE_MODULE in row['tests'] for row in selected['commands']):
+            return False
+        if contract.gate(root, base, source)['status'] != 'SPEC_SEALED':
+            return False
+        offline_commands(selected['commands'])
+        return True
+    except (OSError, ValueError, KeyError, TypeError, AttributeError, subprocess.CalledProcessError):
+        return False
+
+
 def component_present(root, base, source):
-    return bool(_component_paths(changed(root,base,source)))
+    paths = changed(root, base, source)
+    return bool(_component_paths(paths)) or _sealed_native_dependency(root, base, source, paths)
 
 
 def applies(root, base, source):
     paths=changed(root,base,source);component=_component_paths(paths)
     # Unknown component files retain closed refusal, including mixed ranges.
     # Known mixed source uses the existing general native publication contract.
-    return bool(component) and (any(name not in OWN_PATHS for name in component) or set(paths)<=OWN_PATHS)
-
+    if component:
+        return any(name not in OWN_PATHS for name in component) or set(paths)<=OWN_PATHS
+    return _sealed_native_dependency(root, base, source, paths)
 
 def scope(root, base, source):
     paths = changed(root, base, source)
