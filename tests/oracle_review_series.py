@@ -986,6 +986,79 @@ class ReviewSeries(unittest.TestCase):
         self.assertEqual(ledger["F002"]["state"], "OPEN")
         self.assertEqual(ledger["F002"]["origin"], "REPAIR")
 
+    def typed_publication_fixture(self, lane_name):
+        """Exercise a real native lane; only its fixed check workload is synthetic."""
+        from tools import deterministic_source as source_lane, deterministic_package as package_lane
+        lane = source_lane if lane_name == "source" else package_lane
+        root = self.root / "Vault/tmp" / ("typed-" + lane_name)
+        root.mkdir(parents=True)
+        def git(*args):
+            return subprocess.check_output(["git", *args], cwd=root, text=True).strip()
+        git("init", "-q"); git("config", "user.name", "Synthetic Reviewer")
+        git("config", "user.email", "review@example.invalid")
+        copy_review_policy_inputs(root)
+        for name in parallel.GOVERNANCE_PATHS:
+            path = root / name
+            if not path.exists():
+                path.parent.mkdir(parents=True, exist_ok=True); path.write_text("Synthetic authority\n")
+        (root / ".gitignore").write_text("Vault/\nnode_modules/\n__pycache__/\n")
+        (root / "node_modules").mkdir(); (root / "node_modules/locked").write_text("locked fixture")
+        (root / "package.json").write_text(json.dumps({"version":"0.0.1", "scripts":{
+            "check:privacy":"node -e \"process.exit(0)\"", "check:publication":"node -e \"process.exit(0)\""}}))
+        (root / "tools/validation-catalog.json").write_bytes(
+            (Path(inspect.getsourcefile(o._oracle)).resolve().parent.parent / "tools/validation-catalog.json").read_bytes())
+        (root / "tests").mkdir()
+        (root / "tests/selected.test.mjs").write_text(
+            "import test from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs';"
+            "test('native scoped repair',()=>assert.match(fs.readFileSync('AGENTS.md','utf8'),/repaired/));\n")
+        git("add", "."); git("commit", "-qm", "synthetic native baseline")
+        base = git("rev-parse", "HEAD")
+        git("remote", "add", "origin", o.PUBLICATION_REMOTE)
+        git("update-ref", "refs/remotes/origin/main", base)
+        selection = {"change_class":"bug_fix", "scope_paths":["AGENTS.md"], "design":None,
+            "categories":[{"name":"sanity","tests":[],"fixtures":[]},
+                          {"name":"focused","tests":["tests/selected.test.mjs"],"fixtures":[]}],
+            "reason":"Synthetic native lifecycle completion", "revision_of":None,
+            "acceptance":["The scoped native repair passes"],
+            "acceptance_tests":[{"module":"tests/selected.test.mjs","covers":[0],"purpose":"Exercises scoped repair"}]}
+        approved = {"verdict":"APPROVED", "review_status":"COMPLETE", "findings":[],
+            "authentication_impact":"NONE", "owner_approval_status":"NOT_REQUIRED",
+            "api_version_assessment":self.assessment(), "validation_selection":selection}
+        with patch.object(o, "_fresh_origin", return_value=base), \
+             patch.object(o, "_review_settings_binding", return_value={"model":"synthetic", "reasoning_effort":None}):
+            o.review_proposal(root, SETUP_PROPOSAL, [], None, lambda *args: approved)
+        git("add", "."); git("commit", "-qm", "seal synthetic native spec")
+        before = subprocess.run([sys.executable,"-B","tools/validation_contract.py","run","--category","focused","--phase","before"],
+                                cwd=root,capture_output=True,text=True)
+        self.assertEqual(before.returncode, 0, before.stdout + before.stderr)
+        (root / "AGENTS.md").write_text("Synthetic authority repaired\n")
+        git("add", "."); git("commit", "-qm", "synthetic native repair")
+        source = git("rev-parse", "HEAD")
+        checks = [[sys.executable,"-c","print('synthetic fixed native check')"]]
+        with patch.object(lane, "CHECKS", checks):
+            value = lane.validate(root, base, "2026-11-24T15:11:24Z")
+            self.assertEqual(value["status"], "VERIFIED")
+            self.assertNotIn("verdict", value)
+            proof = Path(o._deterministic_provenance(root, source, value["tree"]))
+            original = proof.read_bytes()
+            self.assertEqual(o.verify_proposal(root)["lifecycle_origin"], base)
+            git("update-ref", "refs/remotes/origin/main", source)
+            # Current publication retains its own series, then later work advances.
+            self.assertEqual(o.verify_proposal(root)["lifecycle_origin"], base)
+            (root / "next.py").write_text("unfinished next task")
+            git("add", "."); git("commit", "-qm", "synthetic next task")
+            self.assertEqual(o.verify_proposal(root)["lifecycle_origin"], source)
+            self.assertEqual(proof.read_bytes(), original)
+            self.assertFalse(o.receipt_path(root).exists(), "VERIFIED never creates an Oracle approval")
+            # Original retained outputs remain required for a completion witness.
+            output = lane.directory(root) / (value["runs"][0]["output_sha256"] + ".log")
+            original_output = output.read_bytes(); output.write_bytes(b"changed original output")
+            with self.assertRaises(o.OracleApprovalError):
+                o.verify_proposal(root)
+            output.write_bytes(original_output)
+            self.assertEqual(o.verify_proposal(root)["lifecycle_origin"], source)
+            self.assertEqual(proof.read_bytes(), original)
+
     def test_dependency_config_authority_environment_and_evidence_invalidation(self):
         self.git("remote", "add", "origin", o.PUBLICATION_REMOTE)
         self.git("update-ref", "refs/remotes/origin/main", self.base)
@@ -1018,6 +1091,9 @@ class ReviewSeries(unittest.TestCase):
                 self.assertTrue(context["invalidated_coverage"], name)
                 self.assertTrue(context["invalidated_validations"], name)
         self.assertEqual(len({c["series_id"] for c in self.contexts}), 1)
+        for lane_name in ("source", "package"):
+            with self.subTest(native_lane=lane_name):
+                self.typed_publication_fixture(lane_name)
 
     def test_incomplete_checkpoint_resumes_without_approval(self):
         def unfinished(context):

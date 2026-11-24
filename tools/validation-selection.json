@@ -6,10 +6,10 @@
     "model": "gpt-6.1-sol",
     "oracle_sha256": "6466692f1221d174f39e1e5471025e3e4b3686ce2c2d07fdabf2f66182d7c4de",
     "host": "Codys-MacBook-Pro.local",
-    "time": "2026-11-24T15:29:41Z",
+    "time": "2026-11-24T15:39:38Z",
     "origin_main": "3db7dd41af8a0259d622f32ad44723069247374e",
     "request_sha256": "93743d85123e320c9ab52fdd7e39cc3f4730015bea3284608bce784239af4e47",
-    "proposal_sha256": "4651435a7716bb607154c509413ff1fdb202cf0a1fbce2ada2150f03b0219ce9"
+    "proposal_sha256": "3a4c31ad5885f343482b8eb187bc27916f7a3fa840cfaf5cb383a94f1f97d454"
   },
   "selection": {
     "acceptance": [
@@ -19,7 +19,8 @@
       "Lifecycle completion requires immutable successful native assessment history bound to the actual candidate tree and proof that its corresponding candidate was published. Origin ancestry, independent publication, proposal approval and ERROR, INCOMPLETE or REJECTED assessments alone cannot establish completion. Missing or tampered custody fails closed.",
       "Synthetic branch scenarios exercise independent publication, proposal refresh, real finding resolution, unchanged reuse, changed-input invalidation and genuine lifecycle completion. Existing declared test discovery, deadlines, concurrency and assertions remain intact, with unchanged-test assertion failure before the implementation and complete success afterward.",
       "Current candidate verification, source-frontier accounting, immutable history, exact publication scope and deterministic source admission retain their existing boundaries. Historical records remain byte-identical, prior approval never becomes current approval, and no model or paid service is launched by synthetic regressions.",
-      "Native deterministic verification includes exactly one genuine bounded existing-CLI conceptual proposal witness with immutable source, runtime and output custody. Public CI removes only the native-only live-proposal module and completely executes the remaining nonempty selected projection without provider calls; all existing profile obligations remain required."
+      "Native deterministic verification includes exactly one genuine bounded existing-CLI conceptual proposal witness with immutable source, runtime and output custody. Public CI removes only the native-only live-proposal module and completely executes the remaining nonempty selected projection without provider calls; all existing profile obligations remain required.",
+      "Lifecycle completion accepts distinct native source, package and actual-Oracle proof kinds only with authentic approved task/spec binding, exact original candidate and immutable producer custody, no unresolved findings, and actual corresponding source publication ancestry. Source/package positives use their real native producers with synthetic fixed checks; actual-Oracle consumption verifies original scope, selected commands, export, genuine CLI witness and outputs through its existing native profile. Unrelated publications, artifact-only or CI-only evidence, missing, tampered or stale custody and a second unfinished task cannot establish completion. Completion observations preserve original marker, series, clocks, finding IDs and proof identities; VERIFIED remains distinct from APPROVED."
     ],
     "acceptance_tests": [
       {
@@ -29,7 +30,8 @@
           2,
           3,
           4,
-          5
+          5,
+          7
         ],
         "module": "tests/oracle-review-series.test.mjs",
         "purpose": "Exercise lineage continuity and completion through synthetic native review-series scenarios, including finding resolution, evidence applicability and preserved custody."
@@ -111,15 +113,15 @@
     "change_class": "deep_bug_fix",
     "design": null,
     "reason": "Review lineage affects finding retention, evidence reuse and publication-range accounting. Preserve the prior reproduction, lifecycle and source-frontier interactions and add the existing deterministic profile's native proposal witness with a nonempty offline acceptance projection. Preserve unchanged test bytes, original delivery clock, immutable evidence and every existing profile obligation.",
-    "revision_of": "a113e817683133d6e56875ce454af5c1908be95b5040b6e03cdb0140232bcc45",
+    "revision_of": "93a082cad5a2bec7e2ebea373351dd65ba0a10d8ff7259d44e25e84d4a1da5e6",
     "scope_paths": [
       "tools/oracle_approval.py",
       "tests/oracle_review_series.py",
       "tools/validation-selection.json"
     ]
   },
-  "base_commit": "c3233e721b54412f34b607cbc63622a502d24077",
-  "base_tree": "55cb22a3e3e92a2a4a66af3fbe2f3cb83e8d8a34",
+  "base_commit": "83f6168706462bfad8d7db8f064591fabb12b835",
+  "base_tree": "b86a21a2d1b75e845363ab81b403d5ea30420045",
   "catalog_sha256": "51ee7ae8c1533604f7b2c68b9efba9d1b9d6f340d724d7c208dba434325859b3",
   "runtime": {
     "node": "v22.11.0",
@@ -129,8 +131,8 @@
     "architecture": "arm64",
     "options_sha256": "ebc442c160f8629073a82976daadaba1d95a60a38d768c81c8eb06598aedcac5"
   },
-  "proposal_sha256": "4651435a7716bb607154c509413ff1fdb202cf0a1fbce2ada2150f03b0219ce9",
-  "review_sha256": "a44269be3494a7ba464be5214a6b5da555b9c0ced174b5d5684863729fbef01c",
+  "proposal_sha256": "3a4c31ad5885f343482b8eb187bc27916f7a3fa840cfaf5cb383a94f1f97d454",
+  "review_sha256": "f9978c85af395f12f9e363524cfaf2b809ad24f33e685dabf291c1eb297548ea",
   "commands": [
     {
       "category": "sanity",
@@ -211,6 +213,6 @@
     "reasoning_effort": "medium",
     "maximum_reasoning_effort": "medium"
   },
-  "contract_sha256": "93a082cad5a2bec7e2ebea373351dd65ba0a10d8ff7259d44e25e84d4a1da5e6",
-  "seal": "d2e9a58a39bbb14ad8e2b49b7a7e153065d61c596d90e3858c2116429db2eb04"
+  "contract_sha256": "34a485bc65137ad5761fddc1e379f3577e03331823b5c58578cc064ec29d2d01",
+  "seal": "4a108d7bdfa689d216c661fc6643a20db345373fc75b79be13dd5e22fdf6dd20"
 }
