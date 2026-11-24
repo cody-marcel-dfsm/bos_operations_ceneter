@@ -910,6 +910,11 @@ def _typed_lifecycle_completion_current(root: Path, origin: str, head: str) -> l
             or active.get("lifecycle_origin", active.get("base_commit")) != origin
             or not isinstance(selected, dict)):
         return completed
+    # Native admission requires the sealed base in every verified candidate.
+    # An unpublished base cannot have a same-task published completion proof.
+    if subprocess.run(["git", "merge-base", "--is-ancestor", selected["base_commit"], head],
+                      cwd=root, capture_output=True).returncode:
+        return completed
     oracle = receipt_path(root).parent
     paths = [*sorted((oracle / "deterministic-source").glob("*.json")),
              *sorted((oracle / "deterministic-package").glob("*.json")),
