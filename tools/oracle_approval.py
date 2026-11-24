@@ -826,15 +826,47 @@ def _proposal_origin(root: Path, proposal: dict, candidate: str) -> str:
     if subprocess.run(["git", "merge-base", "--is-ancestor", origin, candidate],
                       cwd=root, capture_output=True).returncode:
         raise OracleApprovalError("Proposal lifecycle origin is outside the candidate history")
-    # Publication ends a lifecycle: unpublished work on a newer published head
-    # starts its series there. Published candidates keep their own history.
+    # The remote merge-base is a publication baseline, not a task boundary.
+    # Walk only this authenticated series' completed candidate publications.
     published = subprocess.run(["git", "merge-base", candidate, "refs/remotes/origin/main"],
                                cwd=root, capture_output=True, text=True)
+    if published.returncode:
+        return origin
     head = published.stdout.strip()
-    if (not published.returncode and head not in (origin, _git(root, "rev-parse", candidate).strip())
-            and not subprocess.run(["git", "merge-base", "--is-ancestor", origin, head],
-                                   cwd=root, capture_output=True).returncode):
-        return head
+    candidate_commit = _git(root, "rev-parse", candidate).strip()
+    while origin != head:
+        identity = _sha(_canonical({"repository": str(root.resolve()), "base_commit": origin}))[:24]
+        directory = receipt_path(root).parent / "series" / identity
+        rounds = _read_rounds(directory)
+        if any(record["series_id"] != identity for record in rounds):
+            raise OracleApprovalError("Lifecycle completion belongs to another review series")
+        if not rounds or any(item["state"] == "OPEN" for item in rounds[-1]["finding_ledger"].values()):
+            break
+        # An older successful assessment cannot complete a different unfinished
+        # candidate, including a rejected or interrupted later repair.
+        current_tree = rounds[-1]["candidate_tree"]
+        approved = [record for record in rounds
+                    if record["candidate_tree"] == current_tree and record["outcome"] == "APPROVED"
+                    and record["review"].get("verdict") == "APPROVED"
+                    and record["review"].get("review_status") == "COMPLETE"
+                    and record.get("assessment_admitted", not record.get("raw_assessment")
+                                   and "error" not in record["review"])]
+        if not approved:
+            break
+        completion = None
+        for line in _git(root, "log", "--reverse", "--topo-order", "--format=%H %T", origin + ".." + head).splitlines():
+            commit, tree = line.split()
+            if tree == current_tree and any(not subprocess.run(
+                    ["git", "merge-base", "--is-ancestor", record["base_commit"], commit],
+                    cwd=root, capture_output=True).returncode for record in approved):
+                completion = commit
+                break
+        # A published candidate keeps its own review history. Only subsequent
+        # work starts at the actual completed publication, never at a later
+        # independent main publication merged into that subsequent work.
+        if completion is None or completion == candidate_commit:
+            break
+        origin = completion
     return origin
 
 
