@@ -6,10 +6,10 @@
     "model": "gpt-6.1-sol",
     "oracle_sha256": "304d980c8a53466df6a6c682be71daa47ff8a62a3224cefd928669f6c3cb6ea8",
     "host": "Codys-MacBook-Pro.local",
-    "time": "2026-11-24T17:30:18Z",
+    "time": "2026-11-24T18:40:53Z",
     "origin_main": "3db7dd41af8a0259d622f32ad44723069247374e",
     "request_sha256": "93743d85123e320c9ab52fdd7e39cc3f4730015bea3284608bce784239af4e47",
-    "proposal_sha256": "37e7d91cbf250d4f753630b2b91f6bcec4a4cf7b34486259e9f4311de2d44d11"
+    "proposal_sha256": "4877513737b944d40e29229d3d59ecb638630b21cbb0aa43211b3a1f20a9849d"
   },
   "selection": {
     "acceptance": [
@@ -21,7 +21,8 @@
       "Current candidate verification, source-frontier accounting, immutable history, exact publication scope and deterministic source admission retain their existing boundaries. Historical records remain byte-identical, prior approval never becomes current approval, and no model or paid service is launched by synthetic regressions.",
       "Native deterministic verification includes exactly one genuine bounded existing-CLI conceptual proposal witness with immutable source, runtime and output custody. Public CI removes only the native-only live-proposal module and completely executes the remaining nonempty selected projection without provider calls; all existing profile obligations remain required.",
       "Lifecycle completion accepts distinct native source, package and actual-Oracle proof kinds only with authentic approved task/spec binding, exact original candidate and immutable producer custody, no unresolved findings, and actual corresponding source publication ancestry. Source/package positives use their real native producers with synthetic fixed checks; actual-Oracle consumption verifies original scope, selected commands, export, genuine CLI witness and outputs through its existing native profile. Unrelated publications, artifact-only or CI-only evidence, missing, tampered or stale custody and a second unfinished task cannot establish completion. Completion observations preserve original marker, series, clocks, finding IDs and proof identities; VERIFIED remains distinct from APPROVED.",
-      "A valid sealed spec whose exact selected commands contain the unique native-only proposal module and a nonempty offline acceptance projection selects both the actual-Oracle CI lane and its declared runtime preparation for a nonempty descendant history entirely within the unchanged literal profile inventory. Synthetic Git regressions prove fail-before/pass-after behavior and reject dependency admission for absent, malformed, tampered or unsealed specs, invalid command projections, empty ranges, and outside or reverted-outside history. Existing direct-component refusal, mixed/general routing, customer and credential safeguards, native proposal custody and publication requirements remain intact."
+      "A valid sealed spec whose exact selected commands contain the unique native-only proposal module and a nonempty offline acceptance projection selects both the actual-Oracle CI lane and its declared runtime preparation for a nonempty descendant history entirely within the unchanged literal profile inventory. Synthetic Git regressions prove fail-before/pass-after behavior and reject dependency admission for absent, malformed, tampered or unsealed specs, invalid command projections, empty ranges, and outside or reverted-outside history. Existing direct-component refusal, mixed/general routing, customer and credential safeguards, native proposal custody and publication requirements remain intact.",
+      "Selected CI categories use the existing native 900-second category bound while retaining each test module's own deadlines, declared concurrency, exact nonempty offline projection and complete-result requirements. Existing structural/export and genuine-CLI limits remain intact. Real Node process regressions with short explicit scaled durations prove completion beyond the former adapter limit and fail-closed handling of assertion failure, timeout and incomplete output. New failure records retain actual attempted command rows, category, available complete or explicitly partial counts and original output hashes/files; public diagnostics expose only bounded sanitized category/result facts with integer timing metadata. Historical records, runtime guards, original delivery clocks and native verification/publication requirements remain unchanged."
     ],
     "acceptance_tests": [
       {
@@ -69,7 +70,8 @@
       },
       {
         "covers": [
-          8
+          8,
+          9
         ],
         "module": "tests/deterministic-oracle.test.mjs",
         "purpose": "Verify sealed dependency routing and runtime readiness through synthetic descendant histories while preserving closed scope, command projection and existing dispatch boundaries."
@@ -121,18 +123,19 @@
     ],
     "change_class": "deep_bug_fix",
     "design": null,
-    "reason": "Review lineage and its CI delivery dependency affect finding retention, evidence reuse and publication-range accounting. Retain every prior criterion, mapping, category and fixture; add focused closed-routing reproduction. Preserve original clocks, immutable failures, genuine native CLI evidence, complete selected execution and exact-source publication gates.",
-    "revision_of": "34a485bc65137ad5761fddc1e379f3577e03331823b5c58578cc064ec29d2d01",
+    "reason": "Review lineage and CI execution affect finding retention, evidence custody and publication accounting. Preserve all nine prior criteria, mapping purposes, modules and fixtures; add one selected-CI execution/custody criterion to the existing dedicated module. Prior deadline preservation applies to test-owned deadlines; the CI adapter adopts the existing native 900-second category bound. Retain complete unchanged-test reproduction, all selected native checks, genuine CLI evidence, exact-source CI, publication gates, immutable failures and the original delivery clock.",
+    "revision_of": "64584be81da374700e3566a293fb04b7e29bcc8c44525f4ace951e935a0837b9",
     "scope_paths": [
       "tools/oracle_approval.py",
       "tests/oracle_review_series.py",
       "tools/validation-selection.json",
       "tools/deterministic_oracle.py",
-      "tests/deterministic-oracle.test.mjs"
+      "tests/deterministic-oracle.test.mjs",
+      "tools/deterministic-oracle.md"
     ]
   },
-  "base_commit": "54b90c56f907636ce2d141d3459ff5b8c692c2a5",
-  "base_tree": "18db2769bcb03e0822ab993f281a9c0911edff3c",
+  "base_commit": "68466deaf817ea34e48bcac70a8d7591af709dce",
+  "base_tree": "26ed752833ac5b4ae0d8e0cbfc2bfb5b22c1fdab",
   "catalog_sha256": "51ee7ae8c1533604f7b2c68b9efba9d1b9d6f340d724d7c208dba434325859b3",
   "runtime": {
     "node": "v22.11.0",
@@ -142,8 +145,8 @@
     "architecture": "arm64",
     "options_sha256": "ebc442c160f8629073a82976daadaba1d95a60a38d768c81c8eb06598aedcac5"
   },
-  "proposal_sha256": "37e7d91cbf250d4f753630b2b91f6bcec4a4cf7b34486259e9f4311de2d44d11",
-  "review_sha256": "fa46f359ae7da6c0a57b1b5de60c15784e780b09f548758d8365c5db004f24aa",
+  "proposal_sha256": "4877513737b944d40e29229d3d59ecb638630b21cbb0aa43211b3a1f20a9849d",
+  "review_sha256": "a2caeccc6c74c5a7f0eb765120b9c3213c4bf020d3fb4b7d3c5d8e33dab964e9",
   "commands": [
     {
       "category": "sanity",
@@ -226,6 +229,6 @@
     "reasoning_effort": "medium",
     "maximum_reasoning_effort": "medium"
   },
-  "contract_sha256": "64584be81da374700e3566a293fb04b7e29bcc8c44525f4ace951e935a0837b9",
-  "seal": "12389bc265a701ee13c70dbb01b7456ef48ec7a7da8f9969c9bc6d3705b00d71"
+  "contract_sha256": "d2c8966da7d285637540081c5a2fadfdc853d93161e048372177a2f07d042d95",
+  "seal": "3a4746e374d311cda72d1bd40460979ac5cc96615e45c5af753ea04f6d5a9a03"
 }

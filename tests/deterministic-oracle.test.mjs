@@ -222,6 +222,54 @@ class Profile(unittest.TestCase):
   got=d.offline_commands(rows);self.assertEqual(got[0],rows[0]);self.assertEqual(got[1]['tests'],['tests/b.test.mjs']);self.assertEqual(got[1]['argv'],['node','--test','--test-concurrency=1','tests/b.test.mjs']);self.assertIn(d.LIVE_MODULE,rows[1]['tests'])
   for bad in [[],[rows[0]],[{'category':'acceptance','tests':[d.LIVE_MODULE],'argv':['node',d.LIVE_MODULE]}]]:
    with self.assertRaises(ValueError):d.offline_commands(bad)
+ def ci_execution_fixture(self,*,delay=False,failing=False):
+  focused='tests/selected-ci-focused.test.mjs';offline='tests/selected-ci-offline.test.mjs'
+  label='synthetic selected CI failure' if failing else 'synthetic selected CI completion'
+  self.put(focused,"import test from 'node:test';import assert from 'node:assert/strict';test("+json.dumps(label)+",async()=>{"+("await new Promise(resolve=>setTimeout(resolve,250));" if delay else "")+"assert.equal(1,"+('2' if failing else '1')+");});")
+  self.put(offline,"import test from 'node:test';import assert from 'node:assert/strict';test('synthetic offline projection',()=>assert.equal(1,1));")
+  rows=[{'category':'focused','tests':[focused],'fixtures':[],'argv':['node','--test',focused]},
+   {'category':'acceptance','tests':[d.LIVE_MODULE,offline],'fixtures':[],'argv':['node','--test',d.LIVE_MODULE,offline]}]
+  identity={'source':self.head,'tree':self.git('rev-parse',self.head+'^{tree}'),'runtime':{},'inputs':{},'oracle_runtime':{'executable':sys.executable},'environment_sha256':'synthetic'}
+  # Scope/export/runtime admission is covered separately; this fixture exercises
+  # the actual CI producer and real Node processes with their original outputs.
+  for target,value in [(d.native,'identity'),(d,'identity')]:self.enterContext(patch.object(target,value,return_value=identity))
+  self.enterContext(patch.object(d,'scope',return_value=['tools/deterministic_oracle.py']))
+  self.enterContext(patch.object(d.native,'selected_commands',return_value=rows))
+  self.enterContext(patch.object(d,'python_runtime',return_value={'executable':sys.executable}))
+  self.enterContext(patch.object(d,'export_proof',return_value={'fixture':'synthetic export'}))
+  self.enterContext(patch.object(d,'standalone_proof',side_effect=lambda root,store,artifact,executable:artifact))
+  return rows
+ def test_ci_selected_command_budget_completes_real_node_projection(self):
+  self.ci_execution_fixture(delay=True);original=d.run;actual=[]
+  def scaled(root,command,store,*,timeout=60,**kwargs):
+   # Preserve the producer's chosen bound and use a declared short clock scale
+   # so the real timed Node command proves completion/truncation without waiting
+   # fifteen minutes in a unit fixture. No test output or witness is fabricated.
+   row,output=original(root,command,store,timeout=timeout/1000,**kwargs);actual.append(row)
+   return row,output
+  with patch.object(d,'run',side_effect=scaled):
+   try:result=d.validate_ci(self.root,self.base,'unknown')
+   except ValueError:result={'status':'INCOMPLETE'}
+  self.assertTrue(actual,'The real selected Node command must execute')
+  self.assertEqual(result.get('status'),'CI_ONLY','Complete native-selected commands must retain the native producer budget in CI')
+  self.assertEqual([r['exit_code'] for r in actual],[0,0])
+  self.assertEqual(result['commands'][1]['tests'],['tests/selected-ci-offline.test.mjs'])
+  self.assertFalse(result['native_model_executed']);self.assertFalse(result['publication_authorized'])
+ def test_ci_failure_retains_actual_category_result_and_output_custody(self):
+  self.ci_execution_fixture(failing=True)
+  with patch('sys.stderr',new_callable=io.StringIO) as diagnostics:
+   with self.assertRaises(ValueError):d.validate_ci(self.root,self.base,'unknown')
+  files=list(d.directory(self.root).glob('*/failure.json'));self.assertEqual(len(files),1)
+  failure=json.loads(files[0].read_bytes());self.assertEqual(len(failure.get('runs',[])),1,'Failed CI retains its actual completed/incomplete category rows')
+  row=failure['runs'][0];self.assertEqual(row['category'],'focused');self.assertEqual(row['exit_code'],1)
+  output=files[0].parent/(row['output_sha256']+'.log');raw=output.read_bytes();self.assertEqual(d.native.digest(raw),row['output_sha256'])
+  self.assertIn(b'synthetic selected CI failure',raw)
+  facts=json.loads(next(line.split(' ',1)[1] for line in diagnostics.getvalue().splitlines() if line.startswith('CI_ONLY_CATEGORY_FAILURE ')))
+  self.assertEqual(facts['category'],'focused');self.assertEqual(facts['exit_code'],1)
+  self.assertEqual(facts['summary']['tests'],1);self.assertEqual(facts['summary']['fail'],1);self.assertTrue(facts['summary']['complete']);self.assertFalse(facts['summary']['passed'])
+  self.assertEqual(facts['output_sha256'],row['output_sha256']);self.assertEqual(facts['output_size_bytes'],len(raw));self.assertIs(type(facts['elapsed_ms']),int)
+  self.assertEqual(facts['failed_tests'],['synthetic selected CI failure'])
+  self.assertNotIn(str(self.root),diagnostics.getvalue());self.assertFalse(list(files[0].parent.glob('ci-receipt.json')))
  def test_ci_only_receipt_cannot_publish(self):
   identity,store,path=self.receipt('CI_ONLY');self.verification(identity)
   with patch.object(d,'run') as run:
