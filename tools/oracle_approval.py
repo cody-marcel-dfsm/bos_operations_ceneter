@@ -2567,153 +2567,6 @@ def _validation_capture_inputs(root: Path, selected: Sequence[str]) -> tuple[dic
     return {name: inputs[name] for name in selected}, live
 
 
-_CATEGORY_CAPTURE_KIND = 'boc-native-category-capture'
-_CATEGORY_ENVIRONMENT_KEYS = {'BOS_REVIEW_STARTED_AT','TMPDIR','ORACLE_PUBLIC_EXPORTED_ROOT','ORACLE_PUBLIC_SHARED_STATE','ORACLE_PUBLIC_PYTHON'}
-
-
-def _category_command(command):
-    return (len(command)==5 and re.fullmatch(r'python(?:3(?:\.[0-9]+)*)?',Path(command[0]).name)
-            and list(command[1:4])==['tools/validation_contract.py','run','--category']
-            and command[4] in {'focused','interactions'})
-
-
-def _category_dependency_inputs(root, environment, extras):
-    """Closed existing execution profile; unknown external inputs remain ineligible."""
-    if set(extras)-_CATEGORY_ENVIRONMENT_KEYS:raise OracleApprovalError('Unknown category environment closure')
-    if environment.get('VIRTUAL_ENV') or environment.get('NODE_OPTIONS'):
-        raise OracleApprovalError('Unproved external category configuration')
-    for item in environment.get('PYTHONPATH','').split(os.pathsep):
-        if item and not (root/item).resolve().is_relative_to(root.resolve()):
-            raise OracleApprovalError('External Python path closure unavailable')
-    tools={}
-    for name in ('python3','node','npm','git','claude','codex'):
-        tools[name]=_execution_custody(root,[name],environment) if shutil.which(name,path=environment.get('PATH')) else None
-    selected=[environment.get(name) for name in ('ORACLE_PUBLIC_EXPORTED_ROOT','ORACLE_PUBLIC_SHARED_STATE','ORACLE_PUBLIC_PYTHON')]
-    if not any(selected):return {'tools':tools,'oracle':None}
-    if not all(selected):raise OracleApprovalError('Incomplete declared Oracle runtime closure')
-    exported,state=Path(selected[0]),Path(selected[1])
-    if (not exported.is_absolute() or not exported.resolve().is_relative_to(root/'Vault/tmp')
-            or state!=exported/'.oracle' or exported.is_symlink()):
-        raise OracleApprovalError('Unsupported Oracle artifact/state custody')
-    try:
-        if __package__:from . import deterministic_oracle as profile
-        else:import deterministic_oracle as profile
-        manifest=json.loads(_custody_read(root,exported/'oracle-export-manifest.json')[1])
-        runtime=profile.python_runtime(root)
-        # python_runtime uses the same currently declared executable; no installation/download.
-        if runtime['executable']!=selected[2]:raise ValueError('Oracle Python binding changed')
-        return {'tools':tools,'oracle':{'root':str(exported),'state':str(state),'runtime':runtime,
-                'members':profile.member_inventory(exported),'source_commit':manifest['source_commit'],
-                'source_tree':manifest['source_tree']}}
-    except (OSError,ValueError,KeyError) as error:raise OracleApprovalError('Oracle dependency closure unavailable') from error
-
-
-def _category_evidence_state(root, closure):
-    oracle=closure['oracle']
-    if oracle is None:return None
-    directory=Path(oracle['state'])
-    if not directory.is_dir() or directory.is_symlink():raise OracleApprovalError('Oracle evidence state unavailable')
-    result={};total=0
-    for path in sorted(directory.rglob('*')):
-        if path.is_symlink():raise OracleApprovalError('Oracle evidence state has a symlink')
-        if path.is_dir():continue
-        if not path.is_file():raise OracleApprovalError('Oracle evidence state has a nonregular member')
-        raw=_custody_read(root,path)[1];total+=len(raw)
-        if len(result)>=4096 or total>16*1024*1024:raise OracleApprovalError('Oracle evidence state exceeds closed capture bound')
-        result[str(path.relative_to(directory))]={'sha256':_sha(raw),'mode':stat.S_IMODE(path.stat().st_mode),'bytes':len(raw)}
-    return result
-
-
-def _category_result(root, capture):
-    """Resolve the genuine inner native execution, never a caller-selected result."""
-    if not _category_command(capture['command']) or capture['exit_code']!=0:return None
-    stdout=next((name for name in capture['output_hashes'] if name.endswith('.stdout.log')),None)
-    if stdout is None:raise OracleApprovalError('Category stdout custody unavailable')
-    raw=_custody_read(root,stdout)[1]
-    if _sha(raw)!=capture['output_hashes'][stdout]:raise OracleApprovalError('Category capture stdout changed')
-    try:summary=json.loads(raw.decode().splitlines()[-1])
-    except (ValueError,IndexError,UnicodeError) as error:raise OracleApprovalError('Category native result locator unavailable') from error
-    contract=validation_contract.verify(root,capture['base_commit'])
-    expected=root/'.git/oracle/validation-contract-results'/contract['contract_sha256']/capture['base_commit']
-    target=Path(summary.get('record',''))
-    if not target.is_absolute():target=root/target
-    if target.parent!=expected or not re.fullmatch(capture['command'][4]+r'-after-[a-f0-9]{64}\.json',target.name):
-        raise OracleApprovalError('Category result is outside original native custody')
-    for row in validation_contract.originals(root,contract,'after'):
-        if row['_record_path']==str(target):
-            if (row.get('kind')!='boc-validation-execution-v1' or row.get('passed') is not True
-                    or row.get('inputs_unchanged') is not True or row.get('exit_code')!=0
-                    or row['commit']!=capture['base_commit'] or row['tree']!=capture['candidate_tree']
-                    or row['category']!=capture['command'][4] or not row.get('stream_custody')
-                    or summary.get('passed') is not True or summary.get('phase')!='after'
-                    or summary.get('summary')!=row['summary']):raise OracleApprovalError('Category original execution incomplete')
-            return row
-    raise OracleApprovalError('Category original native result is missing')
-
-
-@_metadata_owner
-def _prepare_category_capture(root, capture, output, closure):
-    row=_category_result(root,capture)
-    if row is None:return None
-    if not set(_candidate_inputs(root,capture['candidate_tree'],{})) <= {item['path'] for item in capture['inputs']}:return None
-    if closure['oracle'] and (closure['oracle']['source_commit']!=row['commit'] or closure['oracle']['source_tree']!=row['tree']):
-        raise OracleApprovalError('Oracle artifact source differs from actual category execution')
-    path=root/'.git/oracle/category-captures'/(row['record_sha256']+'.json')
-    pointer={'kind':_CATEGORY_CAPTURE_KIND,'capture_path':_custody_name(root,output),
-             'category':row['category'],'record_sha256':row['record_sha256']}
-    raw=_pretty(pointer)
-    if path.exists():
-        if _custody_read(root,path)[1]!=raw:raise OracleApprovalError('Category capture index already differs')
-    else:
-        if __package__:from . import oracle_lifecycle
-        else:import oracle_lifecycle
-        oracle_lifecycle._publish(sys.modules[__name__],root,path,pointer)
-    return {'kind':_CATEGORY_CAPTURE_KIND,'record_path':row['_record_path'],'record_sha256':row['record_sha256'],
-            'index_path':_custody_name(root,path),'index_sha256':_sha(raw),'input_closure':closure,
-            'evidence_state':_category_evidence_state(root,closure)}
-
-
-def _selector_capture_projection(root, record):
-    """Current applicability is separate from the immutable original capture."""
-    binding=record.get('category_capture')
-    if not binding:return None
-    if set(binding)!={'kind','record_path','record_sha256','index_path','index_sha256','input_closure','evidence_state'} or binding['kind']!=_CATEGORY_CAPTURE_KIND:
-        raise OracleApprovalError('Category capture binding changed')
-    row=_category_result(root,record)
-    if row is None or row['_record_path']!=binding['record_path'] or row['record_sha256']!=binding['record_sha256']:
-        raise OracleApprovalError('Category original result identity changed')
-    index=root/'.git/oracle/category-captures'/(row['record_sha256']+'.json')
-    expected={'kind':_CATEGORY_CAPTURE_KIND,'capture_path':record['record_location']['path'],
-              'category':row['category'],'record_sha256':row['record_sha256']}
-    raw=_custody_read(root,index)[1]
-    if _custody_name(root,index)!=binding['index_path'] or raw!=_pretty(expected) or _sha(raw)!=binding['index_sha256']:
-        raise OracleApprovalError('Category capture index changed')
-    effective,_,extras=_validation_environment(record['environment_keys'])
-    closure=_category_dependency_inputs(root,effective,extras)
-    if closure!=binding['input_closure'] or _category_evidence_state(root,closure)!=binding['evidence_state']:
-        raise OracleApprovalError('Category declared dependency/configuration/evidence closure changed')
-    if record['candidate_tree']==_tree(root):return None
-    current=validation_contract.verify(root,'HEAD')
-    proof=validation_contract.selector_equivalence(root,row['commit'],_tree(root),current)
-    if not set(_candidate_inputs(root,_tree(root),{})) <= {item['path'] for item in record['inputs']}:
-        raise OracleApprovalError('Category declared input membership changed')
-    inputs,live=_validation_capture_inputs(root,[item['path'] for item in record['inputs']])
-    for item in record['inputs']:
-        name=item['path']
-        if name!=validation_contract.SELECTION and (inputs[name]!=item['digest'] or live[name]!=record['live_inputs'][name]):
-            raise OracleApprovalError('Category declared input or custody changed: '+name)
-    if validation_contract.SELECTION not in inputs:raise OracleApprovalError('Category capture lacks full selector/source closure')
-    # Current tracked bytes are checked by clean Git source and the native live-input reader.
-    original_selector=record['live_inputs'][validation_contract.SELECTION]
-    current_selector=live[validation_contract.SELECTION]
-    for key in ('kind','mode','resolved_path','directories'):
-        if original_selector.get('source',{}).get(key)!=current_selector.get('source',{}).get(key):
-            raise OracleApprovalError('Selector source custody changed')
-    return {**proof,'record_sha256':row['record_sha256'],'capture_path':record['record_location']['path'],
-            'capture_sha256':record['record_sha256'],'index_path':binding['index_path'],'index_sha256':binding['index_sha256'],
-            'inputs':[{'path':item['path'],'digest':inputs[item['path']]} for item in record['inputs']]}
-
-
 def record_validation(root: Path, command: Sequence[str], input_paths: Sequence[str], output: Path, *,
                       environment_keys: Sequence[str] = ()) -> dict:
     """Execute a focused check and capture source/configuration/environment proof."""
@@ -2750,10 +2603,6 @@ def record_validation(root: Path, command: Sequence[str], input_paths: Sequence[
     execution_environment = execution_metadata(root, executable, effective_environment)
     started = datetime.now(timezone.utc).isoformat()
     _private_witness_write(root, output, None)
-    category_closure=None; category_ineligibility=None
-    if _category_command(command):
-        try:category_closure=_category_dependency_inputs(root,effective_environment,extras)
-        except OracleApprovalError as error:category_ineligibility=str(error)
     completed = subprocess.run(list(command), cwd=root, capture_output=True, env=effective_environment)
     # Preserve the actual execution diagnostics even if a relevant input drifts.
     stdout, stderr = output.with_suffix(".stdout.log"), output.with_suffix(".stderr.log")
@@ -2787,11 +2636,6 @@ def record_validation(root: Path, command: Sequence[str], input_paths: Sequence[
                                    "mode": oct(stat.S_IFREG | 0o600)},
                "output_custody": _custody_files(root, [str(stdout), str(stderr)]),
                "output_hashes": _files(root, [str(stdout), str(stderr)])}
-    if category_closure is not None and completed.returncode==0:
-        if _category_dependency_inputs(root,effective_environment,extras)!=category_closure:
-            raise OracleApprovalError('Category runtime inputs changed during execution; outputs retained')
-        payload['category_capture']=_prepare_category_capture(root,payload,output,category_closure)
-    elif category_ineligibility is not None:payload['category_reuse_ineligibility']=category_ineligibility
     record = dict(payload, record_sha256=_sha(_canonical(payload)))
     _private_witness_write(root, output, _pretty(record))
     return record
@@ -2806,7 +2650,6 @@ def _validation_record(root: Path, name: str, inputs: list, environment_digest: 
         payload = {key: value for key, value in record.items() if key != "record_sha256"}
         effective, current_environment, extras = _validation_environment(record["environment_keys"])
         selected, live = _validation_capture_inputs(root, [item["path"] for item in inputs])
-        applicability=_selector_capture_projection(root,record)
         if check_environment:
             executable = _execution_custody(root, record["command"], effective)
         else:
@@ -2830,9 +2673,8 @@ def _validation_record(root: Path, name: str, inputs: list, environment_digest: 
                  and re.fullmatch(r"[0-9a-f]{64}", record["review_policy_digest"])
                  and _historical_policy_guard(root, record["candidate_tree"], record["review_policy_digest"]) == _review_policy_digest(root)
                  and record["record_sha256"] == _sha(_canonical(payload)) and record["exit_code"] == 0
-                 and (record["inputs"] == inputs or (applicability is not None and applicability["inputs"] == inputs))
-                 and selected == {item["path"]: item["digest"] for item in inputs}
-                 and (record["live_inputs"] == live or applicability is not None)
+                 and record["inputs"] == inputs and selected == {item["path"]: item["digest"] for item in inputs}
+                 and record["live_inputs"] == live
                  and subprocess.run(["git", "merge-base", "--is-ancestor", record["base_commit"],
                                      expected_base if expected_base is not None else _git(root, "rev-parse", "HEAD").strip()],
                                     cwd=root, capture_output=True).returncode == 0
@@ -2864,18 +2706,15 @@ def _current_validation_proofs(root: Path, evidence: dict, inputs: dict, environ
             blocked = invalidations.get(name)
             if blocked and blocked["evidence_sha256"] == digest:
                 raise OracleApprovalError("Prior explicit validation invalidation remains: " + blocked["reason"])
-            applicability=_selector_capture_projection(root,record)
-            current_inputs=applicability["inputs"] if applicability is not None else record.get("inputs")
-            _checked_inputs(current_inputs, {"input_hashes": inputs})
-            _validation_record(root, name, current_inputs, environment_digest)
+            _checked_inputs(record.get("inputs"), {"input_hashes": inputs})
+            _validation_record(root, name, record["inputs"], environment_digest)
         except (OracleApprovalError, KeyError) as exc:
             invalid.append({"evidence_path": name, "reason": str(exc)})
             continue
         verified.append({"evidence_path": name, "evidence_sha256": digest, "status": "VERIFIED",
-                         "inputs": current_inputs, "environment_digest": environment_digest,
+                         "inputs": record["inputs"], "environment_digest": environment_digest,
                          "reason": "Utility verified the passing native command against exact current inputs and retained outputs",
-                         "command": record["command"], "output_hashes": record["output_hashes"],
-                         **({"applicability":applicability} if applicability is not None else {})})
+                         "command": record["command"], "output_hashes": record["output_hashes"]})
     return verified, invalid
 
 
@@ -3683,12 +3522,8 @@ def issue(root: Path, evidence_paths: Sequence[str], owner_path: str | None, rev
         if contract_proof:
             for row in contract_proof["results"]:
                 contract_evidence.extend([row["_record_path"], row["output_file"]])
-                if row.get("applicability"):
-                    contract_evidence.extend([row["applicability"]["capture_path"],row["applicability"]["index_path"]])
             for row in validation_contract.originals(root, contract_proof["contract"], "before"):
                 contract_evidence.extend([row["_record_path"], row["output_file"]])
-                if row.get("applicability"):
-                    contract_evidence.extend([row["applicability"]["capture_path"],row["applicability"]["index_path"]])
         complete_evidence = [*evidence_paths, *contract_evidence, str(proposal), str(origin_record)]
         evidence, owner = _files(root, complete_evidence), (_files(root, [owner_path]) if owner_path else None)
     with _phase("preparation_seconds"):
