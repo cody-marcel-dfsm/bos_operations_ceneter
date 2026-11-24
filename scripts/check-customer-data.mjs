@@ -268,7 +268,12 @@ export function byteCountPrivacyText(text) {
   const spacing = String.raw`(?:\r?\n# |(?!\r?\n# )\s)*`;
   const slot = new RegExp("(" + suffix + String.raw`\\*"` + spacing + ":" + spacing +
     String.raw`)\d+(?![\d.eE])`, "gu");
-  return text.replace(slot, "$10")
+  // Exact TAP framing can divide a quoted native nanosecond scalar into
+  // phone-sized pieces. Reassemble the complete 19-digit scalar with matching
+  // quote escaping; retain every digit and the original non-phone input.
+  const nanoseconds = /(?<!\\)(?<quote>\\*")(?:mtime_ns|ctime_ns)\k<quote>\s*:\s*\k<quote>(?:\d(?:\r?\n# )*){19}\k<quote>/gu;
+  const framed = text.replace(nanoseconds, value => value.replace(/\r?\n# /gu, ""));
+  return framed.replace(slot, "$10")
     .replace(/(_ms\\*"\s*:\s*)\d+(?:\.\d+)?(?![\d.eE])/gu, "$10");
 }
 
