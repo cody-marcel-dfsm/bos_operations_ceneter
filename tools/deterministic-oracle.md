@@ -72,6 +72,18 @@ Public CI produces the separately typed `boc-deterministic-oracle-ci/1` result
 and executes every other selected module unchanged, including actual Chroma,
 export and benchmark checks. It makes no provider call and claims no native model
 proof. The CI result cannot satisfy native verification or publish by itself.
+Selected category commands have the same fixed 900-second host bound in native
+verification and CI. Each test module retains its own deadlines and declared
+concurrency. The separate structural/export bounds and genuine CLI's 90-second
+bound remain unchanged. A timeout, incomplete output, failed assertion or skipped
+test still fails the complete category.
+
+New CI failure records retain every attempted category row, available complete
+or explicitly partial counts, and the original output files and hashes. Public
+failure diagnostics contain bounded sanitized category/test-result facts and
+integer timing metadata. Full original command output remains in native custody;
+prior failures and their files are never rewritten.
+
 Dependency/cache setup, when expressly enrolled, is a separate governed CI step;
 the validation runtime itself never provisions missing inputs.
 
