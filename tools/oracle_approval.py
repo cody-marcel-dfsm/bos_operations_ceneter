@@ -178,20 +178,6 @@ def _claude_answer(stdout: str, requested: str) -> tuple[dict, str]:
     return answer, reported[0]
 
 
-def _claude_failure(stdout: str) -> str:
-    """The Claude CLI's own reason from a failed run's JSON envelope, or nothing."""
-    try:
-        envelope = json.loads(stdout)
-    except ValueError:
-        return ""
-    if isinstance(envelope, list):
-        results = [event for event in envelope if isinstance(event, dict) and event.get("type") == "result"]
-        envelope = results[0] if len(results) == 1 else None
-    if not isinstance(envelope, dict) or not envelope.get("is_error") or not envelope.get("result"):
-        return ""
-    return ": Claude Oracle reported an error: " + str(envelope["result"])[-2000:]
-
-
 def _fresh_origin(root: Path) -> str:
     """Fetch origin/main and require HEAD to contain it; return the fetched commit."""
     fetched = subprocess.run(["git", "fetch", "origin", "main"], cwd=root, capture_output=True, text=True)
@@ -1096,8 +1082,7 @@ def _review_process(root: Path, prompt: str, prefix: str, *, schema_path: Path |
     _atomic_write(run / "stdout.log", completed.stdout.encode())
     _atomic_write(run / "stderr.log", completed.stderr.encode())
     if completed.returncode:
-        reason = _claude_failure(completed.stdout) if engine == "claude" else ""
-        raise OracleApprovalError("Independent Oracle process failed" + reason + "; diagnostics retained at " + str(run))
+        raise OracleApprovalError("Independent Oracle process failed; diagnostics retained at " + str(run))
     if engine == "claude":
         try:
             answer, model = _claude_answer(completed.stdout, model)
