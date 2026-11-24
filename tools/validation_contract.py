@@ -918,6 +918,65 @@ def execute(root,category,phase='after'):
     target=store(root,contract,commit,category,phase,record,text);print(json.dumps({'record':str(target),'passed':record['passed'],'phase':phase,'summary':summary}))
     return 0 if record['passed'] or phase=='before' and unchanged and summary.get('complete') and summary.get('fail',0)>0 and not any(summary.get(k,0) for k in ('skipped','todo','cancelled')) and 'ERR_ASSERTION' in text and result.returncode!=0 else 1
 
+def selector_equivalence(root,original_commit,tree,current):
+    """Prove only selector bookkeeping changed; never change an execution record."""
+    head=git(root,'rev-parse','HEAD')
+    if git(root,'status','--porcelain=v1','--untracked-files=all') or git(root,'rev-parse',head+'^{tree}')!=tree:
+        raise ValueError('Category applicability requires a clean committed candidate')
+    native_origin(root,head)
+    if current!=verify(root,head):raise ValueError('Current selector is not its native source')
+    original=verify(root,original_commit)
+    if original is None or not any(c['contract_sha256']==original['contract_sha256'] for c in revision_chain(root,current,head)):
+        raise ValueError('Category applicability lacks genuine native revision lineage')
+    logical=lambda c:{k:value for k,value in c['selection'].items() if k!='revision_of'}
+    if (logical(original)!=logical(current) or original['commands']!=current['commands']
+            or original['catalog_sha256']!=current['catalog_sha256'] or original['runtime']!=current['runtime']
+            or runtime()!=current['runtime'] or original['stamp']['origin_main']!=current['stamp']['origin_main']):
+        raise ValueError('Category selection, runtime, catalog or origin changed')
+    if subprocess.run(['git','merge-base','--is-ancestor',original_commit,head],cwd=root,capture_output=True).returncode:
+        raise ValueError('Category execution is outside current ancestry')
+    original_tree=git(root,'rev-parse',original_commit+'^{tree}')
+    if git(root,'diff','--name-only',original_tree,tree).splitlines()!=[SELECTION]:
+        raise ValueError('Category source/dependency/configuration bytes or modes changed')
+    for candidate in (original_tree,tree):
+        if not git(root,'ls-tree',candidate,'--',SELECTION).startswith('100644 blob '):
+            raise ValueError('Selector custody changed')
+    return {'original_commit':original_commit,'original_tree':original_tree,'current_tree':tree,
+            'original_contract':original['contract_sha256'],'current_contract':current['contract_sha256'],
+            'selection_semantics_sha256':digest(logical(current))}
+
+
+def reusable_category(root,tree,contract,row):
+    if row['category'] not in {'focused','interactions'}:return None
+    try:from . import oracle_approval as native
+    except ImportError:import oracle_approval as native
+    fixtures={p:git(root,'rev-parse',tree+':'+p) for p in [*row['tests'],*row['fixtures']]}
+    candidates=[r for owner in revision_chain(root,contract,git(root,'rev-parse','HEAD'))[1:]
+                for r in originals(root,owner,'after')]
+    for record in sorted(candidates,key=lambda r:r['finished_at'],reverse=True):
+        if (record.get('kind')!='boc-validation-execution-v1' or record.get('category')!=row['category']
+                or record.get('phase')!='after' or record.get('fixtures')!=fixtures
+                or record.get('command')!=row['argv'] or record.get('runtime')!=contract['runtime']
+                or record.get('catalog_sha256')!=contract['catalog_sha256'] or not record.get('stream_custody')):continue
+        try:selector_equivalence(root,record['commit'],tree,contract)
+        except ValueError:continue
+        # A newer failed observation of this same source forbids reviving an older pass.
+        if not record.get('passed') or record.get('exit_code')!=0 or record.get('inputs_unchanged') is not True:return None
+        output=Path(record['output_file']).read_text()
+        if result_summary(output,0,bool(row['tests']))!=record.get('summary') or not record['summary'].get('passed'):continue
+        index=Path(root)/'.git/oracle/category-captures'/(record['record_sha256']+'.json')
+        if not index.is_file():continue
+        pointer=json.loads(native._custody_read(root,index)[1])
+        capture_name=pointer.get('capture_path')
+        if not isinstance(capture_name,str):raise ValueError('Category capture index changed')
+        capture=json.loads(native._custody_read(root,capture_name)[1])
+        proof=native._selector_capture_projection(root,capture)
+        if not proof or proof['record_sha256']!=record['record_sha256']:raise ValueError('Category capture index/source changed')
+        native._validation_record(root,capture_name,proof['inputs'],native._environment_digest())
+        return dict(record,applicability={k:value for k,value in proof.items() if k!='inputs'})
+    return None
+
+
 def admit(root,tree,proposal):
     contract=verify(root,tree,proposal)
     if contract is None:
@@ -926,8 +985,12 @@ def admit(root,tree,proposal):
     results=list(originals(root,contract,'after'));selected=[]
     for row in contract['commands']:
         matches=sorted([r for r in results if r['tree']==tree and r['command']==row['argv'] and r['runtime']==contract['runtime'] and r['category']==row['category'] and r['catalog_sha256']==contract['catalog_sha256']],key=lambda r:r['finished_at'])
-        if not matches or not matches[-1]['passed']:raise ValueError('Incomplete or failed selected category: '+row['category'])
-        selected.append(matches[-1])
+        if matches:
+            if not matches[-1]['passed']:raise ValueError('Failed current selected category: '+row['category'])
+            selected.append(matches[-1]);continue
+        reused=reusable_category(root,tree,contract,row)
+        if reused is None:raise ValueError('Incomplete or failed selected category: '+row['category'])
+        selected.append(reused)
     return {'contract':contract,'results':selected}
 
 def required(root,tree):

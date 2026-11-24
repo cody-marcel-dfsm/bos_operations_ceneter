@@ -183,6 +183,18 @@ Implementation and `release:check` use those same category commands. CI imports
 only the existing independently approved, exact-source native command evidence or
 executes those same commands; it cannot invent a partial green result.
 
+Evidence-only selector supersession preserves complete positive focused and
+interaction execution through a separate native applicability proof when approved
+revision ancestry, selected semantics, every non-selector source byte/mode, declared
+inputs, runtime, environment and capture/output/stream custody remain identical.
+New native captures enroll their immutable category index automatically; legacy or
+unproved captures require fresh execution. Preserve the original declared execution
+environment when checking applicability, including the closed Oracle artifact
+variables where used. Original commit/tree/contract/time/output stay unchanged;
+current applicability records their relation to the current candidate. Sanity and
+privacy always run fresh. Changed or unavailable inputs and a newer matching failed
+observation refuse reuse. This changes no source review, CI or publication gate.
+
 The initial catalog/tooling bootstrap retains its original already-approved
 proposal and existing broad checks because its base predates this selector. Once
 the catalog exists in a proposal base, absent selection is a hard error. This
