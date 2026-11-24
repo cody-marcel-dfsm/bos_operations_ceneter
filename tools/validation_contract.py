@@ -951,8 +951,11 @@ def reusable_category(root,tree,contract,row):
     try:from . import oracle_approval as native
     except ImportError:import oracle_approval as native
     fixtures={p:git(root,'rev-parse',tree+':'+p) for p in [*row['tests'],*row['fixtures']]}
-    candidates=[r for owner in revision_chain(root,contract,git(root,'rev-parse','HEAD'))[1:]
-                for r in originals(root,owner,'after')]
+    try:
+        candidates=[r for owner in revision_chain(root,contract,git(root,'rev-parse','HEAD'))[1:]
+                    for r in originals(root,owner,'after')]
+    except OSError as error:
+        raise ValueError('Original category execution output is unavailable') from error
     for record in sorted(candidates,key=lambda r:r['finished_at'],reverse=True):
         if (record.get('kind')!='boc-validation-execution-v1' or record.get('category')!=row['category']
                 or record.get('phase')!='after' or record.get('fixtures')!=fixtures
@@ -962,7 +965,8 @@ def reusable_category(root,tree,contract,row):
         except ValueError:continue
         # A newer failed observation of this same source forbids reviving an older pass.
         if not record.get('passed') or record.get('exit_code')!=0 or record.get('inputs_unchanged') is not True:return None
-        output=Path(record['output_file']).read_text()
+        try:output=Path(record['output_file']).read_text()
+        except OSError as error:raise ValueError('Original category execution output is unavailable') from error
         if result_summary(output,0,bool(row['tests']))!=record.get('summary') or not record['summary'].get('passed'):continue
         index=Path(root)/'.git/oracle/category-captures'/(record['record_sha256']+'.json')
         if not index.is_file():continue

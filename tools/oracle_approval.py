@@ -2883,7 +2883,7 @@ def _current_validation_proofs(root: Path, evidence: dict, inputs: dict, environ
             current_inputs=applicability["inputs"] if applicability is not None else record.get("inputs")
             _checked_inputs(current_inputs, {"input_hashes": inputs})
             _validation_record(root, name, current_inputs, environment_digest)
-        except (OracleApprovalError, KeyError) as exc:
+        except (OracleApprovalError, KeyError, ValueError, OSError, TypeError, AttributeError) as exc:
             invalid.append({"evidence_path": name, "reason": str(exc)})
             continue
         verified.append({"evidence_path": name, "evidence_sha256": digest, "status": "VERIFIED",
