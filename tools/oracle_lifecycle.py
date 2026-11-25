@@ -39,7 +39,7 @@ def reviewer_progress(elapsed, counts, overflow, complete):
             'output_bound_bytes':REVIEWER_OUTPUT_BYTES,'output_overflow':overflow,'complete':complete}
 
 
-def bounded_reviewer_output(o, run, process, token, record, *, stdin_payload=None):
+def bounded_reviewer_output(o, run, process, token, record, *, stdin_payload=None, controller=None):
     """Drain both private streams continuously; expose only bounded counts/timing."""
     start=time.monotonic();lock=threading.Lock();chunks=[[],[]];counts=[0,0];overflow=threading.Event();errors=[]
     def drain(stream,index):
@@ -76,6 +76,9 @@ def bounded_reviewer_output(o, run, process, token, record, *, stdin_payload=Non
                     elapsed,current,overflow.is_set(),process.poll() is not None)))
                 last=elapsed
             if overflow.is_set():failure='Reviewer output bound exceeded';break
+            owner=controller or o._CONTROLLER.get()
+            if owner is not None and owner.interrupted.is_set():
+                failure='Native owner was interrupted; retain original reviewer evidence';break
             if elapsed>=REVIEWER_HARD_SECONDS:failure='Reviewer hard deadline reached; retain checkpoint and resume exact inputs';break
             if process.poll() is not None:break
             time.sleep(.05)
@@ -170,9 +173,28 @@ def _active_children(o, root, identity):
     return active
 
 
+def inactive_source_owners(o, root, series):
+    """Read the verified admission chain; no live owner or child is redirected."""
+    _last(o, root)
+    directory = _admissions(o, root)
+    if not directory.exists():
+        return []
+    retired = _retired(o, root).get(directory.name, {}).get('count', 0)
+    result = []
+    for number, path in enumerate(sorted(directory.iterdir()), 1):
+        if number <= retired:
+            continue
+        identity = _read(o, root, path)
+        if identity.get('review_kind') == 'issue' and identity.get('series_id') == series and not _alive(identity):
+            result.append(identity)
+    return result
+
+
 def reviewer_process(o, root, run, command, environment, controller, *, stdin_payload=None):
     # The shell waits for its private stdin acknowledgement. Parent loss before
     # immutable registration closes that pipe and cannot start a reviewer.
+    if controller.interrupted.is_set():
+        raise o.OracleReviewIncomplete('Native owner interrupted before reviewer registration')
     token = uuid.uuid4().hex
     gate = 'IFS= read -r token || exit 70; [ "$token" = "$1" ] || exit 70; shift; exec "$@"'
     process = subprocess.Popen(["/bin/sh", "-c", gate, "native-reviewer", token, *command],
@@ -191,7 +213,9 @@ def reviewer_process(o, root, run, command, environment, controller, *, stdin_pa
                    "evidence": o._files(root, [str(run / "model.json"), str(run / "request.txt")])}
         record = dict(payload, record_sha256=o._sha(o._canonical(payload)))
         _publish(o, root, path, record)
-        stdout, stderr = bounded_reviewer_output(o,run,process,token,record,stdin_payload=stdin_payload)
+        if controller.interrupted.is_set():
+            raise o.OracleReviewIncomplete('Native owner interrupted before registered launch gate')
+        stdout, stderr = bounded_reviewer_output(o,run,process,token,record,stdin_payload=stdin_payload,controller=controller)
         _active_children(o, root, controller.identity)
         _publish(o, root, path.with_suffix(".outcome.json"),
                  {"record_sha256": record["record_sha256"], "exit_code": process.returncode})
@@ -778,6 +802,7 @@ class Controller:
         self.socket.settimeout(.2)
         self.pending = queue.Queue()
         self.stop = threading.Event()
+        self.interrupted = threading.Event()
         self.progress = {"state": "REVIEW_IN_PROGRESS", "attempt": None}
         self.producer_paths = [name for name in o.REVIEW_POLICY_MODULES if (root / name).is_file()]
         self.producer = o._files(root, self.producer_paths)
@@ -1040,6 +1065,22 @@ def run(o, root, kind, attempt, args, kwargs, *, follow_commits=False, request=N
                 shipment_state.validated_receipt(root)
             return result
         token = o._CONTROLLER.set(controller)
+        previous_signal = None
+        if threading.current_thread() is threading.main_thread():
+            def interrupted(signum, frame):
+                controller.interrupted.set()
+                actions = []
+                for child in _active_children(o, root, controller.identity):
+                    try:
+                        os.killpg(child['process_group'], signal.SIGTERM)
+                        actions.append(dict(child, signal=signum, action='SIGTERM dispatched'))
+                    except ProcessLookupError:
+                        actions.append(dict(child, signal=signum, action='already ended'))
+                _publish(o, root, controller.directory / ('interruption-' + uuid.uuid4().hex + '.json'),
+                         {'controller_id': controller.identity['controller_id'], 'actions': actions})
+                if not actions:
+                    raise o.OracleReviewIncomplete('Native owner interrupted before reviewer dispatch')
+            previous_signal = signal.signal(signal.SIGTERM, interrupted)
         try:
             pending_checkpoint = None
             checkpoint_saved = None
@@ -1149,6 +1190,8 @@ def run(o, root, kind, attempt, args, kwargs, *, follow_commits=False, request=N
                         {"status": status, "error_type": type(exc).__name__, "error": str(exc)})
             raise
         finally:
+            if previous_signal is not None:
+                signal.signal(signal.SIGTERM, previous_signal)
             o._CONTROLLER.reset(token)
     finally:
         controller.close()

@@ -1380,5 +1380,78 @@ class JournalIntegrationConflict(unittest.TestCase):
                 self.assertTrue(self.complete(result['integration']))
 
 
+class InterruptedProducerCustody(unittest.TestCase):
+    """Cold controls over genuine public-entry native fake-process artifacts."""
+    def setUp(self):
+        import oracle_lifecycle_test
+        self.case = oracle_lifecycle_test.InterruptedRunContinuity()
+        self.addCleanup(self.case.doCleanups)
+        self.case.setUp()
+        records = o._read_rounds(o._series_directory(self.case.root, self.case.context['base_commit']))
+        self.reference = next(row['raw_assessment']['interrupted_origin'] for row in records
+                              if row.get('raw_assessment', {}).get('interrupted_origin'))
+
+    def test_cold_original_provenance_rejects_changed_plan_journal_model_process_and_foreign_owner(self):
+        root, reference = self.case.root, self.reference
+        context, plan, jobs, successful = parallel.interrupted_origin(o, root, reference)
+        self.assertTrue(jobs); self.assertTrue(successful)
+        files = [self.case.run/'cohort-plan.json', self.case.child/'checkpoint.jsonl',
+                 self.case.child/'model.json', self.case.child/'process.json']
+        for path in files:
+            with self.subTest(path=path.name):
+                original = path.read_bytes()
+                try:
+                    path.write_bytes(original + b' ')
+                    with self.assertRaises(o.OracleApprovalError):
+                        parallel.interrupted_origin(o, root, reference)
+                finally:path.write_bytes(original)
+        for key, value in [('controller_id','controller-'+'0'*32),('series_id','0'*24)]:
+            with self.subTest(field=key), self.assertRaises(o.OracleApprovalError):
+                parallel.interrupted_origin(o, root, dict(reference, **{key:value}))
+        self.assertEqual(parallel.interrupted_origin(o,root,reference)[1],plan)
+
+    def test_cold_original_provenance_rejects_symlink_and_keeps_error_without_aggregate_approval(self):
+        path=self.case.child/'checkpoint.jsonl';original=path.read_bytes()
+        target=path.with_name('synthetic-symlink-target.jsonl');target.write_bytes(original)
+        try:
+            path.unlink();path.symlink_to(target.name)
+            with self.assertRaises(o.OracleApprovalError):
+                parallel.interrupted_origin(o,self.case.root,self.reference)
+        finally:
+            path.unlink();path.write_bytes(original);target.unlink()
+        self.assertNotEqual(self.case.continuation.get('verdict'),'APPROVED')
+        self.assertEqual(json.loads((Path(self.case.marker['controller']['directory'])/'terminal.json').read_text())['status'],'ERROR')
+
+
+class InterruptedOwnedProcess(unittest.TestCase):
+    def test_interrupted_registered_worker_is_drained_and_unrelated_process_survives(self):
+        from tools import oracle_lifecycle as lifecycle
+        import oracle_lifecycle_test
+        case=oracle_lifecycle_test.BoundedReviewer();self.addCleanup(case.doCleanups);case.setUp()
+        unrelated=subprocess.Popen([sys.executable,'-c','import time;time.sleep(30)'],start_new_session=True)
+        def cleanup():
+            if unrelated.poll() is None:unrelated.terminate()
+            unrelated.communicate(timeout=5)
+        self.addCleanup(cleanup)
+        errors=[]
+        def worker():
+            token=o._METADATA_ROOT.set(case.root)
+            try:case.execute('import time;print("owned-progress",flush=True);time.sleep(30)')
+            except BaseException as exc:errors.append(exc)
+            finally:o._METADATA_ROOT.reset(token)
+        thread=threading.Thread(target=worker);thread.start()
+        deadline=time.monotonic()+5
+        while not (case.run/'reviewer-progress.json').exists() and time.monotonic()<deadline:time.sleep(.02)
+        self.assertTrue((case.run/'reviewer-progress.json').exists())
+        case.controller.interrupted.set();thread.join(6)
+        self.assertFalse(thread.is_alive());self.assertEqual(len(errors),1)
+        self.assertIsInstance(errors[0],o.OracleReviewIncomplete)
+        self.assertEqual(lifecycle._active_children(o,case.root,case.controller.identity),[])
+        self.assertIsNone(unrelated.poll())
+        self.assertIn(b'owned-progress',(case.run/'stdout.log').read_bytes())
+        self.assertFalse(json.loads((case.run/'reviewer-progress.json').read_text())['complete'])
+        with self.assertRaises(o.OracleReviewIncomplete):case.execute('raise RuntimeError("queued dispatch must not run")')
+
+
 if __name__ == '__main__':
     unittest.main()

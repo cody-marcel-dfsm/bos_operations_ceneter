@@ -758,6 +758,159 @@ def _unadopted_result(o, root, child, plan_path, plan, cohort, context, original
             'provenance_custody': o._custody_files(root, [child / 'result.json', context_file, original_plan])}
 
 
+def interrupted_origin(o, root, reference):
+    """Authenticate the original inactive owner and preparation afresh on every read."""
+    if __package__:
+        from . import oracle_lifecycle as lifecycle
+    else:
+        import oracle_lifecycle as lifecycle
+    owners = lifecycle.inactive_source_owners(o, root, reference['series_id'])
+    owner = next((row for row in owners if row['controller_id'] == reference['controller_id']), None)
+    if owner is None or lifecycle._active_children(o, root, owner):
+        raise o.OracleApprovalError('Interrupted reviewer owner is unregistered or still active')
+    run = Path(reference['context_file']).parent
+    runs = o.receipt_path(root).parent / 'runs'
+    if (run.parent != runs or not run.name.startswith('issue-')
+            or Path(reference['context_file']) != run / 'review-context.json'):
+        raise o.OracleApprovalError('Interrupted context is outside its native source run')
+    if o._custody_files(root, list(reference['custody'])) != reference['custody']:
+        raise o.OracleApprovalError('Interrupted native provenance content or custody changed')
+    context = json.loads(o._custody_read(root, run / 'review-context.json')[1])
+    plan = json.loads(o._custody_read(root, run / 'cohort-plan.json')[1])
+    seals = json.loads(o._custody_read(root, run / 'prepared-source-seals.json')[1])
+    if (context['series_id'] != reference['series_id']
+            or plan['context_sha256'] != o._sha(o._canonical(context))
+            or plan['plan_sha256'] != _canonical_digest({k: v for k, v in plan.items() if k != 'plan_sha256'})
+            or plan['candidate_commit'] != context['base_commit']
+            or plan['candidate_tree'] != context['candidate_tree']
+            or plan['reviewer_settings'] != owner['reviewer_settings']
+            or o._historical_policy_guard(root, context['candidate_tree'],
+                    context['guards'].get('review_policy_digest')) is None
+            or o._git(root, 'merge-base', '--is-ancestor', context['base_commit'], 'HEAD').strip()):
+        raise o.OracleApprovalError('Interrupted native context, plan, settings or ancestry changed')
+    registered, successful = {}, set()
+    for path in sorted((Path(owner['directory']) / 'children').glob('reviewer-*.json')):
+        if not re.fullmatch(r'reviewer-[0-9a-f]{32}\.json', path.name):
+            continue
+        registration = json.loads(o._custody_read(root, path)[1])
+        child = Path(registration['run'])
+        if child.parent != run / 'cohorts':
+            continue
+        process = child / 'process.json'
+        outcome = path.with_suffix('.outcome.json')
+        process_record = json.loads(o._custody_read(root, process)[1]) if process.exists() else {}
+        outcome_record = json.loads(o._custody_read(root, outcome)[1]) if outcome.exists() else {}
+        native = {'path': str(path), 'sha256': o._custody_read(root, path)[0]['sha256']}
+        succeeded = (process_record.get('exit_code') == 0 and process_record.get('native_registration') == native
+                     and outcome_record == {'record_sha256': registration['record_sha256'], 'exit_code': 0})
+        model = json.loads(o._custody_read(root, child / 'model.json')[1])
+        instructions = '\n\n'.join((o.REVIEWER_ROLE, o.NORMAL_PLAN_REVIEW_POLICY, o.LOCAL_EXECUTION_POLICY,
+                                     o.REVIEW_SERIES_POLICY, o.DEPLOYMENT_PLACEMENT_POLICY, COHORT_POLICY))
+        if (model.get('reviewer_role') != 'independent-oracle-approver'
+                or {'model': model.get('selected_model'), 'reasoning_effort': model.get('reasoning_effort')}
+                    != plan['reviewer_settings']
+                or model.get('schema_sha256') != o._custody_read(root, child / 'output.schema.json')[0]['sha256']
+                or model.get('developer_instructions_sha256') != o._sha(instructions.encode())
+                or model.get('model_helper_sha256') != o._sha(o._git_bytes(root, 'show',
+                    context['candidate_tree'] + ':tools/codex_child_model.py'))):
+            raise o.OracleApprovalError('Interrupted registered reviewer role/settings/schema changed')
+        packet = json.loads(o._custody_read(root, child / 'cohort-context.json')[1])
+        identity = packet.get('cohort', {}).get('id')
+        if (not isinstance(identity, str) or not re.fullmatch(re.escape(identity) + r'-[0-9a-f]{32}', child.name)
+                or identity in registered):
+            raise o.OracleApprovalError('Interrupted cohort registration is duplicate or outside its native assignment')
+        registered[identity] = child
+        if succeeded:
+            successful.add(identity)
+    jobs = []
+    for cohort in plan['cohorts']:
+        child = registered.get(cohort['id'])
+        if child is None:
+            continue
+        if cohort['id'] not in seals or o._files(root, list(seals[cohort['id']])) != seals[cohort['id']]:
+            raise o.OracleApprovalError('Interrupted prepared source seal changed')
+        packet = json.loads(o._custody_read(root, child / 'cohort-context.json')[1])
+        if (packet.get('parent_context_sha256') != plan['context_sha256']
+                or packet.get('packet_sha256') != _canonical_digest({k: v for k, v in packet.items() if k != 'packet_sha256'})
+                or packet.get('cohort') != cohort):
+            raise o.OracleApprovalError('Interrupted cohort packet changed')
+        jobs.append((cohort, child))
+    return context, plan, jobs, successful
+
+
+def ingest_interrupted(o, root, directory):
+    """Native ERROR checkpoints retain registered observations after owner loss.
+
+    Current applicability, criteria, findings and the whole verdict still pass
+    through the ordinary context/partition and independent review lifecycle.
+    """
+    if __package__:
+        from . import oracle_lifecycle as lifecycle
+    else:
+        import oracle_lifecycle as lifecycle
+    rounds = o._read_rounds(directory)
+    consumed = {row.get('raw_assessment', {}).get('interrupted_origin', {}).get('context_file') for row in rounds}
+    consumed.update(row['context_file'] for row in rounds)
+    consumed.update(str(Path(row['context_file']).parent / 'review-context.json') for row in rounds)
+    for owner in lifecycle.inactive_source_owners(o, root, directory.name):
+        if lifecycle._active_children(o, root, owner):
+            continue
+        children = Path(owner['directory']) / 'children'
+        candidates = set()
+        for path in children.glob('reviewer-*.json'):
+            if re.fullmatch(r'reviewer-[0-9a-f]{32}\.json', path.name):
+                child = Path(json.loads(o._custody_read(root, path)[1])['run'])
+                if child.parent.name == 'cohorts':
+                    candidates.add(child.parent.parent)
+        for run in sorted(candidates):
+            original_file = run / 'review-context.json'
+            if str(original_file) in consumed:
+                continue
+            paths = [original_file, run / 'cohort-plan.json', run / 'prepared-source-seals.json']
+            if not all(path.exists() for path in paths):
+                continue
+            reference = {'controller_id': owner['controller_id'], 'series_id': directory.name,
+                         'context_file': str(original_file), 'custody': o._custody_files(root, paths)}
+            original, plan, jobs, successful = interrupted_origin(o, root, reference)
+            if not jobs:
+                continue
+            raw_children = []
+            for cohort, child in jobs:
+                if cohort['id'] not in successful:
+                    continue
+                try:
+                    raw_children.append(_unadopted_result(o, root, child, run / 'cohort-plan.json', plan,
+                        cohort, original, o._custody_read(root, child / 'cohort-context.json')[1],
+                        'Original registered controller ended before aggregate admission'))
+                except (OSError, ValueError, KeyError, TypeError, o.OracleApprovalError):
+                    continue
+            result = aggregate(o, plan, original, {}, ['Original controller ended before aggregate admission'], root=root)
+            result['unadopted_cohort_assessments'] = raw_children
+            result, _ = recover_interrupted(o, result, jobs, plan, original, {},
+                {cohort['id']: o._custody_read(root, child / 'cohort-context.json')[1] for cohort, child in jobs}, blocked=set())
+            if not raw_children and not result['coverage'] and not result.get('findings'):
+                continue
+            retained_files = [path for _, child in jobs for path in
+                (child / JOURNAL_NAME, child / 'checkpoint-journal-original.jsonl', child / 'model.json',
+                 child / 'request.txt', child / 'process.json', child / 'result.json') if path.exists()]
+            retained_files += [path for path in children.iterdir() if path.is_file()]
+            reference['custody'].update(o._custody_files(root, retained_files))
+            # The original context is immutable. A new storage context appends
+            # the ERROR event to today's chain without rewriting its assignment.
+            previous = rounds[-1] if rounds else None
+            context = dict(original, round=len(rounds) + 1, mode='resume',
+                           previous_record_sha256=previous['record_sha256'] if previous else None)
+            context_file = run / ('interrupted-recovery-context-' + str(context['round']) + '.json')
+            o._atomic_write(context_file, o._pretty(context))
+            raw = {'actual_outcome': 'ERROR', 'reason': result['limitations'][0],
+                   'reported_review_status': 'ERROR', 'reported_verdict': 'ERROR',
+                   'assessment': result, 'interrupted_origin': reference}
+            o._record_round(root, context, {'error': raw['reason']}, 'ERROR', context_file=context_file,
+                            raw_assessment=raw, coverage=result['coverage'], validations=[])
+            rounds = o._read_rounds(directory)
+            consumed.add(str(original_file))
+
+
 def _invalidated_projection(o, root, context, item):
     """Canonicalize source-list omissions only for the exact registered invalid execution."""
     name = item.get('evidence_path')

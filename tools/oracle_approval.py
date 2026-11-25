@@ -1198,6 +1198,9 @@ def _dispatch_budget(command: Sequence[str], context_raw: bytes, schema_raw: byt
 @_metadata_owner
 def _review_process(root: Path, prompt: str, prefix: str, *, schema_path: Path | None = None,
                     cohort_policy: str | None = None, stdin_payload: bytes | None = None) -> dict:
+    controller = _CONTROLLER.get()
+    if controller is not None and controller.interrupted.is_set():
+        raise OracleReviewIncomplete("Native owner interrupted; queued reviewer was not dispatched")
     run = _RUN.get()
     if run is None:
         raise OracleApprovalError("Independent Oracle must run under a native controller attempt")
@@ -2018,6 +2021,17 @@ def _raw_assessment_origins(root: Path, rounds: list[dict]):
         if not isinstance(assessment, dict):
             continue
         original = json.loads(_custody_read(root, record["context_file"])[1])
+        origin_sha256 = record['context_sha256']
+        origin_file = record['context_file']
+        if isinstance(raw, dict) and raw.get('interrupted_origin'):
+            if __package__:
+                from . import oracle_parallel
+            else:
+                import oracle_parallel
+            original, _, _, _ = oracle_parallel.interrupted_origin(
+                sys.modules[__name__], root, raw['interrupted_origin'])
+            origin_sha256 = _sha(_canonical(original))
+            origin_file = raw['interrupted_origin']['context_file']
         if isinstance(raw, dict):
             yield record, raw, assessment, original
         for index, child in enumerate(assessment.get("unadopted_cohort_assessments", [])):
@@ -2051,10 +2065,10 @@ def _raw_assessment_origins(root: Path, rounds: list[dict]):
             identities = ("plan_sha256", "candidate_commit", "candidate_tree", "input_binding_sha256")
             if (plan.get("plan_sha256") != _sha(_canonical(plan_body))
                     or packet.get("packet_sha256") != _sha(_canonical(packet_body))
-                    or plan.get("context_sha256") != record["context_sha256"]
-                    or packet.get("parent_context_sha256") != record["context_sha256"]
+                    or plan.get("context_sha256") != origin_sha256
+                    or packet.get("parent_context_sha256") != origin_sha256
                     or route(packet["parent_context"]) != (run / 'review-context.json'
-                        if Path(record['context_file']).name == 'unadopted-review-context.json' else route(record['context_file']))
+                        if Path(record['context_file']).name == 'unadopted-review-context.json' else route(origin_file))
                     or plan.get("candidate_commit") != record["base_commit"]
                     or plan.get("candidate_tree") != record["candidate_tree"]
                     or any(envelope.get(key) != plan.get(key) or packet.get(key) != plan.get(key) for key in identities)
@@ -2548,6 +2562,11 @@ def _pending_review_paths(context: dict, verified: Sequence[dict]) -> list[str]:
 def _review_context(root: Path, tree: str, paths: list, binding: dict, evidence: dict,
                     proposal_record: Path | None = None) -> dict:
     directory = _series_directory(root, binding["base_commit"])
+    if __package__:
+        from . import oracle_parallel
+    else:
+        import oracle_parallel
+    oracle_parallel.ingest_interrupted(sys.modules[__name__], root, directory)
     rounds = _read_rounds(directory)
     previous = rounds[-1] if rounds else None
     validation_invalidations = previous.get("validation_invalidations", {}) if previous else {}
