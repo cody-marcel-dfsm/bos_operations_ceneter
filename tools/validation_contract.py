@@ -106,7 +106,7 @@ def delta_context(root, source, tree, *, origin_main=_CURRENT_ORIGIN, prior_prop
         raise ValueError('Native publication scope changed')
     return _delta_context(root,source,tree,origin_main=origin_main,prior_proposal_sha256=prior_proposal_sha256,publication_scope=scope)
 
-def _delta_context(root, source, tree, *, origin_main=_CURRENT_ORIGIN, prior_proposal_sha256=_CURRENT_PRIOR_PROOF, publication_scope=None):
+def _delta_context(root, source, tree, *, origin_main=_CURRENT_ORIGIN, prior_proposal_sha256=_CURRENT_PRIOR_PROOF, publication_scope=None, _authenticate_prior=True):
     """Capture producer-owned exact membership; neither a model nor a caller supplies scope."""
     if not all(re.fullmatch('[a-f0-9]{40}', x or '') for x in (source, tree)):
         raise ValueError('Delta requires immutable source/tree identities')
@@ -130,7 +130,20 @@ def _delta_context(root, source, tree, *, origin_main=_CURRENT_ORIGIN, prior_pro
     elif prior_proposal_sha256 is not None:
         if not re.fullmatch('[a-f0-9]{64}',prior_proposal_sha256):raise ValueError('Exact prior native proposal required')
         path=folder/(prior_proposal_sha256+'.json')
-        if path.is_symlink() or not native_proposal_record(root,path,prior,source):raise ValueError('Prior native proposal custody changed')
+        if _authenticate_prior:
+            if path.is_symlink() or not native_proposal_record(root,path,prior,source):raise ValueError('Prior native proposal custody changed')
+        else:
+            # Assembly only: exact local bytes/custody, with no acceptance yet.
+            # Historical materialization immediately performs the unchanged full
+            # fresh recursive authentication and compares the complete context.
+            try: from . import oracle_approval as native
+            except ImportError: import oracle_approval as native
+            if path.is_symlink():raise ValueError('Prior native proposal custody changed')
+            try: raw=native._custody_read(root,path)[1]
+            except (OSError,ValueError,native.OracleApprovalError):
+                raise ValueError('Prior native proposal custody changed') from None
+            if sha256(raw)!=prior_proposal_sha256:
+                raise ValueError('Prior native proposal custody changed')
     if origin_main is _CURRENT_ORIGIN:
         observed=subprocess.run(['git','--no-replace-objects','rev-parse','--verify','refs/remotes/origin/main^{commit}'],cwd=root,capture_output=True,text=True)
         origin_main=observed.stdout.strip() if observed.returncode==0 else None
@@ -269,6 +282,10 @@ def reconstruct_delta_record(root,audit,delta):
     options={'origin_main':binding['origin_main']}
     if not legacy:options['prior_proposal_sha256']=binding['prior_proposal_sha256']
     if 'publication_scope' in audit:options['publication_scope']=audit['publication_scope']
+    # An explicit immutable prior identity needs only context assembly here.
+    # _materialize_delta's fresh historical recapture remains the sole acceptance
+    # boundary. Legacy discovery retains its existing full verification path.
+    if not legacy:options['_authenticate_prior']=False
     context=_delta_context(root,binding['source_commit'],binding['source_tree'],**options)
     if context['binding']['prior_proposal_sha256'] is None:raise ValueError('Verified native prior required for delta consumption')
     if legacy:
