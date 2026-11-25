@@ -16,6 +16,7 @@ test('synthetic HTTP discovery accepts the complete current v1 descriptor throug
   const server=createServer((request,response)=>{response.writeHead(200,{'content-type':'application/json'});response.end(serialized);});
   server.listen(0,'127.0.0.1');await once(server,'listening');t.after(()=>new Promise(resolve=>server.close(resolve)));
   const discovered=await (await fetch(`http://127.0.0.1:${server.address().port}/api-contract`)).json();
+  assert.doesNotThrow(()=>validateApiContractResponse(discovered,{operation}));
   assert.equal(validateApiContractResponse(discovered,{operation}),discovered);
   const request=buildJourneyRegistrationRequest(discovered,contextHandle,syntheticDocument);
   assert.equal(request.href,contract.execution.uri);assert.equal(request.method,'POST');
@@ -27,7 +28,7 @@ test('synthetic HTTP discovery accepts the complete current v1 descriptor throug
 });
 
 test('complete legacy and current response profiles remain exact and optional discovery links remain closed',()=>{
-  for(const descriptor of [legacyRegistrationContract(),currentRegistrationContract()]) assert.equal(validateApiContractResponse(descriptor,{operation}),descriptor);
+  for(const descriptor of [legacyRegistrationContract(),currentRegistrationContract()]){assert.doesNotThrow(()=>validateApiContractResponse(descriptor,{operation}));assert.equal(validateApiContractResponse(descriptor,{operation}),descriptor);}
   for(const mutate of [
     d=>{d.output_schema.oneOf.pop();},
     d=>{d.output_schema.oneOf.push(structuredClone(d.output_schema.oneOf[0]));},
@@ -45,6 +46,7 @@ test('complete legacy and current response profiles remain exact and optional di
 
 test('branch wait preserves open service status strings and returned continuations without polling or effects',async()=>{
   const response=branchWaitResponse(),original=JSON.stringify(response);
+  assert.doesNotThrow(()=>validateJourneyEnvelope(response.body));
   assert.equal(validateJourneyEnvelope(response.body),response.body);
   const decision=interpretJourneyResponse(response);
   assert.equal(decision.next,'parallel_branches');assert.equal(decision.branches,response.body.branches);assert.equal(decision.action,response.body.action);
@@ -71,7 +73,8 @@ test('branch envelopes reject undeclared fields, invalid types and unsafe return
 
 test('current descriptor keeps canonical commercial errors bound to its original request',()=>{
   const descriptor=currentRegistrationContract();
-  const registrationRequest=buildJourneyRegistrationRequest(descriptor,contextHandle,syntheticDocument);
+  let registrationRequest;
+  assert.doesNotThrow(()=>{registrationRequest=buildJourneyRegistrationRequest(descriptor,contextHandle,syntheticDocument);});
   for(const [code,status,retryable] of [['PAID_PLAN_REQUIRED',403,false],['MCP_ENTITLEMENT_UNAVAILABLE',503,true]]){
     const response={http_status:status,body:{error:{code,message:'Synthetic admission result.',retryable,correlation_id:'corr-synthetic',details:[]}}};
     const decision=interpretJourneyResponse(response,{registrationRequest});
