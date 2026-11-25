@@ -6,10 +6,10 @@
     "model": "gpt-6.1-sol",
     "oracle_sha256": "1797a9626ecfe42c59d8072565a84da45b7b53aa34e213b1ad2ec8d41366e214",
     "host": "Codys-MacBook-Pro.local",
-    "time": "2026-11-25T09:39:45Z",
+    "time": "2026-11-25T09:52:41Z",
     "origin_main": "91bcc35e27674158ca8a9c9b751930a28b3f97c4",
     "request_sha256": "00e267df8e4056ebe15ea2fb67721cb6889199364839821af8e71e404b2c623a",
-    "proposal_sha256": "cd88d7c5d4834424819780938f88d90b2009da19d8616f2d54f1f2d3da46adaf"
+    "proposal_sha256": "da67a0ac8b24dd4d34f8183155bcc9a0f53e00f151c02f0ff0077ef162e20e02"
   },
   "selection": {
     "acceptance": [
@@ -155,7 +155,8 @@
           "tests/oracle_parallel_test.py",
           "tests/oracle_review_series.py",
           "tests/helpers/isolated-test-cohort.mjs",
-          "tests/helpers/native-validation-state.mjs"
+          "tests/helpers/native-validation-state.mjs",
+          "tests/oracle_lifecycle_test.py"
         ],
         "name": "interactions",
         "tests": [
@@ -170,8 +171,8 @@
     ],
     "change_class": "deep_bug_fix",
     "design": null,
-    "reason": "Retain all eighteen existing criteria, selected categories, modules, fixtures, mapping purposes and scope. Within the selected lifecycle and parallel regressions, verify preservation of the latest immutable finding ledger, explicit validation invalidations and repair count when historical observations are appended; enforce write-once recovery-context equality and prevent cross-cohort findings from admitting contradictory clean journal rows. Preserve genuine public process-loss controls and every orphan ownership assertion while using untrappable loss for the live-orphan fixture. Commit the revised generated contract and focused fixture before changing production runtime, capture a complete genuine assertion-failing focused before run, preserve those test bytes for after, and complete every selected category. Preserve original failures, evidence, clocks, execution bounds, independent complete-source review and publication gates.",
-    "revision_of": "54d7033fea654ad0ec270b41860ddfd39ab2492400b75dd794a6d1220e9fefaf",
+    "reason": "Correct the interactions dependency closure by adding its directly imported lifecycle fixture. Retain all eighteen acceptance criteria, their mappings and purposes, selected category commands and test modules, focused fixtures and existing scope. Require complete fifty-case parallel wrapper discovery and execution with unchanged bounds. Preserve original native assertion-failing focused evidence through authenticated revision ancestry and unchanged focused inputs, complete every selected after category, and retain all original failures, clocks, SLA breaches and independent source and publication gates.",
+    "revision_of": "24a2ba0b545a2da6bccc27bd12b5c3b1852d2b96e57efce045d046a5d054475f",
     "scope_paths": [
       "tools/validation_contract.py",
       "tools/validation-selection.json",
@@ -242,8 +243,8 @@
       "tests/helpers/native-validation-state.mjs"
     ]
   },
-  "base_commit": "f6a710ecb0b2ac8841a29b9961142cea92b06834",
-  "base_tree": "485a841b8b74c12eee2ffa94d41fd47d14345f86",
+  "base_commit": "efc4bfc1148963d03ebd58d3ee50eee74e249ce2",
+  "base_tree": "79fcbb0ae2740e028c57fde1ec0fdd41c78403ed",
   "catalog_sha256": "51ee7ae8c1533604f7b2c68b9efba9d1b9d6f340d724d7c208dba434325859b3",
   "runtime": {
     "node": "v22.11.0",
@@ -253,8 +254,8 @@
     "architecture": "arm64",
     "options_sha256": "ebc442c160f8629073a82976daadaba1d95a60a38d768c81c8eb06598aedcac5"
   },
-  "proposal_sha256": "cd88d7c5d4834424819780938f88d90b2009da19d8616f2d54f1f2d3da46adaf",
-  "review_sha256": "74111a4e30441cad022ae2c822c448a4b5f7b18a21f0e196257f80373de0e441",
+  "proposal_sha256": "da67a0ac8b24dd4d34f8183155bcc9a0f53e00f151c02f0ff0077ef162e20e02",
+  "review_sha256": "9bd783757093d8bbceb4df16d27eb176bc0169891c360b83a1e6252a99b136f4",
   "commands": [
     {
       "category": "sanity",
@@ -325,7 +326,8 @@
         "tests/oracle_parallel_test.py",
         "tests/oracle_review_series.py",
         "tests/helpers/isolated-test-cohort.mjs",
-        "tests/helpers/native-validation-state.mjs"
+        "tests/helpers/native-validation-state.mjs",
+        "tests/oracle_lifecycle_test.py"
       ]
     }
   ],
@@ -338,6 +340,6 @@
     "reasoning_effort": "medium",
     "maximum_reasoning_effort": "medium"
   },
-  "contract_sha256": "24a2ba0b545a2da6bccc27bd12b5c3b1852d2b96e57efce045d046a5d054475f",
-  "seal": "d6dd86a6760dc8993d995a92c5b7566a71e9649267b7fba3374eb1df39c20c46"
+  "contract_sha256": "af8f51769e27780575dad639c7c272748d8a364f1c4900706c1ea61250d97838",
+  "seal": "a0bd3397be57589caadf5545389370d5f87d069f9d4d8ad522dba7fab8974570"
 }
