@@ -37,6 +37,8 @@ test('complete legacy and current response profiles remain exact and optional di
     d=>{d.output_schema.oneOf.at(-1).properties.action.properties.href.pattern='^https:';},
     d=>{d.output_schema.oneOf.at(-1).properties.action.properties.extra={type:'string'};},
     d=>{d.output_schema.oneOf.at(-1).properties.branches.items.properties.action.properties.payload_schema.type='object';},
+    d=>{d.output_schema.oneOf.find(v=>v.properties.usage).properties.usage.maxItems=17;},
+    d=>{delete d.output_schema.oneOf.find(v=>v.properties.usage).allOf;},
     d=>{d.related_contracts[0].capability='execute';},
     d=>{d.related_contracts[0].input.context_handle=contextHandle;},
     d=>{d.related_contracts.push(structuredClone(d.related_contracts[0]));},
