@@ -900,13 +900,27 @@ def ingest_interrupted(o, root, directory):
             previous = rounds[-1] if rounds else None
             context = dict(original, round=len(rounds) + 1, mode='resume',
                            previous_record_sha256=previous['record_sha256'] if previous else None)
+            if previous:
+                context.update(prior_findings=copy.deepcopy(previous['finding_ledger']),
+                               validation_invalidations=copy.deepcopy(previous['validation_invalidations']),
+                               failed_repair_rounds=previous['failed_repair_rounds'])
+            blocked = {path for item in context['prior_findings'].values() if item.get('state') == 'OPEN'
+                       for path in [item.get('file'), *item.get('affected_paths', [])]}
+            blocked.update(path for item in [*result.get('findings', []),
+                *[finding for child in raw_children for finding in child['assessment'].get('findings', [])]]
+                for path in [item.get('file'), *item.get('affected_paths', [])])
+            coverage = [row for row in result['coverage'] if row['path'] not in blocked]
             context_file = run / ('interrupted-recovery-context-' + str(context['round']) + '.json')
-            o._atomic_write(context_file, o._pretty(context))
+            if context_file.exists():
+                if o._custody_read(root, context_file)[1] != o._pretty(context):
+                    raise o.OracleApprovalError('Interrupted recovery storage context already binds different inputs')
+            else:
+                o._atomic_write(context_file, o._pretty(context))
             raw = {'actual_outcome': 'ERROR', 'reason': result['limitations'][0],
                    'reported_review_status': 'ERROR', 'reported_verdict': 'ERROR',
                    'assessment': result, 'interrupted_origin': reference}
             o._record_round(root, context, {'error': raw['reason']}, 'ERROR', context_file=context_file,
-                            raw_assessment=raw, coverage=result['coverage'], validations=[])
+                            raw_assessment=raw, coverage=coverage, validations=[])
             rounds = o._read_rounds(directory)
             consumed.add(str(original_file))
 

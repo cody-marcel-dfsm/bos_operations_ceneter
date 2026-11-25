@@ -1422,6 +1422,28 @@ class InterruptedProducerCustody(unittest.TestCase):
         self.assertNotEqual(self.case.continuation.get('verdict'),'APPROVED')
         self.assertEqual(json.loads((Path(self.case.marker['controller']['directory'])/'terminal.json').read_text())['status'],'ERROR')
 
+    def test_latest_open_finding_blocks_journal_carry_and_recovery_context_is_write_once(self):
+        root=self.case.root
+        token=o._METADATA_ROOT.set(root);self.addCleanup(o._METADATA_ROOT.reset,token)
+        directory=o._series_directory(root,self.case.context['base_commit'])
+        previous=copy.deepcopy(o._read_rounds(directory)[-1])
+        blocked=set(self.case.marker['assigned_paths'])
+        previous['finding_ledger']={'F1001':{'state':'OPEN','file':sorted(blocked)[0],
+                                           'affected_paths':sorted(blocked)}}
+        captured=[]
+        with patch.object(o,'_read_rounds',return_value=[previous]), \
+                patch.object(o,'_record_round',side_effect=lambda root,context,*args,**proofs:captured.append((context,proofs))):
+            parallel.ingest_interrupted(o,root,directory)
+            self.assertTrue(captured)
+            for context,proofs in captured:
+                self.assertEqual(context['prior_findings'],previous['finding_ledger'])
+                self.assertFalse(blocked & {row['path'] for row in proofs['coverage']})
+            path=self.case.run/'interrupted-recovery-context-2.json';original=path.read_bytes()
+            previous['finding_ledger']['F1001']['resolution']='Changed later chain state'
+            with self.assertRaisesRegex(o.OracleApprovalError,'storage context already binds different inputs'):
+                parallel.ingest_interrupted(o,root,directory)
+            self.assertEqual(path.read_bytes(),original)
+
 
 class InterruptedOwnedProcess(unittest.TestCase):
     def test_interrupted_registered_worker_is_drained_and_unrelated_process_survives(self):
