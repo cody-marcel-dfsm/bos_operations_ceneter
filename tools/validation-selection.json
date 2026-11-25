@@ -6,10 +6,10 @@
     "model": "gpt-6.1-sol",
     "oracle_sha256": "740fe68f0217ca57d210c159e3de3b4aec8901d57919d7b22085db654a0cb29c",
     "host": "Codys-MacBook-Pro.local",
-    "time": "2026-11-25T07:29:46Z",
+    "time": "2026-11-25T08:38:02Z",
     "origin_main": "91bcc35e27674158ca8a9c9b751930a28b3f97c4",
-    "request_sha256": "779095e002a3524204dafcb8d30244c47fdcac9b0dde7bf6d23ee9d57fe9753a",
-    "proposal_sha256": "457c8c7e17099c54893ee114b94944a790c9c3dfca3aea8f9c6d1f3958947335"
+    "request_sha256": "00e267df8e4056ebe15ea2fb67721cb6889199364839821af8e71e404b2c623a",
+    "proposal_sha256": "a14370c932de75802702e075a4fedd34f98dc8e00ffe5902ee356196624554be"
   },
   "selection": {
     "acceptance": [
@@ -24,7 +24,13 @@
       "Parallel-wait consumption validates the closed parent envelope, parallel current node and at most 256 declared branch summaries. It preserves string statuses without inventing an enum or maximum, validates declared indices and optional instructions, errors, resolutions and actions, and returns verified summaries and original continuations without automatic effects or an invented polling schedule.",
       "Parent and nested continuations retain existing safe URI, method, payload and approval validation through current action builders. Malformed and foreign actions fail before transport, original href bytes remain unchanged, and existing start, callback, standing-registration, recovery and terminal behavior remains supported.",
       "Declared commercial admission failures preserve HTTP 403 nonretryable and HTTP 503 retryable semantics, exact public errors and existing recovery boundaries without automatic login, retry, route switching or mutation.",
-      "Registration discovery accepts the advertised optional error-branch usage metadata only with its exact closed sixteen-item callback quota schema and CALLBACK_LIMIT_REACHED conditional requirement. Current sixteen-variant profiles accept absent execution_ttl_hours or a positive safe-integer value; legacy fourteen-variant profiles require that positive value. Altered quota schemas or conditions, invalid TTL values and unknown limit keys reject without descriptor mutation."
+      "Registration discovery accepts the advertised optional error-branch usage metadata only with its exact closed sixteen-item callback quota schema and CALLBACK_LIMIT_REACHED conditional requirement. Current sixteen-variant profiles accept absent execution_ttl_hours or a positive safe-integer value; legacy fourteen-variant profiles require that positive value. Altered quota schemas or conditions, invalid TTL values and unknown limit keys reject without descriptor mutation.",
+      "A real isolated controller exercises the maintained lifecycle and parallel producer with deterministic fake reviewer subprocesses. After one registered cohort completes and another remains unfinished, controller termination before aggregate publication and ordinary public continuation preserve the completed observations, actually execute the unfinished scope and avoid re-executing unchanged independently applicable completed scope. The whole-candidate outcome remains ERROR or INCOMPLETE until every current obligation is satisfied.",
+      "Interrupted-run reconciliation authenticates the original repository, owner, series, run, child registration, process birth, successful process outcome, trusted reviewer role and settings, canonical context, partition plan, candidate and prepared-source seals. Foreign, unregistered, symlinked, altered, swapped, failed or outcome-missing artifacts cannot acquire complete-assignment coverage or approval.",
+      "The maintained journal validator independently replays original journals while preserving their immutable bytes and original execution outcome. Valid partial source and integration observations remain distinct from completed assignments and whole-candidate approval; current criteria and dependency applicability are assessed explicitly, and missing or invalidated scope is dispatched.",
+      "Recovered observations preserve current source, proof, authority, ancestry, effective publication, public API-version and protected-effect checks. Source, proof, authority, context, plan or control-policy movement produces precise invalidation or refusal; historical observations never supply cached caller authority, native acceptance, signatures, current references or a fresh verdict.",
+      "Guarded interruption and recovery stop only registered reviewer groups whose repository, owner, run and process birth match. Actual cleanup outcomes are retained, no owned orphan remains in the synthetic loss case, unrelated processes survive, recycled or foreign identities are refused, and live-owner observation and duplicate-admission protection remain enforced.",
+      "The maintained regression wrappers execute every declared and discovered case with complete nonempty membership and unchanged execution bounds. Tests use ignored repository scratch and deterministic subprocesses without model, provider or installation calls; original failed attempts, proof records, request and review clocks, and SLA breaches remain retained, and only the maintained native producer creates recovery checkpoints from registered artifacts."
     ],
     "acceptance_tests": [
       {
@@ -90,6 +96,28 @@
         ],
         "module": "tests/journey-registration-quota-discovery.test.mjs",
         "purpose": "Verify exact conditional quota metadata through the real validator and request builder, current-profile absent and positive TTL compatibility, legacy TTL requirements and malformed metadata refusals without changing the original focused reproduction."
+      },
+      {
+        "covers": [
+          12,
+          13,
+          14,
+          15,
+          16,
+          17
+        ],
+        "module": "tests/oracle-lifecycle.test.mjs",
+        "purpose": "Exercise genuine controller loss and public continuation with registered fake subprocesses, authenticated recovery, current applicability, owned-group cleanup and complete discovered case execution."
+      },
+      {
+        "covers": [
+          13,
+          14,
+          15,
+          17
+        ],
+        "module": "tests/oracle-parallel.test.mjs",
+        "purpose": "Verify interrupted cohort intake, original journal replay, partial and completed assignment distinctions, tamper and dependency invalidation, and complete maintained parallel case membership."
       }
     ],
     "categories": [
@@ -104,12 +132,17 @@
           "tests/oracle_spec_test.py",
           "tests/helpers/registration-variant-contract.mjs",
           "tests/fixtures/journey-registration-contract.json",
-          "tests/fixtures/current-app-registration.json"
+          "tests/fixtures/current-app-registration.json",
+          "tests/oracle_lifecycle_test.py",
+          "tests/oracle_review_series.py",
+          "tests/helpers/isolated-test-cohort.mjs",
+          "tests/helpers/native-validation-state.mjs"
         ],
         "name": "focused",
         "tests": [
           "tests/oracle-history-reconstruction.test.mjs",
-          "tests/journey-registration-variant-compatibility.test.mjs"
+          "tests/journey-registration-variant-compatibility.test.mjs",
+          "tests/oracle-lifecycle.test.mjs"
         ]
       },
       {
@@ -118,7 +151,11 @@
           "tests/oracle_spec_test.py",
           "tests/fixtures/journey-registration-contract.json",
           "tests/fixtures/current-app-registration.json",
-          "tests/helpers/registration-variant-contract.mjs"
+          "tests/helpers/registration-variant-contract.mjs",
+          "tests/oracle_parallel_test.py",
+          "tests/oracle_review_series.py",
+          "tests/helpers/isolated-test-cohort.mjs",
+          "tests/helpers/native-validation-state.mjs"
         ],
         "name": "interactions",
         "tests": [
@@ -126,14 +163,15 @@
           "tests/journey-registration-discovery.test.mjs",
           "tests/journey-runtime-client.test.mjs",
           "tests/callback-runtime-client.test.mjs",
-          "tests/journey-registration-quota-discovery.test.mjs"
+          "tests/journey-registration-quota-discovery.test.mjs",
+          "tests/oracle-parallel.test.mjs"
         ]
       }
     ],
     "change_class": "deep_bug_fix",
     "design": null,
-    "reason": "Preserve all existing acceptance criteria, selected categories, tests, fixtures and mapping purposes. Add only the finite canonical skill metadata paths required for version advances and exact dependent requirement pins during ordinary package generation. This scope correction changes no behavioral acceptance, runtime requirement or design. Preserve native revision ancestry, original reproduction custody, historical outcomes and clocks, and complete-source and publication gates.",
-    "revision_of": "9e67bad2870fc74daeff4c06b78f6baffa8c6183474f45be9279798924f87cb5",
+    "reason": "Retain the twelve existing criteria, selected modules, fixtures and mapping purposes. Add bounded lifecycle and parallel regressions for interrupted native recovery, process ownership, provenance and current applicability. Commit the generated contract and regression changes before production correction, capture a complete genuine assertion-failing focused run, preserve those test bytes for the after run, and complete every selected category. Preserve original evidence, clocks, failures, bounds and independent complete-source and publication gates.",
+    "revision_of": "a8bfbdb918f489c43b19904ff145c87eca69c497fa1bfbc2eb4eeb3c39219cad",
     "scope_paths": [
       "tools/validation_contract.py",
       "tools/validation-selection.json",
@@ -191,11 +229,21 @@
       "source/verticals/education-center/education-center-student-operations/SKILL.md",
       "source/verticals/education-center/education-center-trial-reconciliation/SKILL.md",
       "source/verticals/education-center/local-school-market-research/SKILL.md",
-      "source/verticals/education-center/partnership-proposal-builder/SKILL.md"
+      "source/verticals/education-center/partnership-proposal-builder/SKILL.md",
+      "tools/oracle_approval.py",
+      "tools/oracle_parallel.py",
+      "tools/oracle_lifecycle.py",
+      "tests/oracle-lifecycle.test.mjs",
+      "tests/oracle_lifecycle_test.py",
+      "tests/oracle_review_series.py",
+      "tests/oracle-parallel.test.mjs",
+      "tests/oracle_parallel_test.py",
+      "tests/helpers/isolated-test-cohort.mjs",
+      "tests/helpers/native-validation-state.mjs"
     ]
   },
-  "base_commit": "980f443a952c3337585b1bbdfe92716799332c3c",
-  "base_tree": "b7a7b2a2bd0fc45e6350a8c8e0f7e7b1c792dbee",
+  "base_commit": "a62c5292a4530da1a2f7113a82944631faa92f22",
+  "base_tree": "d90f86d53712fb71084d189b5bb28da70378848e",
   "catalog_sha256": "51ee7ae8c1533604f7b2c68b9efba9d1b9d6f340d724d7c208dba434325859b3",
   "runtime": {
     "node": "v22.11.0",
@@ -205,8 +253,8 @@
     "architecture": "arm64",
     "options_sha256": "ebc442c160f8629073a82976daadaba1d95a60a38d768c81c8eb06598aedcac5"
   },
-  "proposal_sha256": "457c8c7e17099c54893ee114b94944a790c9c3dfca3aea8f9c6d1f3958947335",
-  "review_sha256": "ad6d5cc5ee1d9a2986c583952158e5009f284621c37de6f3d573a4edb1355645",
+  "proposal_sha256": "a14370c932de75802702e075a4fedd34f98dc8e00ffe5902ee356196624554be",
+  "review_sha256": "78468aac6dcf80bddea63c136a40100cbe28e849c4cbf0c7a0a0ddb394a44aaf",
   "commands": [
     {
       "category": "sanity",
@@ -226,18 +274,24 @@
         "--test-reporter=tap",
         "--test-concurrency=1",
         "tests/oracle-history-reconstruction.test.mjs",
-        "tests/journey-registration-variant-compatibility.test.mjs"
+        "tests/journey-registration-variant-compatibility.test.mjs",
+        "tests/oracle-lifecycle.test.mjs"
       ],
       "tests": [
         "tests/oracle-history-reconstruction.test.mjs",
-        "tests/journey-registration-variant-compatibility.test.mjs"
+        "tests/journey-registration-variant-compatibility.test.mjs",
+        "tests/oracle-lifecycle.test.mjs"
       ],
       "fixtures": [
         "tests/oracle_history_reconstruction_test.py",
         "tests/oracle_spec_test.py",
         "tests/helpers/registration-variant-contract.mjs",
         "tests/fixtures/journey-registration-contract.json",
-        "tests/fixtures/current-app-registration.json"
+        "tests/fixtures/current-app-registration.json",
+        "tests/oracle_lifecycle_test.py",
+        "tests/oracle_review_series.py",
+        "tests/helpers/isolated-test-cohort.mjs",
+        "tests/helpers/native-validation-state.mjs"
       ]
     },
     {
@@ -251,21 +305,27 @@
         "tests/journey-registration-discovery.test.mjs",
         "tests/journey-runtime-client.test.mjs",
         "tests/callback-runtime-client.test.mjs",
-        "tests/journey-registration-quota-discovery.test.mjs"
+        "tests/journey-registration-quota-discovery.test.mjs",
+        "tests/oracle-parallel.test.mjs"
       ],
       "tests": [
         "tests/oracle-history-reconstruction-integrity.test.mjs",
         "tests/journey-registration-discovery.test.mjs",
         "tests/journey-runtime-client.test.mjs",
         "tests/callback-runtime-client.test.mjs",
-        "tests/journey-registration-quota-discovery.test.mjs"
+        "tests/journey-registration-quota-discovery.test.mjs",
+        "tests/oracle-parallel.test.mjs"
       ],
       "fixtures": [
         "tests/oracle_history_reconstruction_test.py",
         "tests/oracle_spec_test.py",
         "tests/fixtures/journey-registration-contract.json",
         "tests/fixtures/current-app-registration.json",
-        "tests/helpers/registration-variant-contract.mjs"
+        "tests/helpers/registration-variant-contract.mjs",
+        "tests/oracle_parallel_test.py",
+        "tests/oracle_review_series.py",
+        "tests/helpers/isolated-test-cohort.mjs",
+        "tests/helpers/native-validation-state.mjs"
       ]
     }
   ],
@@ -278,6 +338,6 @@
     "reasoning_effort": "medium",
     "maximum_reasoning_effort": "medium"
   },
-  "contract_sha256": "a8bfbdb918f489c43b19904ff145c87eca69c497fa1bfbc2eb4eeb3c39219cad",
-  "seal": "6e3557f4ca56a0e11db596f03b24a5c8da1cf549db0e9c2fb12b89b7e899aa4e"
+  "contract_sha256": "54d7033fea654ad0ec270b41860ddfd39ab2492400b75dd794a6d1220e9fefaf",
+  "seal": "527865119848a020af81150993ec4e1048f7853881787a9394a4fa1a0afc98e4"
 }
