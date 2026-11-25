@@ -45,6 +45,7 @@ test('complete legacy and current response profiles remain exact and optional di
     d=>{d.related_contracts[0].input.operation='not a semantic operation';},
     d=>{d.related_contracts=Array.from({length:65},(_,index)=>({capability:'api.contract.get',input:{operation:`synthetic.operation${index}`}}));},
     d=>{d.execution.uri='https://foreign.invalid/register';},
+    d=>{d.limits.unadvertised_limit=10;},
     d=>{d.execution.context_header='X-Other-Context';}
   ]){const descriptor=currentRegistrationContract();mutate(descriptor);assert.throws(()=>validateApiContractResponse(descriptor,{operation}));}
 });

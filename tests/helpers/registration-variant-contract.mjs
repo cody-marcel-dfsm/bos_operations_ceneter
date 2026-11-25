@@ -15,6 +15,7 @@ export function currentRegistrationContract(){
   const quota=value.output_schema.oneOf.find(v=>Object.keys(v.properties).join()==='error');
   quota.properties.usage=structuredClone(value.output_schema.oneOf.find(v=>v.properties?.compiled?.const===true).properties.callback_report.properties.usage);
   quota.allOf=[{if:{properties:{error:{properties:{code:{const:'CALLBACK_LIMIT_REACHED'}}}}},then:{required:['usage']},else:{not:{required:['usage']}}}];
+  delete value.limits.execution_ttl_hours;
   value.public_errors.push({code:'PAID_PLAN_REQUIRED',http_status:403,retryable:false},{code:'MCP_ENTITLEMENT_UNAVAILABLE',http_status:503,retryable:true});
   return value;
 }

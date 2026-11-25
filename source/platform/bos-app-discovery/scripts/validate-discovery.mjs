@@ -3,6 +3,7 @@
 import { realpathSync } from "node:fs";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { isDeepStrictEqual } from "node:util";
 
 import validateDraft202012Schema from "./validate-json-schema-2020-12.mjs";
 
@@ -1228,10 +1229,22 @@ export function validateJourneyRegistrationContractResponse(response, expected =
         const isCompiledSuccess = branch.properties?.compiled?.const === true;
         const required = [...(branch.required ?? [])].sort();
         const properties = Object.keys(branch.properties ?? {}).sort();
-        const expectedProperties = isCompiledSuccess && Object.hasOwn(branch.properties ?? {}, "callback_report")
+        const hasQuotaUsage = branchSignature === JSON.stringify([null, ["error"]]) && Object.hasOwn(branch.properties ?? {}, "usage");
+        const expectedProperties = hasQuotaUsage ? ["error", "usage"] : isCompiledSuccess && Object.hasOwn(branch.properties ?? {}, "callback_report")
           ? [...required, "callback_report"].sort()
           : required;
         if (JSON.stringify(properties) !== JSON.stringify(expectedProperties)) return true;
+        if (hasQuotaUsage) {
+          const count = {type: ["integer", "null"], minimum: 0};
+          const usage = {type: "array", maxItems: 16, items: {type: "object", required: ["resource", "scope", "visibility", "used", "limit", "remaining", "reserved_by_submission"], properties: {
+            resource: {enum: ["definitions", "registrations", "active_runs", "pending_events", "callbacks"]},
+            scope: {enum: ["organization", "installation", "source", "execution"]},
+            visibility: {enum: ["visible", "restricted"]}, used: count, limit: count, remaining: count,
+            reserved_by_submission: {type: "integer", minimum: 0}
+          }, additionalProperties: false}};
+          const condition = [{if: {properties: {error: {properties: {code: {const: "CALLBACK_LIMIT_REACHED"}}}}}, then: {required: ["usage"]}, else: {not: {required: ["usage"]}}}];
+          if (!isDeepStrictEqual(branch.properties.usage, usage) || !isDeepStrictEqual(branch.allOf, condition)) return true;
+        }
         if (!isCompiledSuccess || !Object.hasOwn(branch.properties ?? {}, "callback_report")) return false;
         const report = branch.properties.callback_report;
         return report?.type !== "object" || report.additionalProperties !== false ||
@@ -1263,7 +1276,10 @@ export function validateJourneyRegistrationContractResponse(response, expected =
   const limitFields = new Set(["document_bytes", "string_bytes", "nesting_depth", "nodes", "transitions", "predicates", "node_visits", "total_visits", "operation_retries", "operation_duration_seconds", "execution_duration_seconds", "fan_out", "created_per_user_per_hour", "active_per_user", "active_per_application_organization", "execution_ttl_hours", "metadata_retention_days"]);
   requireObject(response.limits, `${label}.limits`);
   requireExactKeys(response.limits, limitFields, `${label}.limits`);
-  for (const field of limitFields) if (!Number.isSafeInteger(response.limits[field]) || response.limits[field] < 1) throw new Error(`${label}.limits.${field} must be a positive safe integer`);
+  for (const field of limitFields) {
+    if (field === "execution_ttl_hours" && branches.length !== legacyVariants.size && !Object.hasOwn(response.limits, field)) continue;
+    if (!Number.isSafeInteger(response.limits[field]) || response.limits[field] < 1) throw new Error(`${label}.limits.${field} must be a positive safe integer`);
+  }
   requireObject(response.guarantees, `${label}.guarantees`);
   requireExactKeys(response.guarantees, new Set(["idempotent", "server_owned_state", "client_generated_keys"]), `${label}.guarantees`);
   if (response.guarantees.idempotent !== true || response.guarantees.server_owned_state !== true || response.guarantees.client_generated_keys !== false) {
