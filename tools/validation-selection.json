@@ -4,12 +4,12 @@
   "stamp": {
     "engine": "codex",
     "model": "gpt-6.1-sol",
-    "oracle_sha256": "740fe68f0217ca57d210c159e3de3b4aec8901d57919d7b22085db654a0cb29c",
+    "oracle_sha256": "1797a9626ecfe42c59d8072565a84da45b7b53aa34e213b1ad2ec8d41366e214",
     "host": "Codys-MacBook-Pro.local",
-    "time": "2026-11-25T08:38:02Z",
+    "time": "2026-11-25T09:39:45Z",
     "origin_main": "91bcc35e27674158ca8a9c9b751930a28b3f97c4",
     "request_sha256": "00e267df8e4056ebe15ea2fb67721cb6889199364839821af8e71e404b2c623a",
-    "proposal_sha256": "a14370c932de75802702e075a4fedd34f98dc8e00ffe5902ee356196624554be"
+    "proposal_sha256": "cd88d7c5d4834424819780938f88d90b2009da19d8616f2d54f1f2d3da46adaf"
   },
   "selection": {
     "acceptance": [
@@ -170,8 +170,8 @@
     ],
     "change_class": "deep_bug_fix",
     "design": null,
-    "reason": "Retain the twelve existing criteria, selected modules, fixtures and mapping purposes. Add bounded lifecycle and parallel regressions for interrupted native recovery, process ownership, provenance and current applicability. Commit the generated contract and regression changes before production correction, capture a complete genuine assertion-failing focused run, preserve those test bytes for the after run, and complete every selected category. Preserve original evidence, clocks, failures, bounds and independent complete-source and publication gates.",
-    "revision_of": "a8bfbdb918f489c43b19904ff145c87eca69c497fa1bfbc2eb4eeb3c39219cad",
+    "reason": "Retain all eighteen existing criteria, selected categories, modules, fixtures, mapping purposes and scope. Within the selected lifecycle and parallel regressions, verify preservation of the latest immutable finding ledger, explicit validation invalidations and repair count when historical observations are appended; enforce write-once recovery-context equality and prevent cross-cohort findings from admitting contradictory clean journal rows. Preserve genuine public process-loss controls and every orphan ownership assertion while using untrappable loss for the live-orphan fixture. Commit the revised generated contract and focused fixture before changing production runtime, capture a complete genuine assertion-failing focused before run, preserve those test bytes for after, and complete every selected category. Preserve original failures, evidence, clocks, execution bounds, independent complete-source review and publication gates.",
+    "revision_of": "54d7033fea654ad0ec270b41860ddfd39ab2492400b75dd794a6d1220e9fefaf",
     "scope_paths": [
       "tools/validation_contract.py",
       "tools/validation-selection.json",
@@ -242,8 +242,8 @@
       "tests/helpers/native-validation-state.mjs"
     ]
   },
-  "base_commit": "a62c5292a4530da1a2f7113a82944631faa92f22",
-  "base_tree": "d90f86d53712fb71084d189b5bb28da70378848e",
+  "base_commit": "f6a710ecb0b2ac8841a29b9961142cea92b06834",
+  "base_tree": "485a841b8b74c12eee2ffa94d41fd47d14345f86",
   "catalog_sha256": "51ee7ae8c1533604f7b2c68b9efba9d1b9d6f340d724d7c208dba434325859b3",
   "runtime": {
     "node": "v22.11.0",
@@ -253,8 +253,8 @@
     "architecture": "arm64",
     "options_sha256": "ebc442c160f8629073a82976daadaba1d95a60a38d768c81c8eb06598aedcac5"
   },
-  "proposal_sha256": "a14370c932de75802702e075a4fedd34f98dc8e00ffe5902ee356196624554be",
-  "review_sha256": "78468aac6dcf80bddea63c136a40100cbe28e849c4cbf0c7a0a0ddb394a44aaf",
+  "proposal_sha256": "cd88d7c5d4834424819780938f88d90b2009da19d8616f2d54f1f2d3da46adaf",
+  "review_sha256": "74111a4e30441cad022ae2c822c448a4b5f7b18a21f0e196257f80373de0e441",
   "commands": [
     {
       "category": "sanity",
@@ -338,6 +338,6 @@
     "reasoning_effort": "medium",
     "maximum_reasoning_effort": "medium"
   },
-  "contract_sha256": "54d7033fea654ad0ec270b41860ddfd39ab2492400b75dd794a6d1220e9fefaf",
-  "seal": "527865119848a020af81150993ec4e1048f7853881787a9394a4fa1a0afc98e4"
+  "contract_sha256": "24a2ba0b545a2da6bccc27bd12b5c3b1852d2b96e57efce045d046a5d054475f",
+  "seal": "d6dd86a6760dc8993d995a92c5b7566a71e9649267b7fba3374eb1df39c20c46"
 }

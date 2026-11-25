@@ -412,7 +412,9 @@ Path(sys.argv[sys.argv.index('--output-last-message')+1]).write_text('{"verdict"
             time.sleep(.02)
         reviewer=int(marker.read_text());birth=lifecycle.process_identity(reviewer)
         try:
-            owner.terminate();owner.wait(timeout=5)
+            # SIGKILL represents untrappable owner loss. Supported SIGTERM now
+            # drains registered workers, while this case must leave a live orphan.
+            owner.kill();owner.wait(timeout=5)
             follower=self.start();time.sleep(.5)
             self.assertEqual(len((self.root/'.git/oracle/invocations').read_text().splitlines()),1,
                              'A reviewer OS child still runs for the interrupted native owner')
@@ -1074,6 +1076,27 @@ class InterruptedRunContinuity(unittest.TestCase):
         prior=set(self.marker['assigned_paths'])
         redispatched=sorted(prior & {name for row in self.continued for name in row['paths']})
         self.assertEqual(redispatched,[],f'Ordinary continuation reran authentic completed body observations: {redispatched}')
+
+    def test_older_recovery_preserves_latest_ledger_invalidations_and_repair_count(self):
+        from tools import oracle_parallel as parallel
+        token=o._METADATA_ROOT.set(self.root);self.addCleanup(o._METADATA_ROOT.reset,token)
+        directory=o._series_directory(self.root,self.context['base_commit'])
+        previous=copy.deepcopy(o._read_rounds(directory)[-1])
+        # A focused reconciliation unit control: original run/process artifacts
+        # remain real and cold-authenticated. The existing latest-chain state is
+        # supplied in memory; no canonical result or approval is manufactured.
+        previous['finding_ledger']={'F1001':{'state':'RESOLVED','resolution':'Later independent repair'}}
+        previous['validation_invalidations']={'historical-validation.json':{'reason':'Later explicit invalidation'}}
+        previous['failed_repair_rounds']=2
+        captured=[]
+        with patch.object(o,'_read_rounds',return_value=[previous]), \
+                patch.object(o,'_record_round',side_effect=lambda root,context,*args,**kwargs:captured.append(context)):
+            parallel.ingest_interrupted(o,self.root,directory)
+        self.assertTrue(captured,'Actual native interrupted owner must reach reconciliation')
+        for context in captured:
+            self.assertEqual(context['prior_findings'],previous['finding_ledger'])
+            self.assertEqual(context['validation_invalidations'],previous['validation_invalidations'])
+            self.assertEqual(context['failed_repair_rounds'],previous['failed_repair_rounds'])
 
 
 if __name__=='__main__':unittest.main()
