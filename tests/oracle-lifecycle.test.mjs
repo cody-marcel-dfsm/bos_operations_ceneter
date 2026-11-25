@@ -1,6 +1,9 @@
 import { execFileSync } from "node:child_process";
 import test from "node:test";
 import assert from "node:assert/strict";
+import { mkdir, mkdtemp, rm } from "node:fs/promises";
+import { fileURLToPath } from "node:url";
+import { join } from "node:path";
 import { isolatedTestCohort } from "./helpers/isolated-test-cohort.mjs";
 
 const root = new URL("../", import.meta.url);
@@ -24,12 +27,21 @@ test("native lifecycle discovery retains every declared Python case", () => {
 
 // Each case owns its synthetic repository and native child processes. The
 // existing deadline applies per case, with bounded workers and group cleanup.
-const cohort = isolatedTestCohort(discovery.callable.map(name => ({name, command: "python3",
-  args: ["tests/oracle_lifecycle_test.py", name], cwd: root})), {concurrency: 4, timeoutMs: 120000});
+const scratch = fileURLToPath(new URL("../Vault/tmp/", import.meta.url));
+await mkdir(scratch, {recursive: true});
+const temporary = await mkdtemp(join(scratch, "oracle-lifecycle-wrapper-"));
+const cases = await Promise.all(discovery.callable.map(async (name, index) => {
+  const directory = join(temporary, String(index));
+  await mkdir(directory);
+  return {name, command: "python3", args: ["tests/oracle_lifecycle_test.py", name], cwd: root,
+    env: {...process.env, TMPDIR: directory}};
+}));
+const cohort = isolatedTestCohort(cases, {concurrency: 4, timeoutMs: 120000});
+const cleanup = cohort.completion.then(() => rm(temporary, {recursive: true, force: true}));
 for (const signal of ["SIGINT", "SIGTERM"]) {
   const stop = () => {
     cohort.cancel();
-    void cohort.completion.then(() => {
+    void cleanup.then(() => {
       process.removeListener(signal, stop);
       process.kill(process.pid, signal);
     });

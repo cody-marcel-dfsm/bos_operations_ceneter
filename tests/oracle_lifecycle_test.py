@@ -1,6 +1,7 @@
 """Real process admission/observation and exact-candidate catch-up regressions."""
 from pathlib import Path
 import io
+import copy
 import json
 import os
 import subprocess
@@ -918,6 +919,161 @@ class BoundedReviewer(unittest.TestCase):
     def test_invalid_utf8_retains_exact_raw_bytes_and_fails_closed(self):
         with self.assertRaises(UnicodeDecodeError):self.execute('import sys;sys.stdout.buffer.write(bytes([255]))')
         self.assertEqual((self.run/'stdout.log').read_bytes(),bytes([255]))
+
+
+CONTINUITY_CONTROLLER = r'''
+"""Invoke ordinary native issue with fake executable, native context/plan/registrations."""
+from pathlib import Path
+import json,os,sys
+from unittest.mock import patch
+CANONICAL=Path(os.environ['BOC_TEST_CANONICAL_ROOT']);sys.path.insert(0,str(CANONICAL));sys.path.insert(0,str(CANONICAL/'tests'))
+from tools import oracle_approval as o,oracle_parallel as parallel
+root=Path(sys.argv[1]);mode=sys.argv[2];original=parallel._checked; original_completed=parallel.as_completed
+
+def completed(futures):
+ for future in original_completed(futures):
+  cohort=futures[future]
+  if mode=='die' and cohort['id'].startswith('implementation-consumers'):
+   envelope=future.result();run=o._RUN.get()
+   plan=json.loads((run/'cohort-plan.json').read_text());context=json.loads((run/'review-context.json').read_text())
+   original(o,envelope,plan,cohort,context) # Real native validator, no fabricated proof.
+   child=next(p for p in (run/'cohorts').iterdir() if json.loads((p/'cohort-context.json').read_text())['cohort']['id']==cohort['id'])
+   process=json.loads((child/'process.json').read_text());assert process['exit_code']==0 and 'native_registration' in process
+   assert (child/'cohort-timing.json').is_file()
+   (root/'Vault/tmp/prototype-completed-before-loss.json').write_text(json.dumps({'child':str(child),'cohort_id':cohort['id'],'assigned_paths':cohort['required_paths'],'controller':o._CONTROLLER.get().identity,'native_process':process}))
+   yield future
+   os._exit(7)
+  yield future
+vault=root/'Vault/tmp/prototype-vault.json'
+with patch.object(o,'__file__',str(root/'tools/oracle_approval.py')),patch.object(o,'_environment_digest',return_value='environment-A'),patch.object(o,'selected_model',return_value='synthetic-model'),patch.object(o,'selected_reasoning_effort',return_value=None),patch.object(o,'_vault_evidence',return_value=vault),patch.object(parallel,'as_completed',side_effect=completed):
+ try:
+  value=o.issue(root,[str(root/'Vault/tmp/validation.json')],None)
+  print(json.dumps({'returned_status':value.get('review_status'),'verdict':value.get('verdict')}))
+ except o.OracleApprovalError as error:
+  print(json.dumps({'native_error_class':type(error).__name__,'reason':str(error)}))
+'''
+
+CONTINUITY_REVIEWER = r'''
+#!/usr/bin/env python3
+"""Deterministic fixture child. No model, real source review or approval."""
+from pathlib import Path
+import hashlib,json,os,sys,time
+args=sys.argv[1:];output=Path(args[args.index('--output-last-message')+1]);packet_path=output.with_name('cohort-context.json');raw=packet_path.read_bytes();packet=json.loads(raw);cohort=packet['cohort'];root=Path.cwd()
+developer=json.loads(next(v.split('=',1)[1] for v in args if v.startswith('developer_instructions=')))
+assert 'trusted independent, read-only Oracle cohort' in developer
+assert os.environ['CODEX_SELECTED_MODEL']=='synthetic-model'
+inputs=lambda p:[{'path':p,'digest':packet['input_hashes'][p]}]
+anchor='@proposal/scope' if '@proposal/scope' in packet['input_hashes'] else next(iter(packet['input_hashes']))
+with (root/'Vault/tmp/prototype-dispatch.jsonl').open('a') as stream:stream.write(json.dumps({'run':str(output.parent),'cohort':cohort['id'],'pid':os.getpid(),'paths':cohort['required_paths']})+'\n')
+if not cohort['id'].startswith('implementation-consumers'):time.sleep(1.0)
+rows=[{'type':'coverage','plan_sha256':packet['plan_sha256'],'packet_sha256':hashlib.sha256(raw).hexdigest(),'path':p,'inputs':inputs(p),'reason':'Deterministic synthetic child completed the assigned fixture body'} for p in cohort['required_paths'] if not p.startswith('@retained-criterion/')]
+rows += [{'type':'integration','plan_sha256':packet['plan_sha256'],'packet_sha256':hashlib.sha256(raw).hexdigest(),'concern':c,'status':'REVIEWED','inputs':inputs(anchor),'reason':'Deterministic synthetic fixture integration checkpoint'} for c in cohort['integration_checks']]
+output.with_name('checkpoint.jsonl').write_text(''.join(json.dumps(x)+'\n' for x in rows))
+assessment={'verdict':'INCOMPLETE','review_status':'INCOMPLETE','summary':'Synthetic child observations only; no model assessment or approval','findings':[],'resolutions':[],'validations':[],'limitations':['The synthetic experiment issues no independent review verdict'],'repair_plan':'Retain truthful fixture observations','coverage':[{'path':p,'status':'REVIEWED','inputs':inputs(p),'reason':'Deterministic synthetic fixture body checkpoint'} for p in cohort['required_paths']],'authentication_impact':'NONE','owner_approval_status':'NOT_REQUIRED','api_version_assessment':{'impact':'NONE','request_kind':'NOT_REQUIRED','requested_change':None,'request_quote':None,'request_evidence':None},'protected_effects':{'active':[],'dispositions':[]}}
+result={k:packet[k] for k in ('plan_sha256','candidate_commit','candidate_tree','input_binding_sha256')};result.update(cohort_id=cohort['id'],assessment=assessment,integration=[{k:v for k,v in row.items() if k in {'concern','status','inputs','reason'}} for row in rows if row['type']=='integration']);output.write_text(json.dumps(result))
+'''
+
+class InterruptedRunContinuity(unittest.TestCase):
+    """Real ordinary native entry/registration; deterministic local reviewer processes only."""
+    def setUp(self):
+        canonical=Path(__file__).resolve().parents[1]
+        scratch=canonical/'Vault/tmp/oracle-interrupted-fixtures';scratch.mkdir(parents=True,exist_ok=True)
+        temporary=tempfile.TemporaryDirectory
+        def owned_temporary(*args,**kwargs):
+            kwargs['dir']=scratch
+            return temporary(*args,**kwargs)
+        original_propose=fixtures.ReviewSeries.propose
+        def prepared_proposal(case):
+            schema=case.root/'.agents/skills/oracle/review-output.schema.json'
+            schema.write_bytes((canonical/'.agents/skills/oracle/review-output.schema.json').read_bytes())
+            case.git('add',str(schema.relative_to(case.root)))
+            case.git('commit','-qm','synthetic executable schema prerequisite')
+            return original_propose(case)
+        self.fixture=fixtures.ReviewSeries('runTest');self.addCleanup(self.fixture.doCleanups)
+        with patch.object(tempfile,'TemporaryDirectory',owned_temporary),patch.object(fixtures.ReviewSeries,'propose',prepared_proposal):
+            self.fixture.setUp()
+        self.root=self.fixture.root
+        private=self.root/'Vault/tmp';private.mkdir(exist_ok=True)
+        executable=private/'fixture-bin/codex';executable.parent.mkdir();executable.write_text(CONTINUITY_REVIEWER.lstrip('\n'));executable.chmod(0o700)
+        controller=private/'continuity-controller.py';controller.write_text(CONTINUITY_CONTROLLER)
+        (private/'prototype-vault.json').write_text('{"kind":"synthetic-inert-vault-observation"}')
+        environment={**os.environ,'PATH':str(executable.parent)+os.pathsep+os.environ['PATH'],
+            'PYTHONPATH':str(canonical),'BOC_TEST_CANONICAL_ROOT':str(canonical),'BOC_ORACLE_ENGINE':'codex',
+            'CODEX_THREAD_ID':'','CODEX_SELECTED_MODEL':'synthetic-model','CODEX_SELECTED_REASONING_EFFORT':'none'}
+        self.children=[];self.addCleanup(self.stop_children)
+        def launch(mode):
+            process=subprocess.Popen([sys.executable,'-B',str(controller),str(self.root),mode],cwd=self.root,
+                env=environment,stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True)
+            self.children.append(process)
+            stdout,stderr=process.communicate(timeout=65)
+            (private/(mode+'.stdout.log')).write_text(stdout);(private/(mode+'.stderr.log')).write_text(stderr)
+            return process.returncode,stdout,stderr
+        self.dead_exit,stdout,stderr=launch('die')
+        self.assertEqual(self.dead_exit,7,f'Fixture must reach real controlled parent loss: {stdout} {stderr}')
+        self.marker=json.loads((private/'prototype-completed-before-loss.json').read_text())
+        self.child=Path(self.marker['child']);self.run=self.child.parent.parent
+        self.journal=(self.child/'checkpoint.jsonl').read_bytes()
+        # The remaining owned fake workers have a fixed one-second delay.
+        time.sleep(1.5)
+        code,stdout,stderr=launch('continue');self.assertEqual(code,0,stderr)
+        self.continuation=json.loads(stdout.splitlines()[-1])
+        self.dispatches=[json.loads(line) for line in (private/'prototype-dispatch.jsonl').read_text().splitlines()]
+        self.continued=[row for row in self.dispatches if not Path(row['run']).is_relative_to(self.run)]
+        self.plan=json.loads((self.run/'cohort-plan.json').read_text())
+        self.context=json.loads((self.run/'review-context.json').read_text())
+        self.packet=(self.child/'cohort-context.json').read_bytes();self.cohort=json.loads(self.packet)['cohort']
+
+    def stop_children(self):
+        for process in self.children:
+            if process.poll() is None:process.terminate()
+            process.communicate(timeout=5)
+
+    def test_original_error_and_journal_survive_real_controller_loss(self):
+        terminal=json.loads((Path(self.marker['controller']['directory'])/'terminal.json').read_text())
+        self.assertEqual(terminal['status'],'ERROR')
+        self.assertEqual((self.child/'checkpoint.jsonl').read_bytes(),self.journal)
+        self.assertEqual(self.marker['native_process']['exit_code'],0)
+        self.assertNotEqual(self.continuation.get('verdict'),'APPROVED')
+
+    def test_original_native_registration_plan_and_prepared_custody_verify(self):
+        ref=self.marker['native_process']['native_registration'];path=Path(ref['path']);raw=path.read_bytes();registration=json.loads(raw)
+        self.assertEqual(o._sha(raw),ref['sha256'])
+        self.assertEqual(o._sha(o._canonical({k:v for k,v in registration.items() if k!='record_sha256'})),registration['record_sha256'])
+        identity=Path(self.marker['controller']['directory'])/'identity.json'
+        self.assertEqual(registration['owner_identity_sha256'],o._sha(identity.read_bytes()))
+        self.assertEqual(registration['root'],str(self.root));self.assertEqual(registration['run'],str(self.child))
+        self.assertEqual(registration['evidence'],o._files(self.root,list(registration['evidence'])))
+        outcome=json.loads(path.with_suffix('.outcome.json').read_text())
+        self.assertEqual(outcome['record_sha256'],registration['record_sha256']);self.assertEqual(outcome['exit_code'],0)
+        self.assertEqual(o._sha(o._canonical({k:v for k,v in self.plan.items() if k!='plan_sha256'})),self.plan['plan_sha256'])
+        self.assertEqual(o._sha(o._canonical(self.context)),self.plan['context_sha256'])
+        seals=json.loads((self.run/'prepared-source-seals.json').read_text())[self.cohort['id']]
+        self.assertEqual(o._files(self.root,list(seals)),seals)
+        from tools import oracle_parallel as parallel
+        envelope=json.loads((self.child/'result.json').read_text())
+        self.assertEqual(parallel._checked(o,envelope,self.plan,self.cohort,self.context)['review_status'],'INCOMPLETE')
+
+    def test_journal_replay_rejects_foreign_plan_packet_and_current_source(self):
+        from tools import oracle_parallel as parallel
+        packet_hash=o._sha(self.packet);journal=self.journal.decode()
+        admitted=parallel.replay_journal(o,journal,self.plan,self.cohort,self.context,packet_hash)
+        self.assertEqual({row['path'] for row in admitted['coverage']},set(self.cohort['required_paths']))
+        for field in ['plan_sha256','packet_sha256']:
+            rows=[dict(json.loads(line),**{field:'0'*64}) for line in journal.splitlines() if line]
+            value=parallel.replay_journal(o,'\n'.join(json.dumps(row) for row in rows),self.plan,self.cohort,self.context,packet_hash)
+            self.assertFalse(value['coverage']);self.assertTrue(value['rejected'])
+        context=copy.deepcopy(self.context);target=self.cohort['required_paths'][0];context['input_hashes'][target]='changed-current-input'
+        value=parallel.replay_journal(o,journal,self.plan,self.cohort,context,packet_hash)
+        self.assertNotIn(target,{row['path'] for row in value['coverage']});self.assertTrue(value['rejected'])
+
+    def test_public_continuation_runs_missing_scope_without_repeating_completed_bodies(self):
+        self.assertTrue(self.continued,'Continuation must actually dispatch new missing work')
+        self.assertTrue(any(row['cohort'].startswith('crosscutting-integration') for row in self.continued),
+                        'Unfinished integration must really run')
+        self.assertEqual(self.continuation.get('native_error_class'),'OracleReviewIncomplete',self.continuation)
+        prior=set(self.marker['assigned_paths'])
+        redispatched=sorted(prior & {name for row in self.continued for name in row['paths']})
+        self.assertEqual(redispatched,[],f'Ordinary continuation reran authentic completed body observations: {redispatched}')
 
 
 if __name__=='__main__':unittest.main()
