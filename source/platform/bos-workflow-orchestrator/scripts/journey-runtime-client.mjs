@@ -60,6 +60,7 @@ const forbiddenPublicKeys = new Set([
   "api_key",
   "credential_id",
   "authority_context",
+  "context_handle",
   "org_id",
   "organization_id",
   "app_code",
