@@ -6,78 +6,37 @@
     "model": "gpt-6.1-sol",
     "oracle_sha256": "304d980c8a53466df6a6c682be71daa47ff8a62a3224cefd928669f6c3cb6ea8",
     "host": "Codys-MacBook-Pro.local",
-    "time": "2026-11-24T19:47:25Z",
-    "origin_main": "3db7dd41af8a0259d622f32ad44723069247374e",
-    "request_sha256": "93743d85123e320c9ab52fdd7e39cc3f4730015bea3284608bce784239af4e47",
-    "proposal_sha256": "3ab3d911dd27db28f5311b9c952115d1280953eae66eab77b832621d7b968d11"
+    "time": "2026-11-25T06:22:20Z",
+    "origin_main": "91bcc35e27674158ca8a9c9b751930a28b3f97c4",
+    "request_sha256": "00e267df8e4056ebe15ea2fb67721cb6889199364839821af8e71e404b2c623a",
+    "proposal_sha256": "71ac9b5be79cbe2bc60be584a8c58e04fbca7c74c72c9b2a4fd795e4137c717b"
   },
   "selection": {
     "acceptance": [
-      "Independent publication merged forward into an unfinished descendant preserves its authenticated lifecycle origin, series identity, original request clock, unresolved finding IDs and retained observations. Publication scope advances independently to the current native baseline.",
-      "Refreshed approved proposals preserve the unfinished lineage. Actual repairs resolve the existing finding IDs through current input-bound evidence, and new defects retain normal finding classification and allocation.",
-      "Coverage reuse requires unchanged applicable source bytes, modes, dependencies, criteria, configuration, authority and environment. Changed evidence or consumed inputs produces explicit invalidation without losing original records or granting approval.",
-      "Lifecycle completion requires immutable successful native assessment history bound to the actual candidate tree and proof that its corresponding candidate was published. Origin ancestry, independent publication, proposal approval and ERROR, INCOMPLETE or REJECTED assessments alone cannot establish completion. Missing or tampered custody fails closed.",
-      "Synthetic branch scenarios exercise independent publication, proposal refresh, real finding resolution, unchanged reuse, changed-input invalidation and genuine lifecycle completion. Existing declared test discovery, deadlines, concurrency and assertions remain intact, with unchanged-test assertion failure before the implementation and complete success afterward.",
-      "Current candidate verification, source-frontier accounting, immutable history, exact publication scope and deterministic source admission retain their existing boundaries. Historical records remain byte-identical, prior approval never becomes current approval, and no model or paid service is launched by synthetic regressions.",
-      "Native deterministic verification includes exactly one genuine bounded existing-CLI conceptual proposal witness with immutable source, runtime and output custody. Public CI removes only the native-only live-proposal module and completely executes the remaining nonempty selected projection without provider calls; all existing profile obligations remain required.",
-      "Lifecycle completion accepts distinct native source, package and actual-Oracle proof kinds only with authentic approved task/spec binding, exact original candidate and immutable producer custody, no unresolved findings, and actual corresponding source publication ancestry. Source/package positives use their real native producers with synthetic fixed checks; actual-Oracle consumption verifies original scope, selected commands, export, genuine CLI witness and outputs through its existing native profile. Unrelated publications, artifact-only or CI-only evidence, missing, tampered or stale custody and a second unfinished task cannot establish completion. Completion observations preserve original marker, series, clocks, finding IDs and proof identities; VERIFIED remains distinct from APPROVED.",
-      "A valid sealed spec whose exact selected commands contain the unique native-only proposal module and a nonempty offline acceptance projection selects both the actual-Oracle CI lane and its declared runtime preparation for a nonempty descendant history entirely within the unchanged literal profile inventory. Synthetic Git regressions prove fail-before/pass-after behavior and reject dependency admission for absent, malformed, tampered or unsealed specs, invalid command projections, empty ranges, and outside or reverted-outside history. Existing direct-component refusal, mixed/general routing, customer and credential safeguards, native proposal custody and publication requirements remain intact.",
-      "Selected CI categories use the existing native 900-second category bound while retaining each test module's own deadlines, declared concurrency, exact nonempty offline projection and complete-result requirements. Existing structural/export and genuine-CLI limits remain intact. Real Node process regressions with short explicit scaled durations prove completion beyond the former adapter limit and fail-closed handling of assertion failure, timeout and incomplete output. New failure records retain actual attempted command rows, category, available complete or explicitly partial counts and original output hashes/files; public diagnostics expose only bounded sanitized category/result facts with integer timing metadata. Historical records, runtime guards, original delivery clocks and native verification/publication requirements remain unchanged.",
-      "All four offline core Python launches use the declared installed ORACLE_PUBLIC_PYTHON when set and retain the existing local fallback only when unset. An unchanged focused regression copies the finite required public, native and synthetic policy fixture closure into an isolated artifact, proves the private fallback interpreter absent, and executes the complete CI-projected acceptance vector through a real recording launcher that executes the existing installed Python. It requires all three Node cases, their 9, 4 and 2 Python tests, the parity check and all four launcher invocations to complete successfully with original deadlines and no skips, cancellations or substituted results. The regression produces a complete assertion failure before the repair and passes afterward; native verification and exact-source CI retain their full existing obligations."
+      "Historical reconstruction with an explicit immutable prior authenticates that prior once per reconstruction edge while preserving the selected value, normalization audit and complete reconstructed context. Deterministic single-edge and controlled recursive cases retain unchanged assertion failures before the correction and pass afterward.",
+      "First-pass historical assembly establishes exact local prior-byte custody only. Historical materialization performs fresh full transitive native authentication and whole-context comparison before acceptance; producer capture and legacy prior discovery retain their existing authentication behavior.",
+      "Closed raw decisions, prior identities, source and origin bindings, retained criteria and mapping projections remain enforced. Invalid, missing, replayed or altered bindings and raw approval evidence fail closed without publishing a spec.",
+      "Prior archive movement between assembly and final authentication is refused. Archive authentication without ancestry remains distinct from ancestry admission, and an intact orphan archive remains refused when ancestry is required. Independent invocations preserve fresh verification.",
+      "The regression harness runs complete nonempty deterministic cases using consumer-owned fixtures under ignored repository scratch, launches no model or paid service, preserves historical artifacts and existing bounds, and grants no approval or client readiness through synthetic results."
     ],
     "acceptance_tests": [
       {
         "covers": [
           0,
+          4
+        ],
+        "module": "tests/oracle-history-reconstruction.test.mjs",
+        "purpose": "Run the single-edge and controlled-recursion authentication-count reproductions with identical reconstructed results and complete deterministic outcomes."
+      },
+      {
+        "covers": [
           1,
           2,
           3,
-          4,
-          5,
-          7
+          4
         ],
-        "module": "tests/oracle-review-series.test.mjs",
-        "purpose": "Exercise lineage continuity and completion through synthetic native review-series scenarios, including finding resolution, evidence applicability and preserved custody."
-      },
-      {
-        "covers": [
-          0,
-          5
-        ],
-        "module": "tests/oracle-lifecycle.test.mjs",
-        "purpose": "Verify controller lifecycle, continuation, process ownership and failure handling remain intact."
-      },
-      {
-        "covers": [
-          0,
-          5
-        ],
-        "module": "tests/oracle-source-frontier.test.mjs",
-        "purpose": "Verify current publication-range source accounting and fail-closed source-frontier admission remain intact."
-      },
-      {
-        "covers": [
-          6
-        ],
-        "module": "tests/oracle-public-live-proposal.test.mjs",
-        "purpose": "Verify the genuine bounded native CLI conceptual proposal witness and its source, runtime, process and result bindings."
-      },
-      {
-        "covers": [
-          6,
-          10
-        ],
-        "module": "tests/oracle-public-core.test.mjs",
-        "purpose": "Provide complete offline proposal-core and custody checks in the nonempty public CI acceptance projection."
-      },
-      {
-        "covers": [
-          8,
-          9,
-          10
-        ],
-        "module": "tests/deterministic-oracle.test.mjs",
-        "purpose": "Verify sealed dependency routing and runtime readiness through synthetic descendant histories while preserving closed scope, command projection and existing dispatch boundaries."
+        "module": "tests/oracle-history-reconstruction-integrity.test.mjs",
+        "purpose": "Run the nine bounded integrity cases covering retained materialization, legacy discovery, invalid bindings, mapping refusal, raw approval custody, source and origin movement, archive movement and ancestry separation."
       }
     ],
     "categories": [
@@ -88,59 +47,42 @@
       },
       {
         "fixtures": [
-          "tests/oracle_review_series.py",
-          "tests/helpers/isolated-test-cohort.mjs",
-          "tests/helpers/native-validation-git.mjs",
-          "tests/helpers/native-validation-state.mjs",
+          "tests/oracle_history_reconstruction_test.py",
           "tests/oracle_spec_test.py"
         ],
         "name": "focused",
         "tests": [
-          "tests/oracle-review-series.test.mjs",
-          "tests/deterministic-oracle.test.mjs"
+          "tests/oracle-history-reconstruction.test.mjs"
         ]
       },
       {
         "fixtures": [
-          "tests/oracle_lifecycle_test.py",
-          "tests/oracle_source_frontier_test.py",
-          "tests/oracle_parallel_test.py",
-          "tests/oracle_fixture.py",
-          "tests/helpers/isolated-test-cohort.mjs"
+          "tests/oracle_history_reconstruction_test.py",
+          "tests/oracle_spec_test.py"
         ],
         "name": "interactions",
         "tests": [
-          "tests/oracle-lifecycle.test.mjs",
-          "tests/oracle-source-frontier.test.mjs"
-        ]
-      },
-      {
-        "fixtures": [
-          "tests/oracle_spec_test.py"
-        ],
-        "name": "acceptance",
-        "tests": [
-          "tests/oracle-public-live-proposal.test.mjs",
-          "tests/oracle-public-core.test.mjs"
+          "tests/oracle-history-reconstruction-integrity.test.mjs"
         ]
       }
     ],
     "change_class": "deep_bug_fix",
     "design": null,
-    "reason": "Review lineage and CI runtime portability affect evidence custody and publication accounting. Retain all ten prior criteria, mapping purposes, selected modules and existing fixtures; add one portable-runtime criterion to the existing dedicated profile and offline core modules, and declare the consumed Python test fixture in focused inputs. Preserve complete unchanged-regression fail-before/pass-after execution, all selected native categories, genuine CLI custody, successful exact-source CI and native publication gates. Keep the closed source inventory, every test-owned deadline, immutable failures and original delivery clock.",
-    "revision_of": "d2c8966da7d285637540081c5a2fadfdc853d93161e048372177a2f07d042d95",
+    "reason": "Historical proof reconstruction affects evidence custody and fail-closed admission, requiring focused reproduction and directly affected integrity interactions. Select the two bounded modules and their shared fixture closure; preserve native before/after custody, original delivery clocks and separate actual CLI completion evidence. Existing unrelated suites and unfinished client acceptance remain outside this process correction.",
+    "revision_of": "9a4549e5d7a5fcf2f2eea2640b1a093ea7e209ecbb6a390b6bbaf03aa2b5b30c",
     "scope_paths": [
-      "tools/oracle_approval.py",
-      "tests/oracle_review_series.py",
+      "tools/validation_contract.py",
       "tools/validation-selection.json",
-      "tools/deterministic_oracle.py",
-      "tests/deterministic-oracle.test.mjs",
-      "tools/deterministic-oracle.md",
-      "tests/oracle-public-core.test.mjs"
+      "tests/oracle-history-reconstruction.test.mjs",
+      "tests/oracle-history-reconstruction-integrity.test.mjs",
+      "tests/oracle_history_reconstruction_test.py",
+      "tests/oracle_spec_test.py",
+      "tests/helpers/registration-variant-contract.mjs",
+      "tests/journey-registration-variant-compatibility.test.mjs"
     ]
   },
-  "base_commit": "8704a620474d2d6b0e85a4dd027c46e033e46076",
-  "base_tree": "8fb1937ce12ee8b152b06c8c321681cae7ade6ec",
+  "base_commit": "5c385cacb71280e438d0a473f0e5d3a507fcf092",
+  "base_tree": "e5ef0382fdbc60257a07405a3ffbf2c00e2c2e04",
   "catalog_sha256": "51ee7ae8c1533604f7b2c68b9efba9d1b9d6f340d724d7c208dba434325859b3",
   "runtime": {
     "node": "v22.11.0",
@@ -150,8 +92,8 @@
     "architecture": "arm64",
     "options_sha256": "ebc442c160f8629073a82976daadaba1d95a60a38d768c81c8eb06598aedcac5"
   },
-  "proposal_sha256": "3ab3d911dd27db28f5311b9c952115d1280953eae66eab77b832621d7b968d11",
-  "review_sha256": "b34122575c007a8914e669df50d690fc44bd532b0620849287ef761463caefc6",
+  "proposal_sha256": "71ac9b5be79cbe2bc60be584a8c58e04fbca7c74c72c9b2a4fd795e4137c717b",
+  "review_sha256": "296d02aaf19cd5777858820ea25ad2308528a19c4107dd3a625a45577ea9452e",
   "commands": [
     {
       "category": "sanity",
@@ -170,18 +112,13 @@
         "--test",
         "--test-reporter=tap",
         "--test-concurrency=1",
-        "tests/oracle-review-series.test.mjs",
-        "tests/deterministic-oracle.test.mjs"
+        "tests/oracle-history-reconstruction.test.mjs"
       ],
       "tests": [
-        "tests/oracle-review-series.test.mjs",
-        "tests/deterministic-oracle.test.mjs"
+        "tests/oracle-history-reconstruction.test.mjs"
       ],
       "fixtures": [
-        "tests/oracle_review_series.py",
-        "tests/helpers/isolated-test-cohort.mjs",
-        "tests/helpers/native-validation-git.mjs",
-        "tests/helpers/native-validation-state.mjs",
+        "tests/oracle_history_reconstruction_test.py",
         "tests/oracle_spec_test.py"
       ]
     },
@@ -192,36 +129,13 @@
         "--test",
         "--test-reporter=tap",
         "--test-concurrency=1",
-        "tests/oracle-lifecycle.test.mjs",
-        "tests/oracle-source-frontier.test.mjs"
+        "tests/oracle-history-reconstruction-integrity.test.mjs"
       ],
       "tests": [
-        "tests/oracle-lifecycle.test.mjs",
-        "tests/oracle-source-frontier.test.mjs"
+        "tests/oracle-history-reconstruction-integrity.test.mjs"
       ],
       "fixtures": [
-        "tests/oracle_lifecycle_test.py",
-        "tests/oracle_source_frontier_test.py",
-        "tests/oracle_parallel_test.py",
-        "tests/oracle_fixture.py",
-        "tests/helpers/isolated-test-cohort.mjs"
-      ]
-    },
-    {
-      "category": "acceptance",
-      "argv": [
-        "node",
-        "--test",
-        "--test-reporter=tap",
-        "--test-concurrency=1",
-        "tests/oracle-public-live-proposal.test.mjs",
-        "tests/oracle-public-core.test.mjs"
-      ],
-      "tests": [
-        "tests/oracle-public-live-proposal.test.mjs",
-        "tests/oracle-public-core.test.mjs"
-      ],
-      "fixtures": [
+        "tests/oracle_history_reconstruction_test.py",
         "tests/oracle_spec_test.py"
       ]
     }
@@ -235,6 +149,6 @@
     "reasoning_effort": "medium",
     "maximum_reasoning_effort": "medium"
   },
-  "contract_sha256": "9a4549e5d7a5fcf2f2eea2640b1a093ea7e209ecbb6a390b6bbaf03aa2b5b30c",
-  "seal": "5aeb2c5931edd84a36fcbd550a9faaf9571c5c67bbb7484962a45ba7e38b0e14"
+  "contract_sha256": "3ebcbcb832afdda8e0ac3c8ef7d0949915248f114e7302d6634beff155c5b85c",
+  "seal": "437763aad5c4faf80ebe9fdb19491e1be4c2578f71fc8c0091e249682a24a477"
 }
