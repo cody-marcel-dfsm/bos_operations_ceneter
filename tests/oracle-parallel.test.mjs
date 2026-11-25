@@ -130,9 +130,9 @@ test("native independent review cohorts preserve bindings and overlap", async ()
       }
     }
     const executed = reports.flatMap(report => report.executed);
-    if (executed.length !== 46 || new Set(executed).size !== 46 ||
+    if (executed.length !== 50 || new Set(executed).size !== 50 ||
       JSON.stringify([...executed].sort()) !== JSON.stringify([...inventory.ids].sort()))
-      problems.push("Complete discovered 46-case membership was not executed exactly once");
+      problems.push("Complete discovered 50-case membership was not executed exactly once");
     for (const [name, hash] of Object.entries(inventory.source_sha256)) {
       if (digest(await readFile(join(root, name))) !== hash) problems.push(`Source moved: ${name}`);
     }
