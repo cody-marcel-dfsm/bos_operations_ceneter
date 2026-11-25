@@ -4,12 +4,12 @@
   "stamp": {
     "engine": "codex",
     "model": "gpt-6.1-sol",
-    "oracle_sha256": "304d980c8a53466df6a6c682be71daa47ff8a62a3224cefd928669f6c3cb6ea8",
+    "oracle_sha256": "740fe68f0217ca57d210c159e3de3b4aec8901d57919d7b22085db654a0cb29c",
     "host": "Codys-MacBook-Pro.local",
-    "time": "2026-11-25T06:22:20Z",
+    "time": "2026-11-25T07:00:20Z",
     "origin_main": "91bcc35e27674158ca8a9c9b751930a28b3f97c4",
-    "request_sha256": "00e267df8e4056ebe15ea2fb67721cb6889199364839821af8e71e404b2c623a",
-    "proposal_sha256": "71ac9b5be79cbe2bc60be584a8c58e04fbca7c74c72c9b2a4fd795e4137c717b"
+    "request_sha256": "779095e002a3524204dafcb8d30244c47fdcac9b0dde7bf6d23ee9d57fe9753a",
+    "proposal_sha256": "ff18171875c35fdfec2eed314f74d4b42232f241a16e681e8b427efedfdca222"
   },
   "selection": {
     "acceptance": [
@@ -17,7 +17,13 @@
       "First-pass historical assembly establishes exact local prior-byte custody only. Historical materialization performs fresh full transitive native authentication and whole-context comparison before acceptance; producer capture and legacy prior discovery retain their existing authentication behavior.",
       "Closed raw decisions, prior identities, source and origin bindings, retained criteria and mapping projections remain enforced. Invalid, missing, replayed or altered bindings and raw approval evidence fail closed without publishing a spec.",
       "Prior archive movement between assembly and final authentication is refused. Archive authentication without ancestry remains distinct from ancestry admission, and an intact orphan archive remains refused when ancestry is required. Independent invocations preserve fresh verification.",
-      "The regression harness runs complete nonempty deterministic cases using consumer-owned fixtures under ignored repository scratch, launches no model or paid service, preserves historical artifacts and existing bounds, and grants no approval or client readiness through synthetic results."
+      "The regression harness runs complete nonempty deterministic cases using consumer-owned fixtures under ignored repository scratch, launches no model or paid service, preserves historical artifacts and existing bounds, and grants no approval or client readiness through synthetic results.",
+      "Registration discovery accepts the complete previously supported fourteen-variant profile and complete current sixteen-variant profile without modifying descriptors. Incomplete, duplicate, unknown or mixed profiles and undeclared response fields or widened action contracts fail closed.",
+      "Optional related-contract metadata admits only bounded, unique, closed api.contract.get links. Malformed links, authority selectors and executable participation dispatch are rejected.",
+      "Consumer-owned synthetic HTTP discovery feeds the real registration validator and request builder. Requests preserve the exact discovered application, scoped API v1 route, context header and serialized document; foreign applications, partitions, routes and versions are rejected.",
+      "Parallel-wait consumption validates the closed parent envelope, parallel current node and at most 256 declared branch summaries. It preserves string statuses without inventing an enum or maximum, validates declared indices and optional instructions, errors, resolutions and actions, and returns verified summaries and original continuations without automatic effects or an invented polling schedule.",
+      "Parent and nested continuations retain existing safe URI, method, payload and approval validation through current action builders. Malformed and foreign actions fail before transport, original href bytes remain unchanged, and existing start, callback, standing-registration, recovery and terminal behavior remains supported.",
+      "Declared commercial admission failures preserve HTTP 403 nonretryable and HTTP 503 retryable semantics, exact public errors and existing recovery boundaries without automatic login, retry, route switching or mutation."
     ],
     "acceptance_tests": [
       {
@@ -37,6 +43,43 @@
         ],
         "module": "tests/oracle-history-reconstruction-integrity.test.mjs",
         "purpose": "Run the nine bounded integrity cases covering retained materialization, legacy discovery, invalid bindings, mapping refusal, raw approval custody, source and origin movement, archive movement and ancestry separation."
+      },
+      {
+        "covers": [
+          5,
+          6,
+          7,
+          8,
+          9,
+          10
+        ],
+        "module": "tests/journey-registration-variant-compatibility.test.mjs",
+        "purpose": "Reproduce discovery and parallel-wait incompatibility through synthetic HTTP and real consumers, including strict negative cases and admission errors."
+      },
+      {
+        "covers": [
+          5,
+          6,
+          7
+        ],
+        "module": "tests/journey-registration-discovery.test.mjs",
+        "purpose": "Preserve legacy discovery, closed registration schemas, application binding and current-version request construction."
+      },
+      {
+        "covers": [
+          8,
+          9,
+          10
+        ],
+        "module": "tests/journey-runtime-client.test.mjs",
+        "purpose": "Verify parallel continuation handling alongside existing action safety, lifecycle recovery and commercial error interpretation."
+      },
+      {
+        "covers": [
+          9
+        ],
+        "module": "tests/callback-runtime-client.test.mjs",
+        "purpose": "Preserve callback grant review, standing registrations, safe controls and observation continuations."
       }
     ],
     "categories": [
@@ -48,28 +91,37 @@
       {
         "fixtures": [
           "tests/oracle_history_reconstruction_test.py",
-          "tests/oracle_spec_test.py"
+          "tests/oracle_spec_test.py",
+          "tests/helpers/registration-variant-contract.mjs",
+          "tests/fixtures/journey-registration-contract.json",
+          "tests/fixtures/current-app-registration.json"
         ],
         "name": "focused",
         "tests": [
-          "tests/oracle-history-reconstruction.test.mjs"
+          "tests/oracle-history-reconstruction.test.mjs",
+          "tests/journey-registration-variant-compatibility.test.mjs"
         ]
       },
       {
         "fixtures": [
           "tests/oracle_history_reconstruction_test.py",
-          "tests/oracle_spec_test.py"
+          "tests/oracle_spec_test.py",
+          "tests/fixtures/journey-registration-contract.json",
+          "tests/fixtures/current-app-registration.json"
         ],
         "name": "interactions",
         "tests": [
-          "tests/oracle-history-reconstruction-integrity.test.mjs"
+          "tests/oracle-history-reconstruction-integrity.test.mjs",
+          "tests/journey-registration-discovery.test.mjs",
+          "tests/journey-runtime-client.test.mjs",
+          "tests/callback-runtime-client.test.mjs"
         ]
       }
     ],
     "change_class": "deep_bug_fix",
     "design": null,
-    "reason": "Historical proof reconstruction affects evidence custody and fail-closed admission, requiring focused reproduction and directly affected integrity interactions. Select the two bounded modules and their shared fixture closure; preserve native before/after custody, original delivery clocks and separate actual CLI completion evidence. Existing unrelated suites and unfinished client acceptance remain outside this process correction.",
-    "revision_of": "9a4549e5d7a5fcf2f2eea2640b1a093ea7e209ecbb6a390b6bbaf03aa2b5b30c",
+    "reason": "Combine evidence-custody reconstruction and discovery/runtime compatibility in one complete unpublished-range contract. Retain all existing criteria, module purposes and fixture coverage; select only the two focused reproductions and four directly affected integrity, discovery, runtime and callback interactions. Preserve original evidence, unchanged-test reproduction custody, delivery clocks and current-version action safety. Complete every selected category and assess native evidence applicability independently; synthetic results establish source behavior only.",
+    "revision_of": "3ebcbcb832afdda8e0ac3c8ef7d0949915248f114e7302d6634beff155c5b85c",
     "scope_paths": [
       "tools/validation_contract.py",
       "tools/validation-selection.json",
@@ -77,12 +129,36 @@
       "tests/oracle-history-reconstruction-integrity.test.mjs",
       "tests/oracle_history_reconstruction_test.py",
       "tests/oracle_spec_test.py",
+      "source/platform/bos-app-discovery/scripts/validate-discovery.mjs",
+      "source/platform/bos-workflow-orchestrator/scripts/journey-runtime-client.mjs",
+      "source/platform/bos-workflow-orchestrator/references/journey-lifecycle.md",
+      "tests/journey-registration-variant-compatibility.test.mjs",
       "tests/helpers/registration-variant-contract.mjs",
-      "tests/journey-registration-variant-compatibility.test.mjs"
+      "tests/journey-registration-discovery.test.mjs",
+      "tests/journey-runtime-client.test.mjs",
+      "tests/callback-runtime-client.test.mjs",
+      "tests/fixtures/journey-registration-contract.json",
+      "tests/fixtures/current-app-registration.json",
+      "package.json",
+      "package-lock.json",
+      "package-manifest.json",
+      "README.md",
+      "products/bos/product.json",
+      "products/education-center/product.json",
+      "products/bos/openai/bos-skills.zip",
+      "products/education-center/openai/education-center-skills.zip",
+      "skill-release-manifest.json",
+      ".claude-plugin/marketplace.json",
+      ".agents/plugins/marketplace.json",
+      "clients/claude/**",
+      "clients/codex/**",
+      "clients/copilot/**",
+      "clients/gemini/**",
+      "clients/muse/**"
     ]
   },
-  "base_commit": "5c385cacb71280e438d0a473f0e5d3a507fcf092",
-  "base_tree": "e5ef0382fdbc60257a07405a3ffbf2c00e2c2e04",
+  "base_commit": "7dad9e414cc2fd9e637d6e070a6982ca224b2df9",
+  "base_tree": "e848e456070d5f340c981dc528f0d662b80e40b2",
   "catalog_sha256": "51ee7ae8c1533604f7b2c68b9efba9d1b9d6f340d724d7c208dba434325859b3",
   "runtime": {
     "node": "v22.11.0",
@@ -92,8 +168,8 @@
     "architecture": "arm64",
     "options_sha256": "ebc442c160f8629073a82976daadaba1d95a60a38d768c81c8eb06598aedcac5"
   },
-  "proposal_sha256": "71ac9b5be79cbe2bc60be584a8c58e04fbca7c74c72c9b2a4fd795e4137c717b",
-  "review_sha256": "296d02aaf19cd5777858820ea25ad2308528a19c4107dd3a625a45577ea9452e",
+  "proposal_sha256": "ff18171875c35fdfec2eed314f74d4b42232f241a16e681e8b427efedfdca222",
+  "review_sha256": "a95e1b58f54885eea01ace30543fe04ab520189036024986168ebde0dcc61ae8",
   "commands": [
     {
       "category": "sanity",
@@ -112,14 +188,19 @@
         "--test",
         "--test-reporter=tap",
         "--test-concurrency=1",
-        "tests/oracle-history-reconstruction.test.mjs"
+        "tests/oracle-history-reconstruction.test.mjs",
+        "tests/journey-registration-variant-compatibility.test.mjs"
       ],
       "tests": [
-        "tests/oracle-history-reconstruction.test.mjs"
+        "tests/oracle-history-reconstruction.test.mjs",
+        "tests/journey-registration-variant-compatibility.test.mjs"
       ],
       "fixtures": [
         "tests/oracle_history_reconstruction_test.py",
-        "tests/oracle_spec_test.py"
+        "tests/oracle_spec_test.py",
+        "tests/helpers/registration-variant-contract.mjs",
+        "tests/fixtures/journey-registration-contract.json",
+        "tests/fixtures/current-app-registration.json"
       ]
     },
     {
@@ -129,14 +210,22 @@
         "--test",
         "--test-reporter=tap",
         "--test-concurrency=1",
-        "tests/oracle-history-reconstruction-integrity.test.mjs"
+        "tests/oracle-history-reconstruction-integrity.test.mjs",
+        "tests/journey-registration-discovery.test.mjs",
+        "tests/journey-runtime-client.test.mjs",
+        "tests/callback-runtime-client.test.mjs"
       ],
       "tests": [
-        "tests/oracle-history-reconstruction-integrity.test.mjs"
+        "tests/oracle-history-reconstruction-integrity.test.mjs",
+        "tests/journey-registration-discovery.test.mjs",
+        "tests/journey-runtime-client.test.mjs",
+        "tests/callback-runtime-client.test.mjs"
       ],
       "fixtures": [
         "tests/oracle_history_reconstruction_test.py",
-        "tests/oracle_spec_test.py"
+        "tests/oracle_spec_test.py",
+        "tests/fixtures/journey-registration-contract.json",
+        "tests/fixtures/current-app-registration.json"
       ]
     }
   ],
@@ -149,6 +238,6 @@
     "reasoning_effort": "medium",
     "maximum_reasoning_effort": "medium"
   },
-  "contract_sha256": "3ebcbcb832afdda8e0ac3c8ef7d0949915248f114e7302d6634beff155c5b85c",
-  "seal": "437763aad5c4faf80ebe9fdb19491e1be4c2578f71fc8c0091e249682a24a477"
+  "contract_sha256": "861fb005853a9f2c16450c02ac9fc1d3ee847072de7750fc2254f742dc094fbf",
+  "seal": "66d21f88249601e43afea7bc5d681fbcd5e4e3d426011c550809df9036a9bc21"
 }
