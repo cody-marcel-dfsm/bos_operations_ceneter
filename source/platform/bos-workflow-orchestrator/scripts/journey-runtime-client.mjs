@@ -9,6 +9,7 @@ const lifecycleVerbs = new Set(["start", "complete", "step", "failed", "state"])
 const journeyStatuses = new Set([
   "not_started",
   "awaiting_client",
+  "awaiting_branches",
   "client_action_required",
   "step_completed",
   "failure_caught",
@@ -439,6 +440,40 @@ export function validateClientResolution(resolution) {
   return resolution;
 }
 
+function validateParallelBranchWait(body) {
+  const fields = new Set(["identity", "status", "current_node", "branches", "action"]);
+  requireExactKeys(body, fields, "parallel journey response");
+  for (const field of fields) if (!Object.hasOwn(body, field)) throw new Error(`parallel journey response.${field} is required`);
+  requireObject(body.current_node, "parallel current_node");
+  requireExactKeys(body.current_node, new Set(["code", "type"]), "parallel current_node");
+  requireString(body.current_node.code, "parallel current_node.code");
+  if (body.current_node.code.length > 128 || body.current_node.type !== "parallel") throw new Error("parallel current_node is invalid");
+  if (!Array.isArray(body.branches) || body.branches.length > 256) throw new Error("parallel branches must be a bounded array");
+  const branchFields = new Set(["index", "status", "current_node", "current_step", "instruction", "action", "error", "resolution", "retry_after_seconds"]);
+  for (const branch of body.branches) {
+    requireObject(branch, "parallel branch");
+    requireExactKeys(branch, branchFields, "parallel branch");
+    if (!Number.isSafeInteger(branch.index) || branch.index < 0 || typeof branch.status !== "string" ||
+        !Object.hasOwn(branch, "current_node") || (branch.current_node !== null && typeof branch.current_node !== "string")) {
+      throw new Error("parallel branch summary is invalid");
+    }
+    if (Object.hasOwn(branch, "current_step")) requireObject(branch.current_step, "parallel branch.current_step");
+    if (Object.hasOwn(branch, "instruction")) {
+      validateClientInstruction(branch.instruction);
+      requireObject(branch.instruction.after_success, "parallel branch.instruction.after_success");
+      requireObject(branch.instruction.on_failure, "parallel branch.instruction.on_failure");
+    }
+    if (Object.hasOwn(branch, "action")) validateActionEnvelope(branch.action, {lifecycleOnly: true});
+    if (Object.hasOwn(branch, "error")) validatePublicError(branch.error);
+    if (Object.hasOwn(branch, "resolution")) validateClientResolution(branch.resolution);
+    if (Object.hasOwn(branch, "retry_after_seconds") && (!Number.isInteger(branch.retry_after_seconds) || branch.retry_after_seconds < 1 || branch.retry_after_seconds > 900)) {
+      throw new Error("parallel branch.retry_after_seconds is invalid");
+    }
+  }
+  validateActionEnvelope(body.action, {lifecycleOnly: true});
+  return body;
+}
+
 export function validateJourneyEnvelope(body) {
   requireObject(body, "journey response");
   const publicError = body.error === undefined
@@ -449,6 +484,7 @@ export function validateJourneyEnvelope(body) {
   if (!journeyStatuses.has(body.status)) {
     throw new Error("journey response.status is invalid");
   }
+  if (body.status === "awaiting_branches") return validateParallelBranchWait(body);
   if (body.current_step !== undefined) {
     requireObject(body.current_step, "journey response.current_step");
     requireString(body.current_step.code, "journey response.current_step.code");
@@ -716,6 +752,8 @@ export function interpretJourneyResponse(response, {registrationRequest} = {}) {
 
   const body = validateJourneyEnvelope(response.body);
   switch (body.status) {
+    case "awaiting_branches":
+      return {next: "parallel_branches", current_node: body.current_node, branches: body.branches, action: body.action};
     case "not_started":
       return { next: "invoke_action", action: body.action };
     case "awaiting_client":

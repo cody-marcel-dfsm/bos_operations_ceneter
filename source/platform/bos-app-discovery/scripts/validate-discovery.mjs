@@ -1107,13 +1107,45 @@ function validateOperationRecovery(recovery, label) {
   }
 }
 
+function validateRegistrationLifecycleActionSchema(schema, label) {
+  requireObject(schema, label);
+  const fields = ["href", "method", "payload_schema", "verb"];
+  const sameValues = (value, expected) => Array.isArray(value) && value.length === expected.length &&
+    new Set(value).size === expected.length && expected.every(item => value.includes(item));
+  if (schema.type !== "object" || schema.additionalProperties !== false || !sameValues(schema.required, fields) ||
+      !schema.properties || !sameValues(Object.keys(schema.properties), fields) ||
+      !sameValues(schema.properties.verb?.enum, ["start", "complete", "step", "failed", "state"]) ||
+      !sameValues(schema.properties.method?.enum, ["GET", "POST"]) ||
+      schema.properties.href?.type !== "string" || schema.properties.href.pattern !== "^/" ||
+      !sameValues(schema.properties.payload_schema?.type, ["object", "null"])) {
+    throw new Error(`${label} must preserve the closed published lifecycle action contract`);
+  }
+}
+
+function validateRelatedRegistrationContracts(links, label) {
+  if (!Array.isArray(links) || links.length > 64) throw new Error(`${label} must be a bounded array`);
+  const operations = new Set();
+  links.forEach((link, index) => {
+    const itemLabel = `${label}[${index}]`;
+    requireObject(link, itemLabel);
+    requireObject(link.input, `${itemLabel}.input`);
+    const operation = link.input.operation;
+    if (typeof operation !== "string" || !semanticOperationPattern.test(operation) || operations.has(operation)) {
+      throw new Error(`${itemLabel} must select a unique semantic operation`);
+    }
+    validateContractLink(link, operation, itemLabel);
+    operations.add(operation);
+  });
+}
+
 export function validateJourneyRegistrationContractResponse(response, expected = {}) {
   const label = "journey registration contract";
   requireObject(response, label);
   rejectRawAuthority(response, label);
   const fields = new Set(["operation", "contract_version", "title", "description", "input_schema", "output_schema", "limits", "guarantees", "execution", "public_errors", "ttlMs", "cacheScope"]);
-  requireExactKeys(response, fields, label);
+  requireExactKeys(response, new Set([...fields, "related_contracts"]), label);
   for (const field of fields) if (!Object.hasOwn(response, field)) throw new Error(`${label}.${field} is required`);
+  if (Object.hasOwn(response, "related_contracts")) validateRelatedRegistrationContracts(response.related_contracts, `${label}.related_contracts`);
   const binding = expected.application === undefined ? null : validateApplicationBinding(expected.application);
   const selectedApplication = binding?.application ?? "lead-director";
   if (binding && binding.description.journey_registration?.contract.input.operation !== response.operation) throw new Error("Registration must match the selected application registration link");
@@ -1180,8 +1212,15 @@ export function validateJourneyRegistrationContractResponse(response, expected =
     [null, ["error"]]
   ];
   variants.push([true, ["compiled", "identity", "actions"]], ["not_started", ["identity", "status", "action"]]);
-  const expectedVariants = new Set(variants.map(([state, fields]) => JSON.stringify([state, fields.sort()])));
+  const legacyVariants = new Set(variants.map(([state, fields]) => JSON.stringify([state, [...fields].sort()])));
+  variants.push(
+    ["in_progress", ["identity", "status", "registration", "retry_after_seconds", "action"]],
+    ["awaiting_branches", ["identity", "status", "current_node", "branches", "action"]]
+  );
   const branches = response.output_schema.oneOf;
+  const expectedVariants = branches.length === legacyVariants.size
+    ? legacyVariants
+    : new Set(variants.map(([state, fields]) => JSON.stringify([state, [...fields].sort()])));
   if (branches.length !== expectedVariants.size || new Set(branches.map(signature)).size !== expectedVariants.size ||
       branches.some(branch => {
         const branchSignature = signature(branch);
@@ -1200,6 +1239,13 @@ export function validateJourneyRegistrationContractResponse(response, expected =
           JSON.stringify(Object.keys(report.properties ?? {}).sort()) !== '["as_of","callbacks","usage","waits"]';
       })) {
     throw new Error(`${label}.output_schema must match the exact ${version} response variants`);
+  }
+  if (branches.length !== legacyVariants.size) {
+    const standing = branches.find(branch => Object.hasOwn(branch.properties, "registration"));
+    const parallel = branches.find(branch => branch.properties.status?.const === "awaiting_branches");
+    validateRegistrationLifecycleActionSchema(standing.properties.action, `${label}.standing.action`);
+    validateRegistrationLifecycleActionSchema(parallel.properties.action, `${label}.parallel.action`);
+    validateRegistrationLifecycleActionSchema(parallel.properties.branches?.items?.properties?.action, `${label}.parallel.branch.action`);
   }
   {
     const actions = branches.find(branch => branch.properties?.compiled?.const === true).properties.actions;
