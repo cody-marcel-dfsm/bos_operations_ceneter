@@ -6,10 +6,10 @@
     "model": "gpt-6.1-sol",
     "oracle_sha256": "740fe68f0217ca57d210c159e3de3b4aec8901d57919d7b22085db654a0cb29c",
     "host": "Codys-MacBook-Pro.local",
-    "time": "2026-11-25T07:22:46Z",
+    "time": "2026-11-25T07:29:46Z",
     "origin_main": "91bcc35e27674158ca8a9c9b751930a28b3f97c4",
     "request_sha256": "779095e002a3524204dafcb8d30244c47fdcac9b0dde7bf6d23ee9d57fe9753a",
-    "proposal_sha256": "dfd1ff69fe0d8f3fc7f3da8945dcaa09d2342fec5060832c92455c7d8d5f4e4c"
+    "proposal_sha256": "457c8c7e17099c54893ee114b94944a790c9c3dfca3aea8f9c6d1f3958947335"
   },
   "selection": {
     "acceptance": [
@@ -132,8 +132,8 @@
     ],
     "change_class": "deep_bug_fix",
     "design": null,
-    "reason": "Retain the complete existing reconstruction and registration compatibility contract, original focused reproduction bytes, selected categories and mapping purposes. Add only the directly affected quota discovery interaction and its supporting helper, with explicit exact-schema and optional-TTL acceptance. Native revision ancestry and reproduction custody remain mandatory; preserve original failures, refusals, clocks and source-review gates. Synthetic and local descriptor results establish consumer behavior only.",
-    "revision_of": "861fb005853a9f2c16450c02ac9fc1d3ee847072de7750fc2254f742dc094fbf",
+    "reason": "Preserve all existing acceptance criteria, selected categories, tests, fixtures and mapping purposes. Add only the finite canonical skill metadata paths required for version advances and exact dependent requirement pins during ordinary package generation. This scope correction changes no behavioral acceptance, runtime requirement or design. Preserve native revision ancestry, original reproduction custody, historical outcomes and clocks, and complete-source and publication gates.",
+    "revision_of": "9e67bad2870fc74daeff4c06b78f6baffa8c6183474f45be9279798924f87cb5",
     "scope_paths": [
       "tools/validation_contract.py",
       "tools/validation-selection.json",
@@ -167,11 +167,35 @@
       "clients/codex/**",
       "clients/copilot/**",
       "clients/gemini/**",
-      "clients/muse/**"
+      "clients/muse/**",
+      "source/capabilities/agent-call-operations/SKILL.md",
+      "source/capabilities/review-outreach/SKILL.md",
+      "source/capabilities/sendgrid-campaign-operations/SKILL.md",
+      "source/platform/ada/SKILL.md",
+      "source/platform/bos-app-discovery/SKILL.md",
+      "source/platform/bos-customer-initialization/SKILL.md",
+      "source/platform/bos-plugin-console/SKILL.md",
+      "source/platform/bos-plugin-settings-initialization/SKILL.md",
+      "source/platform/bos-plugin-settings/SKILL.md",
+      "source/platform/bos-workflow-orchestrator/SKILL.md",
+      "source/platform/manage-customer-extension/SKILL.md",
+      "source/platform/submit-feedback/SKILL.md",
+      "source/verticals/education-center/camp-capacity-planning/SKILL.md",
+      "source/verticals/education-center/education-center-class-operations/SKILL.md",
+      "source/verticals/education-center/education-center-director-daily-planner/SKILL.md",
+      "source/verticals/education-center/education-center-instructor-operations/SKILL.md",
+      "source/verticals/education-center/education-center-invoice-operations/SKILL.md",
+      "source/verticals/education-center/education-center-paid-attribution-operations/SKILL.md",
+      "source/verticals/education-center/education-center-parent-communications/SKILL.md",
+      "source/verticals/education-center/education-center-service-routing/SKILL.md",
+      "source/verticals/education-center/education-center-student-operations/SKILL.md",
+      "source/verticals/education-center/education-center-trial-reconciliation/SKILL.md",
+      "source/verticals/education-center/local-school-market-research/SKILL.md",
+      "source/verticals/education-center/partnership-proposal-builder/SKILL.md"
     ]
   },
-  "base_commit": "80a441a52fada00282ba77a6dfc983d7160ba308",
-  "base_tree": "26e35518eac3febe524a7ce13fb21396792fafd9",
+  "base_commit": "980f443a952c3337585b1bbdfe92716799332c3c",
+  "base_tree": "b7a7b2a2bd0fc45e6350a8c8e0f7e7b1c792dbee",
   "catalog_sha256": "51ee7ae8c1533604f7b2c68b9efba9d1b9d6f340d724d7c208dba434325859b3",
   "runtime": {
     "node": "v22.11.0",
@@ -181,8 +205,8 @@
     "architecture": "arm64",
     "options_sha256": "ebc442c160f8629073a82976daadaba1d95a60a38d768c81c8eb06598aedcac5"
   },
-  "proposal_sha256": "dfd1ff69fe0d8f3fc7f3da8945dcaa09d2342fec5060832c92455c7d8d5f4e4c",
-  "review_sha256": "68bc6d0184b90f72c33fab92cb50059e9f4c924f7d861761691ef39d6ad49940",
+  "proposal_sha256": "457c8c7e17099c54893ee114b94944a790c9c3dfca3aea8f9c6d1f3958947335",
+  "review_sha256": "ad6d5cc5ee1d9a2986c583952158e5009f284621c37de6f3d573a4edb1355645",
   "commands": [
     {
       "category": "sanity",
@@ -254,6 +278,6 @@
     "reasoning_effort": "medium",
     "maximum_reasoning_effort": "medium"
   },
-  "contract_sha256": "9e67bad2870fc74daeff4c06b78f6baffa8c6183474f45be9279798924f87cb5",
-  "seal": "fad03e5fa60f2b8c7e46e56e9d0ad8edf0ae7486d516ea13938e8a9ab17bb508"
+  "contract_sha256": "a8bfbdb918f489c43b19904ff145c87eca69c497fa1bfbc2eb4eeb3c39219cad",
+  "seal": "6e3557f4ca56a0e11db596f03b24a5c8da1cf549db0e9c2fb12b89b7e899aa4e"
 }
