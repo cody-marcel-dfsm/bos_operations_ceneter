@@ -12,10 +12,6 @@ export function currentRegistrationContract(){
   value.related_contracts=[{capability:'api.contract.get',input:{operation:'lead-director.journeys.participations.read'}}];
   value.output_schema.oneOf.push(closed({identity:{type:'string'},status:{const:'in_progress'},registration:{type:'object'},retry_after_seconds:{type:'integer',minimum:1,maximum:900},action:action()}));
   value.output_schema.oneOf.push(closed({identity:{type:'string'},status:{const:'awaiting_branches'},current_node:closed({code:{type:'string'},type:{const:'parallel'}}),branches:{type:'array',maxItems:256,items:closed({index:{type:'integer',minimum:0},status:{type:'string'},current_node:{type:['string','null']},current_step:{type:'object'},instruction:{type:'object'},action:action(),error:{type:'object'},resolution:{type:'object'},retry_after_seconds:{type:'integer',minimum:1,maximum:900}},['index','status','current_node'])},action:action()}));
-  const quota=value.output_schema.oneOf.find(v=>Object.keys(v.properties).join()==='error');
-  quota.properties.usage=structuredClone(value.output_schema.oneOf.find(v=>v.properties?.compiled?.const===true).properties.callback_report.properties.usage);
-  quota.allOf=[{if:{properties:{error:{properties:{code:{const:'CALLBACK_LIMIT_REACHED'}}}}},then:{required:['usage']},else:{not:{required:['usage']}}}];
-  delete value.limits.execution_ttl_hours;
   value.public_errors.push({code:'PAID_PLAN_REQUIRED',http_status:403,retryable:false},{code:'MCP_ENTITLEMENT_UNAVAILABLE',http_status:503,retryable:true});
   return value;
 }
