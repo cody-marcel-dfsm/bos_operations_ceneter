@@ -389,6 +389,21 @@ export function validateClientInstruction(instruction) {
   return instruction;
 }
 
+function validateClientWaitInstruction(instruction) {
+  validateClientInstruction(instruction);
+  requireObject(instruction.after_success, "instruction.after_success");
+  requireObject(instruction.on_failure, "instruction.on_failure");
+  validateActionEnvelope(instruction.after_success, { lifecycleOnly: true });
+  validateActionEnvelope(instruction.on_failure, { lifecycleOnly: true });
+  if (instruction.after_success.verb !== "complete") {
+    throw new Error("instruction.after_success must be the returned complete action");
+  }
+  if (instruction.on_failure.verb !== "failed") {
+    throw new Error("instruction.on_failure must be the returned failed action");
+  }
+  return instruction;
+}
+
 export function validateClientResolution(resolution) {
   requireObject(resolution, "resolution");
   requireExactKeys(
@@ -460,9 +475,7 @@ function validateParallelBranchWait(body) {
     }
     if (Object.hasOwn(branch, "current_step")) requireObject(branch.current_step, "parallel branch.current_step");
     if (Object.hasOwn(branch, "instruction")) {
-      validateClientInstruction(branch.instruction);
-      requireObject(branch.instruction.after_success, "parallel branch.instruction.after_success");
-      requireObject(branch.instruction.on_failure, "parallel branch.instruction.on_failure");
+      validateClientWaitInstruction(branch.instruction);
     }
     if (Object.hasOwn(branch, "action")) validateActionEnvelope(branch.action, {lifecycleOnly: true});
     if (Object.hasOwn(branch, "error")) validatePublicError(branch.error);
@@ -498,17 +511,7 @@ export function validateJourneyEnvelope(body) {
     if (body.current_step.type !== "client") {
       throw new Error("awaiting_client current_step must be client-owned");
     }
-    validateClientInstruction(body.instruction);
-    requireObject(body.instruction.after_success, "instruction.after_success");
-    requireObject(body.instruction.on_failure, "instruction.on_failure");
-    validateActionEnvelope(body.instruction.after_success, { lifecycleOnly: true });
-    validateActionEnvelope(body.instruction.on_failure, { lifecycleOnly: true });
-    if (body.instruction.after_success.verb !== "complete") {
-      throw new Error("instruction.after_success must be the returned complete action");
-    }
-    if (body.instruction.on_failure.verb !== "failed") {
-      throw new Error("instruction.on_failure must be the returned failed action");
-    }
+    validateClientWaitInstruction(body.instruction);
   }
   if (body.status === "client_action_required") {
     requireObject(body.current_step, "journey response.current_step");

@@ -16,6 +16,37 @@ import {
 
 const contextHandle = `bos_ctx_v2_${"a".repeat(64)}`;
 
+test("parallel client waits preserve success and failure continuation semantics", async () => {
+  const {branchWaitResponse, returnedAction} = await import("./helpers/registration-variant-contract.mjs");
+  const response = branchWaitResponse();
+  assert.equal(interpretJourneyResponse(response).next, "parallel_branches");
+  const instruction = response.body.branches[1].instruction;
+  for (const field of ["after_success", "on_failure"]) {
+    const action = instruction[field];
+    const request = buildIdentityV2JourneyActionRequest(action, contextHandle);
+    assert.equal(request.href, action.href);
+    assert.equal(request.headers["X-BOS-Context-Handle"], contextHandle);
+    assert.equal(request.body, "{}");
+  }
+  instruction.after_success.payload_schema = {type: "object", properties: {result: {type: "string"}},
+    required: ["result"], additionalProperties: false};
+  assert.doesNotThrow(() => validateJourneyEnvelope(response.body));
+  assert.equal(buildIdentityV2JourneyActionRequest(instruction.after_success, contextHandle, {result: "ok"}).body,
+    JSON.stringify({result: "ok"}));
+  assert.throws(() => buildIdentityV2JourneyActionRequest(instruction.after_success, contextHandle));
+  assert.throws(() => buildIdentityV2JourneyActionRequest(instruction.after_success, contextHandle, {unknown: true}));
+  assert.throws(() => buildIdentityV2JourneyActionRequest(instruction.after_success, "foreign-context", {result: "ok"}));
+  for (const [field, verbs] of [["after_success", ["failed", "state", "start", "step"]],
+    ["on_failure", ["complete", "state", "start", "step"]]]) {
+    for (const verb of verbs) {
+      const changed = branchWaitResponse();
+      changed.body.branches[1].instruction[field] = returnedAction(verb);
+      assert.throws(() => validateJourneyEnvelope(changed.body), /must be the returned/u);
+      assert.throws(() => interpretJourneyResponse(changed), /must be the returned/u);
+    }
+  }
+});
+
 test("admission guidance preserves service-owned paid and qualifying-trial decisions", async () => {
   const {readFile} = await import("node:fs/promises");
   for (const relative of ["SKILL.md", "references/journey-lifecycle.md"]) {

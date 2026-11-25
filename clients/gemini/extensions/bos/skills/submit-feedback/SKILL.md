@@ -2,8 +2,8 @@
 name: submit-feedback
 description: Submit or draft private BOS product feedback with sanitized media, track its lifecycle, and discuss or complete an existing report through currently supported operations. Use for reviewing or reading feedback and comments, including staging feedback API questions and agent reports, product feedback, report session, feedback tracking, replies, and reporter completion.
 metadata:
-  version: "1.0.29"
-  requires: "{\"bos-mcp-client\":\"1.0.16\",\"bos-workflow-orchestrator\":\"1.0.21\"}"
+  version: "1.0.30"
+  requires: "{\"bos-mcp-client\":\"1.0.16\",\"bos-workflow-orchestrator\":\"1.0.22\"}"
 ---
 
 
