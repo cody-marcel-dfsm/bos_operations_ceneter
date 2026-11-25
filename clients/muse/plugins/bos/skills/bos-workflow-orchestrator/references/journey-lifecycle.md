@@ -57,6 +57,11 @@ The service owns progress:
 - `not_started`: invoke the returned `start` without caller payload;
 - `awaiting_client`: satisfy the current instruction, then use its exact
   `complete` or `failed` action;
+- `awaiting_branches`: present the service-owned branch summaries and any returned
+  client instructions. `parallel_branches` retains each exact continuation and
+  the parent action; use only returned actions under the existing approvals.
+  Branch status strings supply service facts, with no inferred polling schedule
+  or automatic branch/participation effects;
 - `client_action_required`: validate the published public `error` and separate
   closed `resolution`, resolve only `resolution.goal` through current
   discovery, respect its approval scope, then invoke
