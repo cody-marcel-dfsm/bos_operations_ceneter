@@ -6,10 +6,10 @@
     "model": "gpt-6.1-sol",
     "oracle_sha256": "740fe68f0217ca57d210c159e3de3b4aec8901d57919d7b22085db654a0cb29c",
     "host": "Codys-MacBook-Pro.local",
-    "time": "2026-11-25T07:00:20Z",
+    "time": "2026-11-25T07:22:46Z",
     "origin_main": "91bcc35e27674158ca8a9c9b751930a28b3f97c4",
     "request_sha256": "779095e002a3524204dafcb8d30244c47fdcac9b0dde7bf6d23ee9d57fe9753a",
-    "proposal_sha256": "ff18171875c35fdfec2eed314f74d4b42232f241a16e681e8b427efedfdca222"
+    "proposal_sha256": "dfd1ff69fe0d8f3fc7f3da8945dcaa09d2342fec5060832c92455c7d8d5f4e4c"
   },
   "selection": {
     "acceptance": [
@@ -23,7 +23,8 @@
       "Consumer-owned synthetic HTTP discovery feeds the real registration validator and request builder. Requests preserve the exact discovered application, scoped API v1 route, context header and serialized document; foreign applications, partitions, routes and versions are rejected.",
       "Parallel-wait consumption validates the closed parent envelope, parallel current node and at most 256 declared branch summaries. It preserves string statuses without inventing an enum or maximum, validates declared indices and optional instructions, errors, resolutions and actions, and returns verified summaries and original continuations without automatic effects or an invented polling schedule.",
       "Parent and nested continuations retain existing safe URI, method, payload and approval validation through current action builders. Malformed and foreign actions fail before transport, original href bytes remain unchanged, and existing start, callback, standing-registration, recovery and terminal behavior remains supported.",
-      "Declared commercial admission failures preserve HTTP 403 nonretryable and HTTP 503 retryable semantics, exact public errors and existing recovery boundaries without automatic login, retry, route switching or mutation."
+      "Declared commercial admission failures preserve HTTP 403 nonretryable and HTTP 503 retryable semantics, exact public errors and existing recovery boundaries without automatic login, retry, route switching or mutation.",
+      "Registration discovery accepts the advertised optional error-branch usage metadata only with its exact closed sixteen-item callback quota schema and CALLBACK_LIMIT_REACHED conditional requirement. Current sixteen-variant profiles accept absent execution_ttl_hours or a positive safe-integer value; legacy fourteen-variant profiles require that positive value. Altered quota schemas or conditions, invalid TTL values and unknown limit keys reject without descriptor mutation."
     ],
     "acceptance_tests": [
       {
@@ -80,6 +81,15 @@
         ],
         "module": "tests/callback-runtime-client.test.mjs",
         "purpose": "Preserve callback grant review, standing registrations, safe controls and observation continuations."
+      },
+      {
+        "covers": [
+          5,
+          7,
+          11
+        ],
+        "module": "tests/journey-registration-quota-discovery.test.mjs",
+        "purpose": "Verify exact conditional quota metadata through the real validator and request builder, current-profile absent and positive TTL compatibility, legacy TTL requirements and malformed metadata refusals without changing the original focused reproduction."
       }
     ],
     "categories": [
@@ -107,21 +117,23 @@
           "tests/oracle_history_reconstruction_test.py",
           "tests/oracle_spec_test.py",
           "tests/fixtures/journey-registration-contract.json",
-          "tests/fixtures/current-app-registration.json"
+          "tests/fixtures/current-app-registration.json",
+          "tests/helpers/registration-variant-contract.mjs"
         ],
         "name": "interactions",
         "tests": [
           "tests/oracle-history-reconstruction-integrity.test.mjs",
           "tests/journey-registration-discovery.test.mjs",
           "tests/journey-runtime-client.test.mjs",
-          "tests/callback-runtime-client.test.mjs"
+          "tests/callback-runtime-client.test.mjs",
+          "tests/journey-registration-quota-discovery.test.mjs"
         ]
       }
     ],
     "change_class": "deep_bug_fix",
     "design": null,
-    "reason": "Combine evidence-custody reconstruction and discovery/runtime compatibility in one complete unpublished-range contract. Retain all existing criteria, module purposes and fixture coverage; select only the two focused reproductions and four directly affected integrity, discovery, runtime and callback interactions. Preserve original evidence, unchanged-test reproduction custody, delivery clocks and current-version action safety. Complete every selected category and assess native evidence applicability independently; synthetic results establish source behavior only.",
-    "revision_of": "3ebcbcb832afdda8e0ac3c8ef7d0949915248f114e7302d6634beff155c5b85c",
+    "reason": "Retain the complete existing reconstruction and registration compatibility contract, original focused reproduction bytes, selected categories and mapping purposes. Add only the directly affected quota discovery interaction and its supporting helper, with explicit exact-schema and optional-TTL acceptance. Native revision ancestry and reproduction custody remain mandatory; preserve original failures, refusals, clocks and source-review gates. Synthetic and local descriptor results establish consumer behavior only.",
+    "revision_of": "861fb005853a9f2c16450c02ac9fc1d3ee847072de7750fc2254f742dc094fbf",
     "scope_paths": [
       "tools/validation_contract.py",
       "tools/validation-selection.json",
@@ -135,6 +147,7 @@
       "tests/journey-registration-variant-compatibility.test.mjs",
       "tests/helpers/registration-variant-contract.mjs",
       "tests/journey-registration-discovery.test.mjs",
+      "tests/journey-registration-quota-discovery.test.mjs",
       "tests/journey-runtime-client.test.mjs",
       "tests/callback-runtime-client.test.mjs",
       "tests/fixtures/journey-registration-contract.json",
@@ -157,8 +170,8 @@
       "clients/muse/**"
     ]
   },
-  "base_commit": "7dad9e414cc2fd9e637d6e070a6982ca224b2df9",
-  "base_tree": "e848e456070d5f340c981dc528f0d662b80e40b2",
+  "base_commit": "80a441a52fada00282ba77a6dfc983d7160ba308",
+  "base_tree": "26e35518eac3febe524a7ce13fb21396792fafd9",
   "catalog_sha256": "51ee7ae8c1533604f7b2c68b9efba9d1b9d6f340d724d7c208dba434325859b3",
   "runtime": {
     "node": "v22.11.0",
@@ -168,8 +181,8 @@
     "architecture": "arm64",
     "options_sha256": "ebc442c160f8629073a82976daadaba1d95a60a38d768c81c8eb06598aedcac5"
   },
-  "proposal_sha256": "ff18171875c35fdfec2eed314f74d4b42232f241a16e681e8b427efedfdca222",
-  "review_sha256": "a95e1b58f54885eea01ace30543fe04ab520189036024986168ebde0dcc61ae8",
+  "proposal_sha256": "dfd1ff69fe0d8f3fc7f3da8945dcaa09d2342fec5060832c92455c7d8d5f4e4c",
+  "review_sha256": "68bc6d0184b90f72c33fab92cb50059e9f4c924f7d861761691ef39d6ad49940",
   "commands": [
     {
       "category": "sanity",
@@ -213,19 +226,22 @@
         "tests/oracle-history-reconstruction-integrity.test.mjs",
         "tests/journey-registration-discovery.test.mjs",
         "tests/journey-runtime-client.test.mjs",
-        "tests/callback-runtime-client.test.mjs"
+        "tests/callback-runtime-client.test.mjs",
+        "tests/journey-registration-quota-discovery.test.mjs"
       ],
       "tests": [
         "tests/oracle-history-reconstruction-integrity.test.mjs",
         "tests/journey-registration-discovery.test.mjs",
         "tests/journey-runtime-client.test.mjs",
-        "tests/callback-runtime-client.test.mjs"
+        "tests/callback-runtime-client.test.mjs",
+        "tests/journey-registration-quota-discovery.test.mjs"
       ],
       "fixtures": [
         "tests/oracle_history_reconstruction_test.py",
         "tests/oracle_spec_test.py",
         "tests/fixtures/journey-registration-contract.json",
-        "tests/fixtures/current-app-registration.json"
+        "tests/fixtures/current-app-registration.json",
+        "tests/helpers/registration-variant-contract.mjs"
       ]
     }
   ],
@@ -238,6 +254,6 @@
     "reasoning_effort": "medium",
     "maximum_reasoning_effort": "medium"
   },
-  "contract_sha256": "861fb005853a9f2c16450c02ac9fc1d3ee847072de7750fc2254f742dc094fbf",
-  "seal": "66d21f88249601e43afea7bc5d681fbcd5e4e3d426011c550809df9036a9bc21"
+  "contract_sha256": "9e67bad2870fc74daeff4c06b78f6baffa8c6183474f45be9279798924f87cb5",
+  "seal": "fad03e5fa60f2b8c7e46e56e9d0ad8edf0ae7486d516ea13938e8a9ab17bb508"
 }
